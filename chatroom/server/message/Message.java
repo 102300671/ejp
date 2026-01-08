@@ -1,3 +1,5 @@
+package server.message;
+
 public class Message {
   private MessageType type;
   private String from;
@@ -23,8 +25,8 @@ public class Message {
   public void setContent(String content) {
     this.content = content;
   }
-  public void time(String time) {
-    this.time = time 
+  public void setTime(String time) {
+    this.time = time;
   }
   public MessageType getType() {
     return type;
