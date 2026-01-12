@@ -1,14 +1,17 @@
 package server.network.socket;
 import java.net.*;
+import server.network.router.MessageRouter;
 
 public class ServerListener implements Runnable {
     private ServerSocket serverSocket;
     private volatile boolean isRunning;
+    private MessageRouter messageRouter;
 
-    public ServerListener(int port) throws Exception {
+    public ServerListener(int port, MessageRouter messageRouter) throws Exception {
         try {
             serverSocket = new ServerSocket(port);
             isRunning = true;
+            this.messageRouter = messageRouter;
             System.out.println("服务器已成功创建，将监听端口: " + port);
         } catch (Exception e) {
             System.err.println("创建服务器Socket失败 (端口: " + port + "): " + e.getMessage());
@@ -25,7 +28,7 @@ public class ServerListener implements Runnable {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("新客户端已连接: " + clientSocket.getInetAddress().getHostAddress() + ":" + clientSocket.getPort());
                 
-                ClientConnection clientConnection = new ClientConnection(clientSocket);
+                ClientConnection clientConnection = new ClientConnection(clientSocket, messageRouter);
                 Thread clientThread = new Thread(clientConnection);
                 clientThread.setName("ClientHandler-" + clientSocket.getInetAddress().getHostAddress() + ":" + clientSocket.getPort());
                 clientThread.start();

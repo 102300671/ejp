@@ -1,8 +1,13 @@
+package server;
 import java.util.Scanner;
 import java.io.IOException;
+import java.sql.Connection;
 import server.network.socket.*;
 import server.network.router.MessageRouter;
+import server.room.PublicRoom;
+import server.room.Room;
 import server.sql.DatabaseManager;
+import server.sql.room.RoomDAO;
 
 public class ChatServer {
     private ServerListener serverListener;
@@ -30,10 +35,90 @@ public class ChatServer {
         this.messageRouter = new MessageRouter();
         
         // 初始化服务器监听器
-        this.serverListener = new ServerListener(port);
+        this.serverListener = new ServerListener(port, messageRouter);
+        
+        // 检查并创建system房间
+        setupSystemRoom();
+        
+        // 从数据库加载所有房间
+        loadAllRooms();
         
         this.isRunning = true;
         System.out.println("聊天服务器初始化完成");
+        printStatus();
+    }
+    
+    /**
+     * 检查并创建system房间
+     * @throws Exception 数据库操作异常
+     */
+    private void setupSystemRoom() throws Exception {
+        System.out.println("正在检查并创建system房间...");
+        Connection conn = null;
+        try {
+            conn = databaseManager.getConnection();
+            RoomDAO roomDAO = new RoomDAO(messageRouter);
+            
+            // 检查system房间是否存在
+            if (!roomDAO.roomExists("system", conn)) {
+                System.out.println("system房间不存在，正在创建...");
+                // 创建system房间
+                PublicRoom systemRoom = new PublicRoom("system", null, messageRouter);
+                roomDAO.insertPublicRoom(systemRoom, conn);
+                // 将房间添加到消息路由器中
+                messageRouter.createRoom("system", systemRoom.getId(), true);
+                System.out.println("system房间创建成功，ID: " + systemRoom.getId());
+            } else {
+                System.out.println("system房间已存在");
+                // 从数据库获取system房间并添加到消息路由器
+                Room systemRoom = roomDAO.getRoomByName("system", conn);
+                if (systemRoom != null) {
+                    messageRouter.createRoom("system", systemRoom.getId(), true);
+                    System.out.println("已将system房间添加到消息路由器，ID: " + systemRoom.getId());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("设置system房间时出错: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if (conn != null) {
+                databaseManager.closeConnection(conn);
+            }
+        }
+    }
+    
+    /**
+     * 从数据库加载所有房间到消息路由器
+     * @throws Exception 数据库操作异常
+     */
+    private void loadAllRooms() throws Exception {
+        System.out.println("正在从数据库加载所有房间...");
+        Connection conn = null;
+        try {
+            conn = databaseManager.getConnection();
+            RoomDAO roomDAO = new RoomDAO(messageRouter);
+            
+            // 加载所有房间
+            for (Room room : roomDAO.getAllRooms(conn)) {
+                // 只添加非system房间（system房间已单独处理）
+                if (!"system".equals(room.getName())) {
+                    boolean isPublic = room instanceof PublicRoom;
+                    messageRouter.createRoom(room.getName(), room.getId(), isPublic);
+                    System.out.println("已加载" + (isPublic ? "公共" : "私人") + "房间: " + room.getName() + " (ID: " + room.getId() + ")");
+                }
+            }
+            
+            System.out.println("所有房间加载完成");
+        } catch (Exception e) {
+            System.err.println("加载房间时出错: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if (conn != null) {
+                databaseManager.closeConnection(conn);
+            }
+        }
     }
     
     /**

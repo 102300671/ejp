@@ -95,8 +95,6 @@ public class ClientConnection implements Runnable {
             writer.newLine();
             writer.flush();
             
-            System.out.println("消息已发送到服务器: " + message);
-            
         } catch (IOException e) {
             System.err.println("发送消息失败: " + e.getMessage());
             e.printStackTrace();
@@ -119,8 +117,6 @@ public class ClientConnection implements Runnable {
         try {
             String jsonMessage;
             while (isConnected && (jsonMessage = reader.readLine()) != null) {
-                System.out.println("收到服务器消息: " + jsonMessage);
-                
                 // 解码消息
                 Message message = messageCodec.decode(jsonMessage);
                 if (message != null && messageReceivedCallback != null) {

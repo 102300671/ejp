@@ -3,9 +3,15 @@ import java.io.*;
 import java.net.*;
 import java.sql.*;
 import server.message.*;
+import server.network.router.MessageRouter;
+import server.network.session.Session;
 import server.sql.DatabaseManager;
+import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
 import server.sql.user.uuid.UUIDGenerator;
+import server.room.PublicRoom;
+import server.room.PrivateRoom;
+import server.room.Room;
 import server.user.User;
 
 public class ClientConnection implements Runnable {
@@ -18,10 +24,13 @@ public class ClientConnection implements Runnable {
     private DatabaseManager dbManager;
     private MessageCodec messageCodec;
     private UserDAO userDAO;
+    private RoomDAO roomDAO;
     private boolean isAuthenticated;
     private User currentUser;
+    private MessageRouter messageRouter;
+    private Session currentSession;
 
-    public ClientConnection(Socket socket) throws IOException {
+    public ClientConnection(Socket socket, MessageRouter messageRouter) throws IOException {
         this.clientSocket = socket;
         this.clientAddress = socket.getInetAddress().getHostAddress();
         this.clientPort = socket.getPort();
@@ -30,6 +39,8 @@ public class ClientConnection implements Runnable {
         this.dbManager = new DatabaseManager();
         this.messageCodec = new MessageCodec();
         this.userDAO = new UserDAO();
+        this.roomDAO = new RoomDAO(messageRouter);
+        this.messageRouter = messageRouter;
         
         try {
             this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
@@ -100,16 +111,331 @@ public class ClientConnection implements Runnable {
                 case UUID_AUTH:
                     handleUUIDAuth(message);
                     break;
-                default:
-                    // 如果未认证，只处理认证相关消息
+                case TEXT:
+                    // 已认证，处理文本消息
                     if (!isAuthenticated) {
                         sendAuthFailure("未认证，请先登录或注册");
-                    } else {
-                        // 已认证，处理其他消息类型（后续扩展）
-                        System.out.println("处理其他消息类型: " + message.getType());
-                        // 暂时回显消息
-                        send(messageCodec.encode(message));
+                        break;
                     }
+                    
+                    String from = message.getFrom();
+                    String to = message.getTo();
+                    String content = message.getContent();
+                    
+                    System.out.println("处理文本消息: 从" + from + "到" + to + "的消息: " + content);
+                    
+                    // 检查是否为私人消息（消息接收者是用户名且内容包含房间信息）
+                    if (content.startsWith("[room:")) {
+                        // 解析房间信息
+                        int roomStart = content.indexOf("[room:") + 6;
+                        int roomEnd = content.indexOf("]");
+                        String roomName = content.substring(roomStart, roomEnd);
+                        String actualContent = content.substring(roomEnd + 1);
+                        
+                        System.out.println("解析私人消息: 房间=" + roomName + ", 实际内容=" + actualContent);
+                        
+                        // 检查房间
+                        if ("system".equals(roomName)) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "在system房间中禁止发送私人消息");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        // 查找房间
+                        String roomId = null;
+                        boolean isPublicRoom = false;
+                        for (String rId : messageRouter.getRooms().keySet()) {
+                            Room room = messageRouter.getRooms().get(rId);
+                            if (room.getName().equals(roomName)) {
+                                roomId = rId;
+                                isPublicRoom = room instanceof PublicRoom;
+                                break;
+                            }
+                        }
+                        
+                        if (roomId == null) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "房间" + roomName + "不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        // 检查是否为公共房间
+                        if (!isPublicRoom) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "在私人房间中禁止发送私人消息");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        // 查找接收者用户ID
+                        String recipientId = null;
+                        for (Session session : messageRouter.getSessions().values()) {
+                            if (session.getUsername().equals(to)) {
+                                recipientId = session.getUserId();
+                                break;
+                            }
+                        }
+                        
+                        if (recipientId == null) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "用户" + to + "不存在或不在线");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        // 检查发送者和接收者是否在同一房间
+                        boolean senderInRoom = false;
+                        boolean recipientInRoom = false;
+                        Room room = messageRouter.getRooms().get(roomId);
+                        
+                        // 检查发送者是否在房间中
+                        if (room.getUserIds().contains(String.valueOf(currentUser.getId()))) {
+                            senderInRoom = true;
+                        }
+                        
+                        // 检查接收者是否在房间中
+                        if (room.getUserIds().contains(recipientId)) {
+                            recipientInRoom = true;
+                        }
+                        
+                        if (!senderInRoom) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "您不在房间" + roomName + "中");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        if (!recipientInRoom) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "用户" + to + "不在房间" + roomName + "中");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        // 发送私人消息
+                        Message privateMsg = new Message(MessageType.TEXT, from, to, actualContent);
+                        if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateMsg))) {
+                            System.out.println("私人消息发送成功: 从" + from + "到" + to + "的消息: " + actualContent);
+                        } else {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "发送私人消息失败: 用户" + to + "可能不在线");
+                            send(messageCodec.encode(errorMsg));
+                        }
+                    } else {
+                        // 广播消息到目标房间
+                        for (String roomId : messageRouter.getRooms().keySet()) {
+                            if (message.getTo().equals(messageRouter.getRooms().get(roomId).getName())) {
+                                // 广播消息
+                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(message));
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                case JOIN:
+                    // 已认证，处理加入房间消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理加入房间消息: " + message.getFrom() + "加入" + message.getTo() + "房间");
+                    // 将用户加入目标房间
+                    try (Connection connection = dbManager.getConnection()) {
+                        String roomName = message.getTo();
+                        String userId = String.valueOf(currentUser.getId());
+                        
+                        // 查找messageRouter中的房间
+                        String roomId = null;
+                        for (String rId : messageRouter.getRooms().keySet()) {
+                            if (roomName.equals(messageRouter.getRooms().get(rId).getName())) {
+                                roomId = rId;
+                                break;
+                            }
+                        }
+                        
+                        if (roomId == null) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + roomName + "不存在");
+                            send(messageCodec.encode(systemMessage));
+                            break;
+                        }
+                        
+                        // 检查用户是否已在房间中（数据库层面）
+                        boolean alreadyInRoom = roomDAO.isUserInRoom(roomId, userId, connection);
+                        if (alreadyInRoom) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "您已在房间" + roomName + "中");
+                            send(messageCodec.encode(systemMessage));
+                        }
+                        
+                        // 加入房间（内存层面）
+                        messageRouter.joinRoom(userId, roomId);
+                        
+                        // 只在用户不在房间时才将用户加入到room_member表
+                        if (!alreadyInRoom) {
+                            roomDAO.joinRoom(roomId, userId, connection);
+                        }
+                        
+                        // 广播加入消息
+                        messageRouter.broadcastToRoom(roomId, messageCodec.encode(message));
+                        
+                        // 发送成功消息
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "已加入房间: " + roomName);
+                        send(messageCodec.encode(systemMessage));
+                        
+                        System.out.println("用户加入房间成功: " + message.getFrom() + " 加入 " + roomName + " (ID: " + roomId + ")");
+                        Room room = messageRouter.getRooms().get(roomId);
+                        System.out.println("当前房间" + roomName + "中的用户数量: " + room.getUserCount());
+                    } catch (SQLException e) {
+                        System.err.println("加入房间失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "加入房间失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                case LEAVE:
+                    // 已认证，处理离开房间消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理离开房间消息: " + message.getFrom() + "离开" + message.getTo() + "房间");
+                    // 将用户离开目标房间
+                    for (String roomId : messageRouter.getRooms().keySet()) {
+                        if (message.getTo().equals(messageRouter.getRooms().get(roomId).getName())) {
+                            // 离开房间
+                            String userId = String.valueOf(currentUser.getId());
+                            messageRouter.leaveRoom(userId, roomId);
+                            // 广播离开消息
+                            messageRouter.broadcastToRoom(roomId, messageCodec.encode(message));
+                            break;
+                        }
+                    }
+                    break;
+                case CREATE_ROOM:
+                    // 已认证，处理创建房间消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理创建房间消息: " + message.getFrom() + "创建" + message.getTo() + "房间，类型: " + message.getContent());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String roomName = message.getTo();
+                        String roomType = message.getContent().toUpperCase();
+                        
+                        // 检查房间是否已存在
+                        if (roomDAO.roomExists(roomName, connection)) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + roomName + "已存在");
+                            send(messageCodec.encode(systemMessage));
+                            break;
+                        }
+                        
+                        // 创建新房间
+                        Room newRoom;
+                        if ("PRIVATE".equals(roomType)) {
+                            newRoom = new PrivateRoom(roomName, null, messageRouter);
+                            roomDAO.insertPrivateRoom((PrivateRoom) newRoom, connection);
+                        } else {
+                            newRoom = new PublicRoom(roomName, null, messageRouter);
+                            roomDAO.insertPublicRoom((PublicRoom) newRoom, connection);
+                        }
+                        
+                        // 添加房间到消息路由器
+                        messageRouter.addRoom(newRoom);
+                        
+                        // 发送成功消息
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + roomName + "创建成功，类型: " + roomType);
+                        send(messageCodec.encode(systemMessage));
+                        
+                        System.out.println("房间创建成功: " + roomName + " (ID: " + newRoom.getId() + ", 类型: " + roomType + ")");
+                    } catch (SQLException e) {
+                        System.err.println("创建房间失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "创建房间失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                case EXIT_ROOM:
+                    // 已认证，处理退出房间消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理退出房间消息: " + message.getFrom() + "退出" + message.getTo() + "房间");
+                    try (Connection connection = dbManager.getConnection()) {
+                        // 查找房间
+                        Room room = roomDAO.getRoomByName(message.getTo(), connection);
+                        if (room == null) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + message.getTo() + "不存在");
+                            send(messageCodec.encode(systemMessage));
+                            break;
+                        }
+                        
+                        String roomId = room.getId();
+                        String userId = String.valueOf(currentUser.getId());
+                        
+                        // 从消息路由器中移除用户
+                        messageRouter.leaveRoom(userId, roomId);
+                        
+                        // 从数据库中删除room_member记录
+                        roomDAO.leaveRoom(roomId, userId, connection);
+                        
+                        // 广播退出消息
+                        messageRouter.broadcastToRoom(roomId, messageCodec.encode(message));
+                        
+                        // 发送成功消息给用户
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "已退出房间: " + message.getTo());
+                        send(messageCodec.encode(systemMessage));
+                        
+                        System.out.println("用户退出房间成功: " + message.getFrom() + " 离开 " + message.getTo());
+                    } catch (SQLException e) {
+                        System.err.println("退出房间失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "退出房间失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                case LIST_ROOMS:
+                    // 已认证，处理房间列表请求
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间列表请求: " + message.getFrom());
+                    try (Connection connection = dbManager.getConnection()) {
+                        // 查询用户所在的所有房间
+                        String sql = "SELECT r.room_name FROM room r JOIN room_member rm ON r.id = rm.room_id WHERE rm.user_id = ?";
+                        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                            pstmt.setInt(1, currentUser.getId());
+                            
+                            try (ResultSet rs = pstmt.executeQuery()) {
+                                StringBuilder roomsList = new StringBuilder("您所在的房间: ");
+                                boolean first = true;
+                                while (rs.next()) {
+                                    if (!first) {
+                                        roomsList.append(", ");
+                                    }
+                                    roomsList.append(rs.getString("room_name"));
+                                    first = false;
+                                }
+                                
+                                if (first) {
+                                    roomsList.append("无");
+                                }
+                                
+                                Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), roomsList.toString());
+                                send(messageCodec.encode(systemMessage));
+                            }
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("获取房间列表失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "获取房间列表失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                default:
+                    // 已认证，处理其他消息类型
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理其他消息类型: " + message.getType());
+                    // 暂时回显消息
+                    send(messageCodec.encode(message));
                     break;
             }
         } catch (Exception e) {
@@ -175,6 +501,9 @@ public class ClientConnection implements Runnable {
             
             System.out.println("用户注册成功: " + username + " (ID: " + userId + ")");
             
+            // 创建并注册会话
+            createAndRegisterSession();
+            
         } catch (SQLException e) {
             System.err.println("注册失败: " + e.getMessage());
             e.printStackTrace();
@@ -239,6 +568,9 @@ public class ClientConnection implements Runnable {
             isAuthenticated = true;
             
             System.out.println("用户登录成功: " + username + " (ID: " + currentUser.getId() + ")");
+            
+            // 创建并注册会话
+            createAndRegisterSession();
             
         } catch (SQLException e) {
             System.err.println("登录失败: " + e.getMessage());
@@ -308,6 +640,9 @@ public class ClientConnection implements Runnable {
             
             System.out.println("用户UUID认证成功: " + user.getUsername() + " (ID: " + user.getId() + ")");
             
+            // 创建并注册会话
+            createAndRegisterSession();
+            
         } catch (SQLException e) {
             System.err.println("UUID认证失败: " + e.getMessage());
             e.printStackTrace();
@@ -374,6 +709,13 @@ public class ClientConnection implements Runnable {
         System.out.println("正在关闭客户端连接: " + clientAddress + ":" + clientPort);
         isConnected = false;
         
+        // 注销会话
+        if (isAuthenticated && currentUser != null && messageRouter != null) {
+            String userId = String.valueOf(currentUser.getId());
+            messageRouter.deregisterSession(userId);
+            System.out.println("会话已注销: 用户ID=" + userId);
+        }
+        
         try {
             if (reader != null) {
                 reader.close();
@@ -416,4 +758,41 @@ public class ClientConnection implements Runnable {
     public boolean isConnected() {
         return isConnected;
     }
+    
+    /**
+     * 获取当前客户端连接的用户
+     * @return 当前用户对象
+     */
+    public User getCurrentUser() {
+        return currentUser;
+    }
+    
+    /**
+     * 创建并注册会话，将用户加入system房间
+     */
+    private void createAndRegisterSession() {
+        if (currentUser == null || messageRouter == null) {
+            System.err.println("无法创建会话：用户或消息路由器为空");
+            return;
+        }
+        
+        // 创建会话
+        String userId = String.valueOf(currentUser.getId());
+        currentSession = new Session(userId, currentUser.getUsername(), this);
+        
+        // 注册会话到消息路由器
+        messageRouter.registerSession(currentSession);
+        
+        // 查找system房间
+        for (String roomId : messageRouter.getRooms().keySet()) {
+            if ("system".equals(messageRouter.getRooms().get(roomId).getName())) {
+                // 加入system房间
+                messageRouter.joinRoom(userId, roomId);
+                System.out.println("用户已加入system房间：" + currentUser.getUsername());
+                break;
+            }
+        }
+    }
+    
+
 }

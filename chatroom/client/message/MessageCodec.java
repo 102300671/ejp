@@ -15,17 +15,12 @@ public class MessageCodec {
      */
     public String encode(Message message) {
         if (message == null) {
-            System.err.println("尝试编码空消息对象");
             return null;
         }
         
         try {
-            String jsonString = GSON.toJson(message);
-            System.out.println("消息编码成功: " + jsonString);
-            return jsonString;
+            return GSON.toJson(message);
         } catch (Exception e) {
-            System.err.println("消息编码失败: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -37,21 +32,12 @@ public class MessageCodec {
      */
     public Message decode(String jsonString) {
         if (jsonString == null || jsonString.isEmpty()) {
-            System.err.println("尝试解码空的JSON字符串");
             return null;
         }
         
         try {
-            Message message = GSON.fromJson(jsonString, Message.class);
-            System.out.println("消息解码成功: " + message);
-            return message;
-        } catch (JsonSyntaxException e) {
-            System.err.println("JSON语法错误，解码失败: " + e.getMessage());
-            e.printStackTrace();
-            return null;
+            return GSON.fromJson(jsonString, Message.class);
         } catch (Exception e) {
-            System.err.println("消息解码失败: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }

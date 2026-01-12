@@ -81,6 +81,33 @@ public class RoomDAO {
         return rooms;
     }
     
+    /**
+     * 获取所有房间（包括公共和私人房间）
+     * @param conn 数据库连接
+     * @return 房间列表
+     * @throws SQLException SQL异常
+     */
+    public List<Room> getAllRooms(Connection conn) throws SQLException {
+        List<Room> rooms = new ArrayList<>();
+        String sql = "select id, room_name, room_type from room";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = String.valueOf(rs.getInt("id"));
+                    String name = rs.getString("room_name");
+                    String type = rs.getString("room_type");
+                    
+                    if ("PUBLIC".equals(type)) {
+                        rooms.add(new PublicRoom(name, id, messageRouter));
+                    } else {
+                        rooms.add(new PrivateRoom(name, id, messageRouter));
+                    }
+                }
+            }
+        }
+        return rooms;
+    }
+    
     public boolean joinRoom(String roomId, String userId, Connection conn) throws SQLException {
         String sql = "insert into room_member (room_id, user_id) values (?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -129,5 +156,55 @@ public class RoomDAO {
             }
         }
         return memberIds;
+    }
+    
+    /**
+     * 检查房间是否存在
+     * @param roomName 房间名称
+     * @param conn 数据库连接
+     * @return true表示房间存在，false表示不存在
+     * @throws SQLException SQL异常
+     */
+    public boolean roomExists(String roomName, Connection conn) throws SQLException {
+        String sql = "select count(*) from room where room_name = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, roomName);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * 根据房间名称获取房间
+     * @param roomName 房间名称
+     * @param conn 数据库连接
+     * @return 房间对象，如果不存在则返回null
+     * @throws SQLException SQL异常
+     */
+    public Room getRoomByName(String roomName, Connection conn) throws SQLException {
+        String sql = "select id, room_name, room_type from room where room_name = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, roomName);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = String.valueOf(rs.getInt("id"));
+                    String name = rs.getString("room_name");
+                    String type = rs.getString("room_type");
+                    
+                    if ("PUBLIC".equals(type)) {
+                        return new PublicRoom(name, id, messageRouter);
+                    } else {
+                        return new PrivateRoom(name, id, messageRouter);
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

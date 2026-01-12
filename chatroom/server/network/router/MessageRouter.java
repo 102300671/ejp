@@ -228,8 +228,19 @@ public class MessageRouter {
         }
 
         try {
-            // 获取房间内所有用户ID
-            Set<String> userIds = room.getUserIds();
+            Set<String> userIds;
+            
+            // 如果是system房间，向所有客户端广播消息
+            if ("system".equals(room.getName())) {
+                System.out.println("向所有客户端广播system消息: " + message);
+                // 获取所有活动会话的用户ID
+                userIds = sessions.keySet();
+            } else {
+                // 否则只向房间内的用户广播
+                userIds = room.getUserIds();
+                System.out.println("向房间" + room.getName() + " (ID: " + room.getId() + ") 广播消息，用户数量: " + userIds.size());
+            }
+            
             for (String userId : userIds) {
                 Session session = sessions.get(userId);
                 if (session != null && session.isActive()) {
@@ -255,6 +266,14 @@ public class MessageRouter {
         }
         return sessions.get(userId);
     }
+    
+    /**
+     * 获取所有会话
+     * @return 会话映射表
+     */
+    public Map<String, Session> getSessions() {
+        return sessions;
+    }
 
     /**
      * 获取活动会话数量
@@ -270,5 +289,34 @@ public class MessageRouter {
      */
     public int getRoomCount() {
         return rooms.size();
+    }
+    
+    /**
+     * 获取所有房间
+     * @return 房间映射表
+     */
+    public Map<String, Room> getRooms() {
+        return rooms;
+    }
+    
+    /**
+     * 添加房间到路由器
+     * @param room 要添加的房间对象
+     * @return true表示添加成功，false表示失败
+     */
+    public boolean addRoom(Room room) {
+        if (room == null || room.getId() == null || room.getId().isEmpty()) {
+            System.err.println("无效的房间对象");
+            return false;
+        }
+        
+        if (rooms.containsKey(room.getId())) {
+            System.err.println("房间ID已存在: " + room.getId());
+            return false;
+        }
+        
+        rooms.put(room.getId(), room);
+        System.out.println("房间已添加到路由器: " + room.getName() + " (ID: " + room.getId() + ")");
+        return true;
     }
 }

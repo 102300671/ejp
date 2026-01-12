@@ -9,6 +9,7 @@ public class UserInterface {
     private final ClientConnection clientConnection;
     private String username;
     private String currentRoom;
+    private String currentRoomType;
     private volatile boolean isRunning;
     
     /**
@@ -19,7 +20,8 @@ public class UserInterface {
         this.scanner = new Scanner(System.in);
         this.clientConnection = clientConnection;
         this.isRunning = false;
-        this.currentRoom = "general";
+        this.currentRoom = "system";
+        this.currentRoomType = "PUBLIC";
         
         // 设置消息接收回调
         clientConnection.setMessageReceivedCallback(new ClientConnection.MessageReceivedCallback() {
@@ -51,6 +53,9 @@ public class UserInterface {
         
         // 显示欢迎信息
         displayWelcomeMessage();
+        
+        // 自动显示帮助信息
+        processCommand("/help");
         
         // 发送加入系统消息
         sendSystemMessage("JOIN", "system", username + " 加入了聊天室");
@@ -98,7 +103,7 @@ public class UserInterface {
     private void displayWelcomeMessage() {
         System.out.println("============================================");
         System.out.println("欢迎使用聊天客户端，" + username + "!");
-        System.out.println("当前房间: " + currentRoom);
+        System.out.println("当前房间: " + currentRoom + " (" + currentRoomType + ")");
         System.out.println("使用 /help 查看可用命令");
         System.out.println("============================================");
     }
@@ -122,7 +127,16 @@ public class UserInterface {
         
         switch (message.getType()) {
             case TEXT:
-                System.out.println("[" + message.getFrom() + " -> " + message.getTo() + "] " + message.getContent() + " (" + message.getTime() + ")");
+                String content = message.getContent();
+                // 处理私人消息，去掉房间信息
+                if (content.startsWith("[room:")) {
+                    int roomEnd = content.indexOf("]");
+                    content = content.substring(roomEnd + 1);
+                    System.out.println("[私聊] " + message.getFrom() + ": " + content + " (" + message.getTime() + ")");
+                } else {
+                    // 房间消息，简化显示
+                    System.out.println("[" + message.getFrom() + "]: " + content + " (" + message.getTime() + ")");
+                }
                 break;
             case SYSTEM:
                 System.out.println("[系统] " + message.getContent());
@@ -134,7 +148,8 @@ public class UserInterface {
                 System.out.println("[系统] " + message.getFrom() + " 离开了房间 " + message.getTo());
                 break;
             default:
-                System.out.println("[未知消息] " + message);
+                // 隐藏未知消息的详细内容
+                System.out.println("[系统] 收到未知类型消息");
                 break;
         }
     }
@@ -165,6 +180,15 @@ public class UserInterface {
             case "LEAVE":
                 messageType = MessageType.LEAVE;
                 break;
+            case "CREATE":
+                messageType = MessageType.CREATE_ROOM;
+                break;
+            case "EXIT":
+                messageType = MessageType.EXIT_ROOM;
+                break;
+            case "LIST_ROOMS":
+                messageType = MessageType.LIST_ROOMS;
+                break;
             default:
                 messageType = MessageType.SYSTEM;
                 break;
@@ -180,8 +204,11 @@ public class UserInterface {
     private void displayHelp() {
         System.out.println("============================================");
         System.out.println("可用命令:");
+        System.out.println("/create <room> [type]  - 创建房间，类型默认为PUBLIC");
         System.out.println("/join <room>        - 加入指定房间");
         System.out.println("/leave <room>       - 离开指定房间");
+        System.out.println("/exit <room>        - 退出指定房间并删除记录");
+        System.out.println("/list               - 查看用户所在的所有房间");
         System.out.println("/msg <user> <message>  - 发送私人消息");
         System.out.println("/help               - 显示此帮助信息");
         System.out.println("/quit               - 退出客户端");
@@ -201,12 +228,26 @@ public class UserInterface {
         }
         
         switch (parts[0].toLowerCase()) {
+            case "/create":
+                if (parts.length >= 2) {
+                    String room = parts[1];
+                    String type = parts.length >= 3 ? parts[2].toUpperCase() : "PUBLIC";
+                    // 发送创建房间消息
+                    sendSystemMessage("CREATE", room, type);
+                    displaySystemMessage("正在创建房间: " + room + " (类型: " + type + ")");
+                } else {
+                    displaySystemMessage("请指定房间名称和类型(可选): /create <room> [type]");
+                }
+                break;
+                
             case "/join":
                 if (parts.length >= 2) {
                     String room = parts[1];
                     currentRoom = room;
+                    // 默认类型为PUBLIC，实际类型会从服务器获取
+                    currentRoomType = "PUBLIC";
                     sendSystemMessage("JOIN", room, username + " 加入了房间");
-                    displaySystemMessage("已加入房间: " + room);
+                    displaySystemMessage("已加入房间: " + room + " (类型: " + currentRoomType + ")");
                 } else {
                     displaySystemMessage("请指定房间名称: /join <room>");
                 }
@@ -216,20 +257,58 @@ public class UserInterface {
                 if (parts.length >= 2) {
                     String room = parts[1];
                     if (room.equals(currentRoom)) {
-                        currentRoom = "general";
+                        currentRoom = "system";
                     }
-                    sendSystemMessage("LEAVE", room, username + " 离开了房间");
+                    // /leave 只是离开房间，不删除room_member记录
                     displaySystemMessage("已离开房间: " + room);
+                    // 如果离开的不是system房间，自动回到system房间
+                    if (!room.equals("system")) {
+                        currentRoom = "system";
+                        displaySystemMessage("当前房间已切换到: " + currentRoom);
+                    }
                 } else {
                     displaySystemMessage("请指定房间名称: /leave <room>");
                 }
+                break;
+                
+            case "/exit":
+                if (parts.length >= 2) {
+                    String room = parts[1];
+                    if (room.equals(currentRoom)) {
+                        currentRoom = "system";
+                    }
+                    // /exit 退出房间，同时删除room_member记录
+                    sendSystemMessage("EXIT", room, username + " 退出了房间");
+                    displaySystemMessage("已退出房间: " + room);
+                    // 如果退出的不是system房间，自动回到system房间
+                    if (!room.equals("system")) {
+                        displaySystemMessage("当前房间已切换到: " + currentRoom);
+                    }
+                } else {
+                    displaySystemMessage("请指定房间名称: /exit <room>");
+                }
+                break;
+                
+            case "/list":
+                // 发送列表房间请求
+                sendSystemMessage("LIST_ROOMS", "", "");
+                displaySystemMessage("正在获取房间列表...");
                 break;
                 
             case "/msg":
                 if (parts.length >= 3) {
                     String user = parts[1];
                     String content = parts[2];
-                    sendTextMessage(user, content);
+                    
+                    // 检查当前房间
+                    if ("system".equals(currentRoom)) {
+                        displaySystemMessage("在system房间中禁止发送私人消息");
+                        break;
+                    }
+                    
+                    // 在私人消息内容前添加当前房间信息，格式："[room:房间名]消息内容"
+                    String formattedContent = "[room:" + currentRoom + "]" + content;
+                    sendTextMessage(user, formattedContent);
                 } else {
                     displaySystemMessage("请指定接收者和消息内容: /msg <user> <message>");
                 }
@@ -237,6 +316,11 @@ public class UserInterface {
                 
             case "/help":
                 displayHelp();
+                break;
+                
+            case "/show":
+                // 显示当前房间和类型
+                displaySystemMessage("当前房间: " + currentRoom + " (" + currentRoomType + ")");
                 break;
                 
             case "/quit":
@@ -258,7 +342,7 @@ public class UserInterface {
         public void run() {
             while (isRunning) {
                 try {
-                    System.out.print(username + "> ");
+                    System.out.print(username + "@" + currentRoom + "(" + currentRoomType + ")> ");
                     String input = scanner.nextLine().trim();
                     
                     if (input.isEmpty()) {
