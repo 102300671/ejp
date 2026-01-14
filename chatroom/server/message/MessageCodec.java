@@ -21,6 +21,13 @@ public class MessageCodec {
         
         try {
             String jsonString = GSON.toJson(message);
+            
+            // 验证生成的JSON字符串是否有效
+            if (jsonString == null || !jsonString.trim().startsWith("{")) {
+                System.err.println("生成的JSON字符串无效: " + jsonString);
+                return null;
+            }
+            
             System.out.println("消息编码成功: " + jsonString);
             return jsonString;
         } catch (Exception e) {
@@ -42,6 +49,7 @@ public class MessageCodec {
         }
         
         try {
+            // 直接使用原始字符串进行JSON解析
             Message message = GSON.fromJson(jsonString, Message.class);
             System.out.println("消息解码成功: " + message);
             return message;

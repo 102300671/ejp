@@ -4,5 +4,8 @@
 	<classpathentry kind="lib" path="lib/bcrypt-0.10.2.jar"/>
 	<classpathentry kind="lib" path="lib/gson-2.13.2.jar"/>
 	<classpathentry kind="lib" path="lib/mysql-connector-j-9.5.0.jar"/>
+	<classpathentry kind="lib" path="lib/Java-WebSocket-1.5.7.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.7.36.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-simple-1.7.36.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

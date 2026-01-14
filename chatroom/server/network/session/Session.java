@@ -4,7 +4,7 @@ import server.network.socket.ClientConnection;
 public class Session {
     private final String userId;
     private final String username;
-    private final ClientConnection clientConnection;
+    private volatile ClientConnection clientConnection;
     private volatile boolean isActive;
 
     public Session(String userId, String username, ClientConnection clientConnection) {
@@ -25,6 +25,13 @@ public class Session {
 
     public ClientConnection getClientConnection() {
         return clientConnection;
+    }
+
+    public void setClientConnection(ClientConnection clientConnection) {
+        if (clientConnection != null) {
+            this.clientConnection = clientConnection;
+            System.out.println("会话客户端连接已更新: 用户ID=" + userId);
+        }
     }
 
     public boolean isActive() {

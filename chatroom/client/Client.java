@@ -53,9 +53,10 @@ public class Client {
         messageThread.start();
         
         // 进行用户认证
-        if (authenticate()) {
+        String username = authenticate();
+        if (username != null) {
             // 认证成功，初始化用户界面
-            this.userInterface = new UserInterface(clientConnection);
+            this.userInterface = new UserInterface(clientConnection, username);
             
             // 启动用户界面
             userInterface.start();
@@ -70,14 +71,24 @@ public class Client {
     
     /**
      * 进行用户认证
-     * @return 认证是否成功
+     * @return 认证成功返回用户名，失败返回null
      */
-    private boolean authenticate() {
+    private String authenticate() {
         // 初始化认证界面
         client.ui.AuthenticationInterface authInterface = new client.ui.AuthenticationInterface(clientConnection);
         
         // 开始认证流程
-        return authInterface.authenticate();
+        boolean success = authInterface.authenticate();
+        
+        if (success) {
+            // 认证成功，将用户名保存到客户端连接
+            String username = authInterface.getUsername();
+            clientConnection.setUsername(username);
+            return username;
+        } else {
+            // 认证失败
+            return null;
+        }
     }
     
     /**

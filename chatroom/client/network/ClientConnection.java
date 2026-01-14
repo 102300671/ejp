@@ -13,6 +13,7 @@ public class ClientConnection implements Runnable {
     private MessageCodec messageCodec;
     private volatile boolean isConnected;
     private MessageReceivedCallback messageReceivedCallback;
+    private String username;
     
     /**
      * 消息接收回调接口
@@ -40,6 +41,22 @@ public class ClientConnection implements Runnable {
      */
     public void setMessageReceivedCallback(MessageReceivedCallback callback) {
         this.messageReceivedCallback = callback;
+    }
+    
+    /**
+     * 设置用户名
+     * @param username 用户名
+     */
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    
+    /**
+     * 获取用户名
+     * @return 用户名
+     */
+    public String getUsername() {
+        return username;
     }
     
     /**

@@ -1,130 +1,89 @@
-package server.network.socket;
-import java.io.*;
-import java.net.*;
-import java.sql.*;
-import server.message.*;
+package server.network.websocket;
+import org.java_websocket.WebSocket;
+import server.message.Message;
+import server.message.MessageCodec;
+import server.message.MessageType;
 import server.network.router.MessageRouter;
 import server.network.session.Session;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
 import server.sql.user.uuid.UUIDGenerator;
-import server.room.PublicRoom;
 import server.room.PrivateRoom;
+import server.room.PublicRoom;
 import server.room.Room;
 import server.user.User;
+import java.io.IOException;
 
-public class ClientConnection implements Runnable {
-    private final Socket clientSocket;
-    private volatile boolean isConnected;
-    private BufferedReader reader;
-    private BufferedWriter writer;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class WebSocketConnection {
+    private final WebSocket conn;
     private final String clientAddress;
     private final int clientPort;
-    private DatabaseManager dbManager;
-    private MessageCodec messageCodec;
-    private UserDAO userDAO;
-    private RoomDAO roomDAO;
+    private volatile boolean isConnected;
     private boolean isAuthenticated;
     private User currentUser;
     private MessageRouter messageRouter;
+    private MessageCodec messageCodec;
+    private DatabaseManager dbManager;
+    private UserDAO userDAO;
+    private RoomDAO roomDAO;
     private Session currentSession;
-
-    /**
-     * TCP客户端连接构造函数
-     * @param socket TCP Socket对象
-     * @param messageRouter 消息路由器
-     * @throws IOException IO异常
-     */
-    public ClientConnection(Socket socket, MessageRouter messageRouter) throws IOException {
-        this.clientSocket = socket;
-        this.clientAddress = socket.getInetAddress().getHostAddress();
-        this.clientPort = socket.getPort();
+    
+    public WebSocketConnection(WebSocket conn, MessageRouter messageRouter) {
+        this.conn = conn;
+        this.clientAddress = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+        this.clientPort = conn.getRemoteSocketAddress().getPort();
         this.isConnected = true;
         this.isAuthenticated = false;
-        this.dbManager = new DatabaseManager();
+        this.messageRouter = messageRouter;
         this.messageCodec = new MessageCodec();
+        this.dbManager = new DatabaseManager();
         this.userDAO = new UserDAO();
         this.roomDAO = new RoomDAO(messageRouter);
-        this.messageRouter = messageRouter;
+    }
+    
+    public void onOpen() {
+        System.out.println("WebSocket连接已打开: " + clientAddress + ":" + clientPort);
+    }
+    
+    public void onClose(int code, String reason, boolean remote) {
+        System.out.println("WebSocket连接已关闭: " + clientAddress + ":" + clientPort + ", 代码: " + code + ", 原因: " + reason);
+        isConnected = false;
         
-        try {
-            this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
-            this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
-            System.out.println("客户端连接初始化完成: " + clientAddress + ":" + clientPort);
-        } catch (IOException e) {
-            System.err.println("初始化客户端连接流失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-            close();
-            throw e;
+        // 注销会话
+        if (isAuthenticated && currentUser != null) {
+            String userId = String.valueOf(currentUser.getId());
+            messageRouter.deregisterSession(userId);
         }
     }
     
-    /**
-     * WebSocket客户端连接适配器专用构造函数
-     * @param messageRouter 消息路由器
-     */
-    protected ClientConnection(MessageRouter messageRouter) {
-        this.clientSocket = null;
-        this.clientAddress = "websocket-client";
-        this.clientPort = 0;
-        this.isConnected = true;
-        this.isAuthenticated = false;
-        this.dbManager = new DatabaseManager();
-        this.messageCodec = new MessageCodec();
-        this.userDAO = new UserDAO();
-        this.roomDAO = new RoomDAO(messageRouter);
-        this.messageRouter = messageRouter;
-        // WebSocket连接不需要初始化流
-        this.reader = null;
-        this.writer = null;
-    }
-
-    @Override
-    public void run() {
-        System.out.println("开始处理客户端连接: " + clientAddress + ":" + clientPort);
+    public void onMessage(String message) {
+        System.out.println("收到WebSocket消息: " + message);
         
         try {
-            while (isConnected) {
-                String jsonMessage = reader.readLine();
-                
-                if (jsonMessage == null) {
-                    System.out.println("客户端已断开连接: " + clientAddress + ":" + clientPort);
-                    break;
-                }
-                
-                System.out.println("收到客户端消息 (" + clientAddress + ":" + clientPort + "): " + jsonMessage);
-                
-                // 解码消息
-                Message message = messageCodec.decode(jsonMessage);
-                
-                if (message == null) {
-                    System.err.println("消息解码失败，无法处理 (" + clientAddress + ":" + clientPort + ")");
-                    continue;
-                }
-                
-                // 处理消息
-                processMessage(message);
+            // 确保消息以UTF-8编码处理
+            String utf8Message = new String(message.getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.charset.StandardCharsets.UTF_8);
+            
+            // 解码消息
+            Message decodedMessage = messageCodec.decode(utf8Message);
+            if (decodedMessage == null) {
+                System.err.println("消息解码失败");
+                return;
             }
-        } catch (SocketException e) {
-            if (isConnected) {
-                System.err.println("客户端Socket异常 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-                e.printStackTrace();
-            }
-        } catch (IOException e) {
-            System.err.println("客户端IO异常 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-            e.printStackTrace();
+            
+            // 处理消息
+            processMessage(decodedMessage);
         } catch (Exception e) {
-            System.err.println("客户端处理异常 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
+            System.err.println("处理WebSocket消息时发生错误: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            close();
         }
     }
     
-    /**
-     * 处理客户端消息
-     * @param message 要处理的消息
-     */
     private void processMessage(Message message) {
         try {
             switch (message.getType()) {
@@ -261,6 +220,7 @@ public class ClientConnection implements Runnable {
                         }
                     }
                     break;
+                    
                 case JOIN:
                     // 已认证，处理加入房间消息
                     if (!isAuthenticated) {
@@ -306,8 +266,6 @@ public class ClientConnection implements Runnable {
                         // 不再发送多余的成功消息，因为MessageRouter已经广播了JOIN消息
                         
                         System.out.println("用户加入房间成功: " + currentUser.getUsername() + " 加入 " + roomName + " (ID: " + roomId + ")");
-                        Room room = messageRouter.getRooms().get(roomId);
-                        System.out.println("当前房间" + roomName + "中的用户数量: " + room.getUserCount());
                     } catch (SQLException e) {
                         System.err.println("加入房间失败: " + e.getMessage());
                         e.printStackTrace();
@@ -315,6 +273,7 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
+                    
                 case LEAVE:
                     // 已认证，处理离开房间消息
                     if (!isAuthenticated) {
@@ -342,6 +301,7 @@ public class ClientConnection implements Runnable {
                         }
                     }
                     break;
+                    
                 case CREATE_ROOM:
                     // 已认证，处理创建房间消息
                     if (!isAuthenticated) {
@@ -385,6 +345,7 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
+                    
                 case EXIT_ROOM:
                     // 已认证，处理退出房间消息
                     if (!isAuthenticated) {
@@ -433,6 +394,7 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
+                    
                 case LIST_ROOMS:
                     // 已认证，处理房间列表请求
                     if (!isAuthenticated) {
@@ -443,10 +405,10 @@ public class ClientConnection implements Runnable {
                     try (Connection connection = dbManager.getConnection()) {
                         // 查询用户所在的所有房间及其类型
                         String sql = "SELECT r.room_name, r.room_type FROM room r JOIN room_member rm ON r.id = rm.room_id WHERE rm.user_id = ?";
-                        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                        try (java.sql.PreparedStatement pstmt = connection.prepareStatement(sql)) {
                             pstmt.setInt(1, currentUser.getId());
                             
-                            try (ResultSet rs = pstmt.executeQuery()) {
+                            try (java.sql.ResultSet rs = pstmt.executeQuery()) {
                                 StringBuilder roomsList = new StringBuilder("您所在的房间: ");
                                 boolean first = true;
                                 while (rs.next()) {
@@ -474,6 +436,7 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
+                    
                 default:
                     // 已认证，处理其他消息类型
                     if (!isAuthenticated) {
@@ -600,7 +563,7 @@ public class ClientConnection implements Runnable {
             }
             
             // 检查用户名是否已经登录
-            Session existingSession = messageRouter.getSessionByUsername(username);
+            Session existingSession = messageRouter.getSessionByUsername(currentUser.getUsername());
             if (existingSession != null && existingSession.isActive()) {
                 // 用户名已经登录，拒绝新登录
                 Message authFailureMessage = new Message(
@@ -611,7 +574,7 @@ public class ClientConnection implements Runnable {
                     null
                 );
                 send(messageCodec.encode(authFailureMessage));
-                System.out.println("用户登录失败，用户名已登录: " + username);
+                System.out.println("用户登录失败，用户名已登录: " + currentUser.getUsername());
                 return;
             }
             
@@ -619,7 +582,7 @@ public class ClientConnection implements Runnable {
             Message authSuccessMessage = new Message(
                 MessageType.AUTH_SUCCESS,
                 "server",
-                message.getFrom(),
+                username,  // 使用正确的用户名作为to字段
                 uuid,
                 null
             );
@@ -671,7 +634,26 @@ public class ClientConnection implements Runnable {
             }
             
             // 获取用户信息
-            User user = userDAO.getUserByUsername(message.getFrom(), connection);
+            User user = null;
+            if (message.getFrom() != null && !message.getFrom().equals("undefined") && !message.getFrom().equals("unknown")) {
+                user = userDAO.getUserByUsername(message.getFrom(), connection);
+            } else {
+                // 如果没有提供用户名，通过SQL查询获取用户信息
+                String sql = "SELECT * FROM user WHERE id = ?";
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setInt(1, userId);
+                    ResultSet rs = stmt.executeQuery();
+                    if (rs.next()) {
+                        String username = rs.getString("username");
+                        String password = rs.getString("password");
+                        String createdAt = rs.getString("created_at");
+                        // 创建User对象
+                        user = new User(userId, username, password, createdAt, null);
+                    }
+                    rs.close();
+                }
+            }
+            
             if (user == null || user.getId() != userId) {
                 // 用户信息不匹配
                 Message authFailureMessage = new Message(
@@ -686,19 +668,22 @@ public class ClientConnection implements Runnable {
             }
             
             // 检查用户名是否已经登录
-            Session existingSession = messageRouter.getSessionByUsername(user.getUsername());
-            if (existingSession != null && existingSession.isActive()) {
-                // 用户名已经登录，拒绝新登录
-                Message authFailureMessage = new Message(
-                    MessageType.UUID_AUTH_FAILURE,
-                    "server",
-                    message.getFrom(),
-                    "该用户名已在其他地方登录",
-                    null
-                );
-                send(messageCodec.encode(authFailureMessage));
-                System.out.println("用户UUID认证失败，用户名已登录: " + user.getUsername());
-                return;
+            String username = user.getUsername();
+            if (username != null && !username.isEmpty()) {
+                Session existingSession = messageRouter.getSessionByUsername(username);
+                if (existingSession != null && existingSession.isActive()) {
+                    // 用户名已经登录
+                    Message authFailureMessage = new Message(
+                        MessageType.UUID_AUTH_FAILURE,
+                        "server",
+                        message.getFrom(),
+                        "该用户名已在其他地方登录",
+                        null
+                    );
+                    send(messageCodec.encode(authFailureMessage));
+                    System.out.println("用户UUID认证失败，用户名已登录: " + username);
+                    return;
+                }
             }
             
             // 构造UUID认证成功消息
@@ -761,89 +746,27 @@ public class ClientConnection implements Runnable {
         );
         send(messageCodec.encode(authFailureMessage));
     }
-
-    public synchronized void send(String message) {
-        if (!isConnected) {
-            System.err.println("尝试向已关闭的连接发送消息 (" + clientAddress + ":" + clientPort + ")");
-            return;
-        }
-        
-        try {
-            writer.write(message);
-            writer.newLine();
-            writer.flush();
-            System.out.println("消息已发送到客户端 (" + clientAddress + ":" + clientPort + "): " + message);
-        } catch (IOException e) {
-            System.err.println("发送消息失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-            e.printStackTrace();
-            close();
-        }
-    }
-
-    public synchronized void close() {
-        if (!isConnected) {
-            return;
-        }
-        
-        System.out.println("正在关闭客户端连接: " + clientAddress + ":" + clientPort);
-        isConnected = false;
-        
-        // 注销会话
-        if (isAuthenticated && currentUser != null && messageRouter != null) {
-            String userId = String.valueOf(currentUser.getId());
-            messageRouter.deregisterSession(userId);
-            System.out.println("会话已注销: 用户ID=" + userId);
-        }
-        
-        try {
-            if (reader != null) {
-                reader.close();
-            }
-        } catch (IOException e) {
-            System.err.println("关闭读取流失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-        } finally {
-            reader = null;
-        }
-        
-        try {
-            if (writer != null) {
-                writer.close();
-            }
-        } catch (IOException e) {
-            System.err.println("关闭写入流失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-        } finally {
-            writer = null;
-        }
-        
-        try {
-            if (clientSocket != null && !clientSocket.isClosed()) {
-                clientSocket.close();
-            }
-        } catch (IOException e) {
-            System.err.println("关闭客户端Socket失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
-        }
-        
-        System.out.println("客户端连接已完全关闭: " + clientAddress + ":" + clientPort);
-    }
-
-    public String getClientAddress() {
-        return clientAddress;
-    }
-
-    public int getClientPort() {
-        return clientPort;
-    }
-
-    public boolean isConnected() {
-        return isConnected;
-    }
     
-    /**
-     * 获取当前客户端连接的用户
-     * @return 当前用户对象
-     */
-    public User getCurrentUser() {
-        return currentUser;
+    public synchronized void send(String message) {
+        if (!isConnected || conn == null || !conn.isOpen()) {
+            System.err.println("尝试向已关闭的WebSocket连接发送消息");
+            return;
+        }
+        
+        try {
+            // 确保消息是有效的JSON格式
+            if (!message.trim().startsWith("{")) {
+                System.err.println("尝试发送非JSON格式的消息: " + message);
+                return;
+            }
+            
+            conn.send(message);
+            System.out.println("消息已发送到WebSocket客户端: " + clientAddress + ":" + clientPort + ": " + message);
+        } catch (Exception e) {
+            System.err.println("发送WebSocket消息失败: " + e.getMessage());
+            e.printStackTrace();
+            isConnected = false;
+        }
     }
     
     /**
@@ -857,17 +780,26 @@ public class ClientConnection implements Runnable {
         
         // 创建会话
         String userId = String.valueOf(currentUser.getId());
+        WebSocketClientConnectionAdapter connectionAdapter = null;
+        
+        try {
+            connectionAdapter = new WebSocketClientConnectionAdapter(this);
+        } catch (IOException e) {
+            System.err.println("创建WebSocket连接适配器失败: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
         
         // 检查是否已经存在会话
         currentSession = messageRouter.getSession(userId);
         if (currentSession != null) {
             // 如果会话存在，只更新客户端连接
             System.out.println("会话已存在，更新客户端连接: 用户ID=" + userId);
-            currentSession.setClientConnection(this);
+            currentSession.setClientConnection(connectionAdapter);
             currentSession.setActive(true); // 确保会话是活动状态
         } else {
             // 如果会话不存在，创建新会话
-            currentSession = new Session(userId, currentUser.getUsername(), this);
+            currentSession = new Session(userId, currentUser.getUsername(), connectionAdapter);
             // 注册会话到消息路由器
             boolean registered = messageRouter.registerSession(currentSession);
             
@@ -900,5 +832,19 @@ public class ClientConnection implements Runnable {
         }
     }
     
-
+    public boolean isConnected() {
+        return isConnected;
+    }
+    
+    public boolean isAuthenticated() {
+        return isAuthenticated;
+    }
+    
+    public User getCurrentUser() {
+        return currentUser;
+    }
+    
+    public MessageRouter getMessageRouter() {
+        return messageRouter;
+    }
 }

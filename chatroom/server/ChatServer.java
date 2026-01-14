@@ -3,6 +3,7 @@ import java.util.Scanner;
 import java.io.IOException;
 import java.sql.Connection;
 import server.network.socket.*;
+import server.network.websocket.WebSocketServer;
 import server.network.router.MessageRouter;
 import server.room.PublicRoom;
 import server.room.Room;
@@ -11,6 +12,7 @@ import server.sql.room.RoomDAO;
 
 public class ChatServer {
     private ServerListener serverListener;
+    private WebSocketServer webSocketServer;
     private MessageRouter messageRouter;
     private DatabaseManager databaseManager;
     private volatile boolean isRunning;
@@ -36,6 +38,9 @@ public class ChatServer {
         
         // 初始化服务器监听器
         this.serverListener = new ServerListener(port, messageRouter);
+        
+        // 初始化WebSocket服务器（使用比TCP端口大1的端口）
+        this.webSocketServer = new WebSocketServer(port + 1, messageRouter);
         
         // 检查并创建system房间
         setupSystemRoom();
@@ -137,6 +142,9 @@ public class ChatServer {
         serverThread.setName("ServerListener");
         serverThread.start();
         
+        // 启动WebSocket服务器
+        webSocketServer.start();
+        
         System.out.println("聊天服务器已成功启动");
         System.out.println("输入 'stop' 或 'quit' 停止服务器");
         
@@ -182,7 +190,8 @@ public class ChatServer {
     private void printStatus() {
         System.out.println("=== 服务器状态 ===");
         System.out.println("运行状态: " + (isRunning ? "运行中" : "已停止"));
-        System.out.println("服务器端口: " + (serverListener != null ? serverListener.getPort() : "未设置"));
+        System.out.println("TCP服务器端口: " + (serverListener != null ? serverListener.getPort() : "未设置"));
+        System.out.println("WebSocket服务器端口: " + (webSocketServer != null ? webSocketServer.getPort() : "未设置"));
         System.out.println("活动会话数: " + (messageRouter != null ? messageRouter.getActiveSessionCount() : 0));
         System.out.println("房间数: " + (messageRouter != null ? messageRouter.getRoomCount() : 0));
         System.out.println("================");
@@ -214,6 +223,16 @@ public class ChatServer {
         // 停止服务器监听器
         if (serverListener != null) {
             serverListener.stop();
+        }
+        
+        // 停止WebSocket服务器
+        if (webSocketServer != null) {
+            try {
+                webSocketServer.stop();
+            } catch (InterruptedException e) {
+                System.err.println("停止WebSocket服务器时被中断: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
         
         System.out.println("聊天服务器已成功停止");

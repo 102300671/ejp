@@ -3,6 +3,9 @@ import server.network.session.Session;
 import server.room.Room;
 import server.room.PublicRoom;
 import server.room.PrivateRoom;
+import server.message.Message;
+import server.message.MessageType;
+import server.message.MessageCodec;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,17 +27,40 @@ public class MessageRouter {
     /**
      * 注册新会话
      * @param session 用户会话
+     * @return true表示注册成功，false表示用户名已登录
      */
-    public void registerSession(Session session) {
+    public boolean registerSession(Session session) {
         if (session == null || session.getUserId() == null) {
             System.err.println("无效的会话对象");
-            return;
+            return false;
         }
 
         String userId = session.getUserId();
+        String username = session.getUsername();
+        
+        // 检查是否已有相同用户名的活动会话
+        for (Map.Entry<String, Session> entry : sessions.entrySet()) {
+            Session existingSession = entry.getValue();
+            if (existingSession != null && existingSession.getUsername() != null && 
+                existingSession.getUsername().equals(username) && 
+                existingSession.isActive()) {
+                
+                System.err.println("注册会话失败: 用户名\"" + username + "\"已在其他地方登录");
+                return false;
+            }
+        }
+        
+        // 获取用户之前的房间列表
+        List<String> userRoomList = userRooms.get(userId);
+        if (userRoomList == null) {
+            userRoomList = new ArrayList<>();
+            userRooms.put(userId, userRoomList);
+        }
+        
+        // 注册新会话
         sessions.put(userId, session);
-        userRooms.putIfAbsent(userId, new ArrayList<>());
-        System.out.println("会话已注册: 用户ID=" + userId);
+        System.out.println("会话已注册: 用户ID=" + userId + ", 用户名=" + username);
+        return true;
     }
 
     /**
@@ -51,16 +77,8 @@ public class MessageRouter {
             // 将会话标记为非活动状态
             removedSession.setActive(false);
             
-            // 从所有房间中移除用户
-            List<String> roomIds = userRooms.remove(userId);
-            if (roomIds != null) {
-                for (String roomId : roomIds) {
-                    Room room = rooms.get(roomId);
-                    if (room != null) {
-                        room.removeUser(userId);
-                    }
-                }
-            }
+            // 不删除userRooms映射，这样用户重连时仍然在原来的房间中
+            // 只需要将会话标记为非活动状态即可
 
             System.out.println("会话已注销: 用户ID=" + userId);
         }
@@ -132,6 +150,25 @@ public class MessageRouter {
             // 记录用户所属的房间
             userRooms.get(userId).add(roomId);
             System.out.println("用户" + session.getUsername() + "(ID: " + userId + ") 加入房间: " + room.getName());
+            
+            // 创建并广播加入房间消息
+            try {
+                MessageCodec messageCodec = new MessageCodec();
+                Message joinMessage = new Message(
+                    MessageType.JOIN,
+                    session.getUsername(),
+                    room.getName(),
+                    session.getUsername() + " 加入了聊天室"
+                );
+                
+                // 编码并广播消息
+                String encodedMessage = messageCodec.encode(joinMessage);
+                broadcastToRoom(roomId, encodedMessage);
+            } catch (Exception e) {
+                System.err.println("创建或广播加入房间消息失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             return true;
         }
 
@@ -256,15 +293,36 @@ public class MessageRouter {
     }
 
     /**
-     * 获取指定用户的会话
+     * 根据用户ID获取会话
      * @param userId 用户ID
-     * @return 用户会话，如果不存在则返回null
+     * @return 会话对象，如果不存在则返回null
      */
     public Session getSession(String userId) {
         if (userId == null || userId.isEmpty()) {
             return null;
         }
         return sessions.get(userId);
+    }
+    
+    /**
+     * 根据用户名获取会话
+     * @param username 用户名
+     * @return 会话对象，如果不存在则返回null
+     */
+    public Session getSessionByUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        
+        // 使用迭代器遍历确保并发安全
+        for (Map.Entry<String, Session> entry : sessions.entrySet()) {
+            Session session = entry.getValue();
+            if (session != null && session.getUsername() != null && session.getUsername().equals(username)) {
+                return session;
+            }
+        }
+        
+        return null;
     }
     
     /**

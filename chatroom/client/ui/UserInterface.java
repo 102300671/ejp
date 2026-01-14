@@ -15,10 +15,12 @@ public class UserInterface {
     /**
      * 构造用户界面对象
      * @param clientConnection 客户端连接对象
+     * @param username 已认证的用户名
      */
-    public UserInterface(ClientConnection clientConnection) {
+    public UserInterface(ClientConnection clientConnection, String username) {
         this.scanner = new Scanner(System.in);
         this.clientConnection = clientConnection;
+        this.username = username;
         this.isRunning = false;
         this.currentRoom = "system";
         this.currentRoomType = "PUBLIC";
@@ -47,9 +49,6 @@ public class UserInterface {
         }
         
         isRunning = true;
-        
-        // 获取用户名
-        username = getUsername();
         
         // 显示欢迎信息
         displayWelcomeMessage();

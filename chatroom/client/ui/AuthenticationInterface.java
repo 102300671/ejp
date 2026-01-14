@@ -155,6 +155,8 @@ public class AuthenticationInterface {
             if ("y".equals(choice)) {
                 // 使用UUID认证
                 System.out.println("正在使用UUID登录...");
+                // 先保存用户名到实例变量，确保认证失败时也能获取到
+                this.username = username;
                 Message uuidAuthMessage = new Message(MessageType.UUID_AUTH, username, "server", cachedUUID);
                 clientConnection.sendMessage(uuidAuthMessage);
                 
