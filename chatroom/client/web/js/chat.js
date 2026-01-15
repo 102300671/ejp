@@ -31,56 +31,479 @@ let chatClient = {
     isAuthenticated: false,
     childWindows: {}, // Store open windows by room name: { [roomName]: windowObject },
     cleanupInterval: null,
-    logEnabled: true, // 是否启用日志
-    broadcastChannel: null, // BroadcastChannel for cross-window communication
+    logEnabled: true,
+    
+    // ========== 新增：消息同步相关属性 ==========
+    broadcastChannel: null, // 主窗口间的BroadcastChannel
+    seenMessageIds: new Set(), // 消息去重集合
+    syncLog: [], // 同步日志，用于调试
     
     // 日志记录方法
     log: function(level, message) {
         if (!this.logEnabled) return;
         
-        // 支持的日志级别
         const validLevels = ['debug', 'info', 'warn', 'error'];
         if (!validLevels.includes(level)) {
             level = 'info';
         }
         
-        // 格式化时间戳
         const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
         
-        // 控制台输出（保留原有功能）
         if (console && console[level]) {
             console[level](`[${timestamp}] [${level.toUpperCase()}] ${message}`);
         }
         
-        // 通过AJAX发送到服务器端日志（如果网络允许）
-        // 只有非debug级别的日志才发送到服务器，减少网络请求
+        // 记录同步日志（最多100条）
+        this.syncLog.push({timestamp, level, message});
+        if (this.syncLog.length > 100) {
+            this.syncLog.shift();
+        }
+        
+        // 非debug级别日志发送到服务器
         if (level !== 'debug') {
             try {
-                // 使用当前页面的协议和域名构建log.jsp的URL
-                const logUrl = new URL('log.jsp', window.location.href);
-                
                 const xhr = new XMLHttpRequest();
-                xhr.open('POST', logUrl, true);
+                xhr.open('POST', 'log.jsp', true);
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.timeout = 300;
                 
-                // 设置超时，避免日志请求影响主要功能
-                xhr.timeout = 300; // 缩短超时时间
-                
-                // 构建请求参数
                 const params = new URLSearchParams();
                 params.append('level', level);
                 params.append('message', message);
                 params.append('timestamp', timestamp);
                 
                 xhr.send(params.toString());
-                
-                // 处理响应和错误
-                xhr.onload = xhr.onerror = xhr.ontimeout = function() {
-                    // 静默失败，不影响主要功能
+                xhr.onload = xhr.onerror = xhr.ontimeout = function() {};
+            } catch (error) {}
+        }
+    },
+    
+    // ========== 新增：初始化消息同步系统 ==========
+    initMessageSync: function() {
+        // 子窗口：只监听父窗口的postMessage
+        if (window.opener) {
+            this.setupChildMessageListener();
+            return;
+        }
+        
+        // 主窗口：创建BroadcastChannel用于主窗口间通信
+        if (typeof BroadcastChannel !== 'undefined') {
+            try {
+                this.broadcastChannel = new BroadcastChannel('chatroom-main-sync');
+                this.broadcastChannel.onmessage = (event) => {
+                    this.handleBroadcastMessage(event.data);
                 };
+                this.log('info', '主窗口BroadcastChannel初始化成功');
             } catch (error) {
-                // 静默失败，不影响主要功能
+                this.log('error', `BroadcastChannel初始化失败: ${error.message}`);
+                this.setupLocalStorageFallback();
             }
+        } else {
+            this.setupLocalStorageFallback();
+        }
+        
+        // 监听子窗口的ready消息
+        this.setupChildWindowListeners();
+    },
+    
+    // ========== 新增：处理广播消息 ==========
+    handleBroadcastMessage: function(data) {
+        console.log('========== 开始处理广播消息 ==========');
+        console.log('收到广播消息:', JSON.stringify(data));
+        
+        // 消息去重检查
+        if (this.isMessageDuplicate(data.uniqueId)) {
+            console.log('忽略重复消息:', data.uniqueId);
+            this.log('debug', `忽略重复消息: ${data.uniqueId}`);
+            return;
+        }
+        
+        console.log('处理广播消息:', data.type, 'for', data.roomName || 'all', 'ID:', data.uniqueId);
+        this.log('debug', `处理广播消息: ${data.type} for ${data.roomName || 'all'}`);
+        
+        switch (data.type) {
+            case 'SYNC_MESSAGES':
+                console.log('处理SYNC_MESSAGES消息，房间:', data.roomName, '消息数:', (data.messages || []).length);
+                this.syncMessagesToRoom(data.roomName, data.messages);
+                console.log('SYNC_MESSAGES消息处理完成');
+                break;
+                
+            case 'NEW_MESSAGE':
+                console.log('处理NEW_MESSAGE消息');
+                // 检查数据结构，如果data.data存在，说明是来自BroadcastChannel的完整消息对象
+                // 需要传递data.data给processIncomingMessage
+                if (data.data) {
+                    console.log('NEW_MESSAGE消息包含嵌套data，使用data.data处理');
+                    this.processIncomingMessage(data.data);
+                } else {
+                    console.log('NEW_MESSAGE消息直接处理');
+                    this.processIncomingMessage(data);
+                }
+                console.log('NEW_MESSAGE消息处理完成');
+                break;
+                
+            case 'ROOM_LIST_UPDATE':
+                console.log('处理ROOM_LIST_UPDATE消息');
+                console.log('ROOM_LIST_UPDATE消息完整数据:', JSON.stringify(data));
+                
+                // 检查data.data是否存在，因为消息结构是{type, data, roomName, ...}
+                if (data.data && data.data.rooms) {
+                    console.log('更新房间列表，房间数:', data.data.rooms.length);
+                    this.rooms = data.data.rooms;
+                    this.updateRoomsList();
+                    console.log('房间列表更新完成');
+                } else if (data.rooms) {
+                    // 兼容旧格式
+                    console.log('更新房间列表(旧格式)，房间数:', data.rooms.length);
+                    this.rooms = data.rooms;
+                    this.updateRoomsList();
+                    console.log('房间列表更新完成(旧格式)');
+                } else {
+                    console.log('ROOM_LIST_UPDATE消息没有包含rooms数据');
+                }
+                break;
+            default:
+                console.log('收到未知类型的广播消息:', data.type);
+                break;
+        }
+        
+        console.log('========== 广播消息处理结束 ==========');
+    },
+    
+    // ========== 新增：消息去重机制 ==========
+    isMessageDuplicate: function(messageId) {
+        if (this.seenMessageIds.has(messageId)) {
+            return true;
+        }
+        this.seenMessageIds.add(messageId);
+        
+        // 清理旧的消息ID（防止内存泄漏）
+        if (this.seenMessageIds.size > 1000) {
+            const ids = Array.from(this.seenMessageIds);
+            this.seenMessageIds = new Set(ids.slice(-500));
+        }
+        return false;
+    },
+    
+    // ========== 新增：生成唯一消息ID ==========
+    generateMessageId: function(type, roomName) {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substr(2, 9);
+        return `${type}_${roomName}_${timestamp}_${random}`;
+    },
+    
+    // ========== 新增：发送消息到所有窗口 ==========
+    broadcastToWindows: function(type, data, targetRoom = null) {
+        const uniqueId = this.generateMessageId(type, targetRoom || 'all');
+        
+        const message = {
+            type,
+            data,
+            roomName: targetRoom,
+            uniqueId,
+            timestamp: Date.now(),
+            source: 'main_window'
+        };
+        
+        console.log('========== 开始消息广播流程 ==========');
+        console.log('广播消息类型:', type, '目标房间:', targetRoom || 'all', 'ID:', uniqueId);
+        console.log('广播消息详细数据:', JSON.stringify(data));
+        
+        this.log('debug', `广播消息: ${type} to ${targetRoom || 'all'} (${uniqueId})`);
+        
+        // 1. 通过BroadcastChannel发送给其他主窗口标签页
+        console.log('广播步骤1: 发送到其他主窗口标签页');
+        if (this.broadcastChannel) {
+            try {
+                console.log('使用BroadcastChannel发送消息:', type, 'ID:', uniqueId);
+                this.broadcastChannel.postMessage(message);
+                console.log('BroadcastChannel消息发送成功');
+            } catch (error) {
+                console.error('BroadcastChannel发送失败:', error.message);
+                this.log('error', `BroadcastChannel发送失败: ${error.message}`);
+                this.storeToLocalStorage(message);
+            }
+        } else {
+            console.log('BroadcastChannel不可用，使用localStorage降级方案');
+            this.storeToLocalStorage(message);
+        }
+        
+        // 2. 通过postMessage发送给子窗口
+        console.log('广播步骤2: 发送到子窗口');
+        this.syncToChildWindows(targetRoom, message);
+        
+        // 3. 自己也要处理这个消息（避免自己发送的不处理）
+        console.log('广播步骤3: 自己处理消息');
+        setTimeout(() => {
+            if (!this.isMessageDuplicate(uniqueId)) {
+                console.log('自己处理广播消息:', type, 'ID:', uniqueId);
+                // 这里需要传递message.data而不是整个message对象
+                this.handleBroadcastMessage(message.data);
+                console.log('自己处理广播消息完成');
+            } else {
+                console.log('忽略重复的广播消息:', uniqueId);
+            }
+        }, 10);
+        
+        console.log('========== 消息广播流程结束 ==========');
+    },
+    
+    // ========== 新增：同步到子窗口 ==========
+    syncToChildWindows: function(targetRoom, message) {
+        let syncCount = 0;
+        
+        console.log('主窗口开始同步消息到子窗口，目标房间:', targetRoom || 'all', '消息类型:', message.type, 'ID:', message.uniqueId);
+        console.log('主窗口当前子窗口数量:', Object.keys(this.childWindows).length);
+        
+        Object.entries(this.childWindows).forEach(([roomName, childWindow]) => {
+            try {
+                // 如果指定了目标房间，只同步给对应的子窗口
+                if (targetRoom && roomName !== targetRoom) {
+                    console.log('主窗口跳过子窗口', roomName, '因为目标房间不匹配:', targetRoom);
+                    return;
+                }
+                
+                if (!childWindow.closed) {
+                    if (childWindow.postMessage) {
+                        // 简化消息格式，避免循环
+                        const childMessage = {
+                            type: message.type,
+                            data: message.data,
+                            roomName: message.roomName,
+                            uniqueId: message.uniqueId,
+                            source: 'parent'
+                        };
+                        
+                        console.log('主窗口向子窗口', roomName, '发送消息:', message.type, 'ID:', message.uniqueId);
+                        console.log('主窗口发送的详细消息内容:', JSON.stringify(childMessage));
+                        
+                        childWindow.postMessage(childMessage, '*');
+                        syncCount++;
+                        console.log('主窗口成功发送消息到子窗口', roomName, '发送总数:', syncCount);
+                    } else {
+                        console.log('主窗口跳过子窗口', roomName, '因为postMessage不可用');
+                        // 窗口已关闭或无法通信，清理引用
+                        delete this.childWindows[roomName];
+                        console.log('主窗口清理子窗口引用:', roomName);
+                    }
+                } else {
+                    // 窗口已关闭，清理引用
+                    delete this.childWindows[roomName];
+                    console.log('主窗口清理已关闭的子窗口引用:', roomName);
+                }
+            } catch (error) {
+                console.log('主窗口同步到子窗口', roomName, '失败:', error.message);
+                this.log('warn', `同步到子窗口 ${roomName} 失败: ${error.message}`);
+                delete this.childWindows[roomName];
+                console.log('主窗口清理出错的子窗口引用:', roomName);
+            }
+        });
+        
+        console.log('主窗口子窗口同步完成，成功发送到', syncCount, '个子窗口');
+        if (syncCount > 0) {
+            this.log('debug', `已同步到 ${syncCount} 个子窗口`);
+        }
+    },
+    
+    // ========== 新增：处理收到的消息 ==========
+    processIncomingMessage: function(messageData) {
+        const { roomName, message } = messageData;
+        
+        if (!roomName || !message) {
+            this.log('warn', '无效的消息数据格式');
+            return;
+        }
+        
+        // 存储消息
+        if (!this.messages[roomName]) {
+            this.messages[roomName] = [];
+        }
+        
+        // 检查是否已存在相同消息
+        const isDuplicate = this.messages[roomName].some(m => 
+            m.content === message.content && 
+            m.from === message.from && 
+            m.time === message.time
+        );
+        
+        if (!isDuplicate) {
+            this.messages[roomName].push(message);
+            
+            // 更新当前窗口UI
+            if (this.currentRoom === roomName) {
+                this.updateMessagesArea(roomName);
+            }
+            
+            this.log('debug', `已处理新消息到房间 ${roomName}: ${message.content.substring(0, 50)}`);
+        }
+    },
+    
+    // ========== 新增：同步消息到特定房间 ==========
+    syncMessagesToRoom: function(roomName, messages) {
+        if (!roomName || !messages) {
+            this.log('warn', '无效的同步参数');
+            return;
+        }
+        
+        this.messages[roomName] = messages;
+        
+        // 更新当前窗口UI
+        if (this.currentRoom === roomName) {
+            this.updateMessagesArea(roomName);
+        }
+        
+        this.log('debug', `已同步 ${messages.length} 条消息到房间 ${roomName}`);
+    },
+    
+    // ========== 新增：localStorage降级方案 ==========
+    setupLocalStorageFallback: function() {
+        this.log('info', '使用localStorage作为同步降级方案');
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'chatroom-sync-fallback' && event.newValue) {
+                try {
+                    const data = JSON.parse(event.newValue);
+                    if (!this.isMessageDuplicate(data.uniqueId)) {
+                        this.handleBroadcastMessage(data);
+                    }
+                } catch (error) {
+                    this.log('error', `解析localStorage数据失败: ${error.message}`);
+                }
+            }
+        });
+    },
+    
+    storeToLocalStorage: function(message) {
+        try {
+            localStorage.setItem('chatroom-sync-fallback', JSON.stringify(message));
+            setTimeout(() => {
+                localStorage.removeItem('chatroom-sync-fallback');
+            }, 100);
+        } catch (error) {
+            this.log('error', `存储到localStorage失败: ${error.message}`);
+        }
+    },
+    
+    // ========== 新增：子窗口监听器设置 ==========
+    setupChildWindowListeners: function() {
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            
+            // 只处理来自子窗口的消息
+            if (data.source !== 'child') return;
+            
+            switch (data.type) {
+                case 'CHILD_READY':
+                    this.handleChildReady(data.roomName, event.source);
+                    break;
+                    
+                case 'REQUEST_SYNC':
+                    this.syncToChildWindow(data.roomName, event.source);
+                    break;
+            }
+        });
+    },
+    
+    handleChildReady: function(roomName, childWindow) {
+        this.log('info', `子窗口准备就绪: ${roomName}`);
+        
+        // 存储窗口引用
+        this.childWindows[roomName] = childWindow;
+        
+        // 立即同步消息
+        this.syncToChildWindow(roomName, childWindow);
+        
+        // 发送JOIN消息到服务器
+        this.sendMessage(MessageType.JOIN, roomName, '');
+    },
+    
+    syncToChildWindow: function(roomName, childWindow) {
+        try {
+            const syncData = {
+                type: 'SYNC_MESSAGES',
+                data: {
+                    roomName: roomName,
+                    messages: this.messages[roomName] || [],
+                    allMessages: this.messages,
+                    rooms: this.rooms,
+                    username: this.username,
+                    currentRoom: this.currentRoom
+                },
+                uniqueId: this.generateMessageId('SYNC', roomName),
+                source: 'parent'
+            };
+            
+            childWindow.postMessage(syncData, '*');
+            this.log('debug', `已同步初始数据到子窗口: ${roomName}`);
+        } catch (error) {
+            this.log('error', `同步到子窗口失败: ${error.message}`);
+        }
+    },
+    
+    // ========== 新增：子窗口消息监听器设置（供子窗口使用） ==========
+    setupChildMessageListener: function() {
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            
+            // 只处理来自父窗口的消息
+            if (data.source !== 'parent') return;
+            
+            this.log('debug', `子窗口收到消息: ${data.type} for ${data.roomName || 'all'}`);
+            
+            // 消息去重
+            if (this.isMessageDuplicate(data.uniqueId)) {
+                return;
+            }
+            
+            switch (data.type) {
+                case 'SYNC_MESSAGES':
+                    if (data.data && data.data.roomName === this.currentRoom) {
+                        this.messages[data.data.roomName] = data.data.messages || [];
+                        if (data.data.username) this.username = data.data.username;
+                        if (data.data.rooms) this.rooms = data.data.rooms;
+                        
+                        this.updateMessagesArea(this.currentRoom);
+                        this.log('debug', `子窗口同步完成: ${this.currentRoom}`);
+                    }
+                    break;
+                    
+                case 'NEW_MESSAGE':
+                    if (data.data && data.data.roomName === this.currentRoom) {
+                        const message = data.data.message;
+                        if (!this.messages[this.currentRoom]) {
+                            this.messages[this.currentRoom] = [];
+                        }
+                        
+                        // 去重检查
+                        const isDuplicate = this.messages[this.currentRoom].some(m => 
+                            m.content === message.content && 
+                            m.from === message.from && 
+                            m.time === message.time
+                        );
+                        
+                        if (!isDuplicate) {
+                            this.messages[this.currentRoom].push(message);
+                            this.updateMessagesArea(this.currentRoom);
+                        }
+                    }
+                    break;
+            }
+        });
+        
+        // 通知父窗口准备就绪
+        if (window.opener) {
+            setTimeout(() => {
+                try {
+                    window.opener.postMessage({
+                        type: 'CHILD_READY',
+                        roomName: this.currentRoom,
+                        source: 'child'
+                    }, '*');
+                    this.log('info', '已通知父窗口子窗口准备就绪');
+                } catch (error) {
+                    this.log('error', `通知父窗口失败: ${error.message}`);
+                }
+            }, 500);
         }
     },
     
@@ -294,14 +717,13 @@ let chatClient = {
     // Send message - child windows send through parent window
     sendMessage: function(type, to, content) {
         if (window.opener && window.opener.chatClient) {
-            // This is a child window, send message through parent window
-            console.log('Child window sending message through parent:', type, to, content);
+            console.log('子窗口通过父窗口发送消息:', type, to, content);
             window.opener.chatClient.sendMessage(type, to, content);
             return;
         }
         
         if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            this.showMessage('Not connected to server');
+            this.showMessage('未连接到服务器');
             return;
         }
         
@@ -318,6 +740,34 @@ let chatClient = {
         
         // Send message through WebSocket
         this.ws.send(JSON.stringify(message));
+        
+        // 如果是文本消息，立即在本地显示并同步
+        if (type === MessageType.TEXT) {
+            const roomName = to || 'system';
+            if (!this.messages[roomName]) {
+                this.messages[roomName] = [];
+            }
+            
+            const localMessage = {
+                content: content,
+                from: username,
+                time: message.time,
+                isSystem: false
+            };
+            
+            this.messages[roomName].push(localMessage);
+            
+            // 更新当前窗口UI
+            if (this.currentRoom === roomName) {
+                this.updateMessagesArea(roomName);
+            }
+            
+            // 广播到其他窗口
+            this.broadcastToWindows('NEW_MESSAGE', {
+                roomName: roomName,
+                message: localMessage
+            }, roomName);
+        }
     },
     
 
@@ -359,273 +809,39 @@ let chatClient = {
         }
     },
     
-    // Initialize BroadcastChannel and localStorage fallback
-    initMessageSync: function() {
-        // Initialize BroadcastChannel for cross-window communication
-        if (typeof BroadcastChannel !== 'undefined') {
-            this.broadcastChannel = new BroadcastChannel('chatroom-sync');
-            
-            // Listen for broadcast messages
-            this.broadcastChannel.onmessage = (event) => {
-                const { type, roomName, data } = event.data;
-                
-                switch (type) {
-                    case 'newMessage':
-                        // Process new message from another window
-                        const { message } = data;
-                        const targetRoomName = message.to || 'system';
-                        
-                        // Store message locally
-                        if (!this.messages[targetRoomName]) {
-                            this.messages[targetRoomName] = [];
-                        }
-                        this.messages[targetRoomName].push(message);
-                        
-                        // Update UI if current room matches
-                        if (this.currentRoom === targetRoomName) {
-                            this.updateMessagesArea(targetRoomName);
-                        }
-                        this.log('debug', `Received broadcast new message for room: ${targetRoomName}`);
-                        break;
-                        
-                    case 'updateRoomData':
-                        // Update room data from another window
-                        if (data.messages) {
-                            this.messages = { ...this.messages, ...data.messages };
-                        }
-                        if (data.rooms) {
-                            this.rooms = data.rooms;
-                        }
-                        // Update UI if current room matches
-                        if (this.currentRoom && this.currentRoom === roomName) {
-                            this.updateMessagesArea(this.currentRoom);
-                            this.updateRoomsList();
-                        }
-                        this.log('debug', `Received broadcast room data update`);
-                        break;
-                        
-                    case 'syncAllData':
-                        // Full data sync from another window
-                        if (data.messages) {
-                            this.messages = data.messages;
-                        }
-                        if (data.rooms) {
-                            this.rooms = data.rooms;
-                        }
-                        if (data.username) {
-                            this.username = data.username;
-                        }
-                        if (data.currentRoom) {
-                            this.currentRoom = data.currentRoom;
-                        }
-                        if (data.currentRoomType) {
-                            this.currentRoomType = data.currentRoomType;
-                        }
-                        // Update UI
-                        this.updateMessagesArea(this.currentRoom);
-                        this.updateRoomsList();
-                        this.log('debug', `Received broadcast full data sync`);
-                        break;
-                }
-            };
-            
-            this.log('info', 'BroadcastChannel initialized for cross-window sync');
-        } else {
-            this.log('warn', 'BroadcastChannel not supported, falling back to localStorage + storage events');
-            // Set up localStorage event listener as fallback
-            window.addEventListener('storage', (event) => {
-                if (event.key === 'chatroom-sync' && event.newValue) {
-                    try {
-                        const syncData = JSON.parse(event.newValue);
-                        const { type, roomName, data } = syncData;
-                        
-                        switch (type) {
-                            case 'newMessage':
-                                // Process new message from another window
-                                const { message } = data;
-                                const targetRoomName = message.to || 'system';
-                                
-                                // Store message locally
-                                if (!this.messages[targetRoomName]) {
-                                    this.messages[targetRoomName] = [];
-                                }
-                                this.messages[targetRoomName].push(message);
-                                
-                                // Update UI if current room matches
-                                if (this.currentRoom === targetRoomName) {
-                                    this.updateMessagesArea(targetRoomName);
-                                }
-                                this.log('debug', `Received localStorage new message for room: ${targetRoomName}`);
-                                break;
-                                
-                            case 'updateRoomData':
-                                // Update room data from another window
-                                if (data.messages) {
-                                    this.messages = { ...this.messages, ...data.messages };
-                                }
-                                if (data.rooms) {
-                                    this.rooms = data.rooms;
-                                }
-                                // Update UI if current room matches
-                                if (this.currentRoom && this.currentRoom === roomName) {
-                                    this.updateMessagesArea(this.currentRoom);
-                                    this.updateRoomsList();
-                                }
-                                this.log('debug', `Received localStorage room data update`);
-                                break;
-                                
-                            case 'syncAllData':
-                                // Full data sync from another window
-                                if (data.messages) {
-                                    this.messages = data.messages;
-                                }
-                                if (data.rooms) {
-                                    this.rooms = data.rooms;
-                                }
-                                if (data.username) {
-                                    this.username = data.username;
-                                }
-                                if (data.currentRoom) {
-                                    this.currentRoom = data.currentRoom;
-                                }
-                                if (data.currentRoomType) {
-                                    this.currentRoomType = data.currentRoomType;
-                                }
-                                // Update UI
-                                this.updateMessagesArea(this.currentRoom);
-                                this.updateRoomsList();
-                                this.log('debug', `Received localStorage full data sync`);
-                                break;
-                        }
-                    } catch (error) {
-                        this.log('error', `Error processing localStorage sync: ${error.message}`);
-                    }
-                }
-            });
-        }
-    },
-    
-    // Broadcast message/data to all windows using BroadcastChannel or localStorage
-    broadcastToAllWindows: function(type, roomName, data) {
-        const syncData = {
-            type: type,
-            roomName: roomName,
-            data: data,
-            timestamp: Date.now()
-        };
-        
-        // Use BroadcastChannel if available
-        if (this.broadcastChannel) {
-            try {
-                this.broadcastChannel.postMessage(syncData);
-                this.log('debug', `Broadcasted ${type} via BroadcastChannel`);
-            } catch (error) {
-                this.log('error', `BroadcastChannel postMessage failed: ${error.message}`);
-                // Fallback to localStorage
-                this.syncViaLocalStorage(syncData);
-            }
-        } else {
-            // Use localStorage + storage event fallback
-            this.syncViaLocalStorage(syncData);
-        }
-    },
-    
-    // Synchronize via localStorage as fallback
-    syncViaLocalStorage: function(syncData) {
-        try {
-            // Store data in localStorage to trigger storage event in other windows
-            localStorage.setItem('chatroom-sync', JSON.stringify(syncData));
-            // Clear the item immediately to prevent stale data
-            setTimeout(() => {
-                localStorage.removeItem('chatroom-sync');
-            }, 100);
-            this.log('debug', `Synced data via localStorage`);
-        } catch (error) {
-            this.log('error', `localStorage sync failed: ${error.message}`);
-        }
-    },
-    
+
+
     // Show message in the UI
     showMessage: function(message, isSystem = false, roomName = null) {
         const targetRoom = roomName || this.currentRoom;
         
-        // Store message in memory for the specific room
         if (!this.messages[targetRoom]) {
             this.messages[targetRoom] = [];
         }
         
-        // Always get the latest username from storage first
-        const storedUsername = sessionStorage.getItem('username') || localStorage.getItem('username');
-        // Update chatClient.username if we found a username in storage
-        if (storedUsername) {
-            this.username = storedUsername;
-        }
-        // Get username with fallback mechanism
-        const username = this.username || storedUsername || 'unknown';
-        this.messages[targetRoom].push({
+        const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+        
+        const messageObj = {
             content: message,
             isSystem: isSystem,
             time: new Date().toISOString().replace('T', ' ').substring(0, 19),
             from: isSystem ? 'System' : username
-        });
+        };
         
-        // Update current window if it's showing this room
-        const currentRoomName = document.getElementById('current-room-name')?.textContent;
-        if (currentRoomName === targetRoom || !roomName) {
-            const messagesArea = document.getElementById('messages-area');
-            if (messagesArea) {
-                const messageDiv = document.createElement('div');
-                if (isSystem) {
-                    messageDiv.className = 'system-message';
-                    messageDiv.innerHTML = message;
-                } else {
-                    // Use the same username as stored in messages
-                    const displayedUsername = username;
-                    messageDiv.className = displayedUsername === this.username ? 'sent-message' : 'received-message';
-                    messageDiv.innerHTML = `<strong>${displayedUsername}</strong>: ${message}<br><small>${new Date().toISOString().replace('T', ' ').substring(0, 19)}</small>`;
-                }
-                messagesArea.appendChild(messageDiv);
-                messagesArea.scrollTop = messagesArea.scrollHeight;
-            }
+        this.messages[targetRoom].push(messageObj);
+        
+        // 只更新当前窗口
+        if (this.currentRoom === targetRoom) {
+            this.updateMessagesArea(targetRoom);
         }
         
-        // Broadcast the new message to all other windows using new sync mechanism
-        this.broadcastToAllWindows('newMessage', targetRoom, { 
-            message: {
-                content: message,
-                isSystem: isSystem,
-                time: new Date().toISOString().replace('T', ' ').substring(0, 19),
-                from: isSystem ? 'System' : username
-            }
-        });
-        
-        // Update all open windows showing this room (traditional method as backup)
-        if (window.opener && window.opener.chatClient) {
-            const openerRoomName = window.opener.document.getElementById('current-room-name')?.textContent;
-            if (openerRoomName === targetRoom) {
-                window.opener.chatClient.updateMessagesArea(targetRoom);
-            }
+        // 如果是系统消息，只广播系统通知，不广播消息内容
+        if (isSystem && message.includes('加入了房间') || message.includes('离开了房间')) {
+            this.broadcastToWindows('NEW_MESSAGE', {
+                roomName: targetRoom,
+                message: messageObj
+            }, targetRoom);
         }
-        
-        // Update child windows showing this room (traditional method as backup)
-        this.syncWithChildWindows(targetRoom, (childWindow, childRoomName) => {
-            try {
-                // First update the messages reference, then update the UI
-                childWindow.chatClient.messages = this.messages;
-                childWindow.chatClient.updateMessagesArea(targetRoom);
-                console.log('Synced message to child window directly:', targetRoom);
-            } catch (error) {
-                console.error('Error syncing to child window:', error);
-                // Fallback: use postMessage if direct access fails
-                if (!childWindow.closed) {
-                    childWindow.postMessage({ type: 'updateMessages', roomName: targetRoom }, '*');
-                    console.log('Fallback to postMessage for child window:', targetRoom);
-                } else {
-                    // Remove closed window from tracking
-                    delete this.childWindows[childRoomName];
-                }
-            }
-        });
     },
     
     // Update messages area with stored messages for a specific room
@@ -675,19 +891,19 @@ let chatClient = {
     // UUID Authentication handlers
     handleUUIDAuthSuccess: function(message) {
         this.isAuthenticated = true;
-        // Set username from storage after UUID authentication
         this.username = sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
-        // Update UI with authenticated username
+        
         const currentUserSpan = document.getElementById('current-user');
         if (currentUserSpan) {
             currentUserSpan.textContent = this.username;
         }
-        // Request room list after UUID authentication
+        
         this.sendMessage(MessageType.LIST_ROOMS, 'server', '');
-        // Start periodic cleanup of closed child windows
         this.startCleanupInterval();
         
-        // Update messages area to ensure correct username in all messages
+        // 初始化消息同步系统
+        this.initMessageSync();
+        
         const currentRoomName = document.getElementById('current-room-name')?.textContent || 'system';
         this.updateMessagesArea(currentRoomName);
     },
@@ -740,90 +956,42 @@ let chatClient = {
     
     // Message handlers
     handleTextMessage: function(message) {
-        // Store text message in memory for the specific room
-        const roomName = message.to || 'system'; // Use 'to' field as room name
+        const roomName = message.to || 'system';
+        
         if (!this.messages[roomName]) {
             this.messages[roomName] = [];
         }
-        this.messages[roomName].push({
+        
+        const localMessage = {
             content: message.content,
             from: message.from,
             time: message.time,
             isSystem: false
-        });
+        };
         
-        // Update current window if it's showing this room
-        const currentRoomName = document.getElementById('current-room-name')?.textContent;
-        if (currentRoomName === roomName) {
-            const messagesArea = document.getElementById('messages-area');
-            if (messagesArea) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = message.from === this.username ? 'sent-message' : 'received-message';
-                messageDiv.innerHTML = `<strong>${message.from}</strong>: ${message.content}<br><small>${message.time}</small>`;
-                messagesArea.appendChild(messageDiv);
-                messagesArea.scrollTop = messagesArea.scrollHeight;
+        // 去重检查
+        const isDuplicate = this.messages[roomName].some(m => 
+            m.content === message.content && 
+            m.from === message.from && 
+            m.time === message.time
+        );
+        
+        if (!isDuplicate) {
+            this.messages[roomName].push(localMessage);
+            
+            // 更新当前窗口UI
+            if (this.currentRoom === roomName) {
+                this.updateMessagesArea(roomName);
             }
+            
+            // 广播到其他窗口
+            this.broadcastToWindows('NEW_MESSAGE', {
+                roomName: roomName,
+                message: localMessage
+            }, roomName);
         }
-        
-        // Broadcast the new message to all other windows using new sync mechanism
-        this.broadcastToAllWindows('newMessage', roomName, { 
-            message: { 
-                content: message.content, 
-                from: message.from, 
-                time: message.time, 
-                isSystem: false 
-            } 
-        });
-        
-        // Fallback to traditional sync if needed
-        this.syncMessageToAllWindows(roomName);
     },
-    
-    // Sync message to all open windows
-    syncMessageToAllWindows: function(roomName) {
-        // Update current window if it's showing this room
-        const currentRoomName = document.getElementById('current-room-name')?.textContent;
-        if (currentRoomName === roomName) {
-            this.updateMessagesArea(roomName);
-        }
-        
-        // Update parent window if this is a child window and it's showing this room
-        if (window.opener && window.opener.chatClient) {
-            const openerRoomName = window.opener.document.getElementById('current-room-name')?.textContent;
-            if (openerRoomName === roomName) {
-                window.opener.chatClient.updateMessagesArea(roomName);
-            }
-        }
-        
-        // Update all child windows showing this room
-        this.syncWithChildWindows(roomName, (childWindow, childRoomName) => {
-            try {
-                // First update the messages reference to ensure child has latest messages
-                childWindow.chatClient.messages = this.messages;
-                // Then update the UI for the specific room
-                childWindow.chatClient.updateMessagesArea(roomName);
-                this.log('debug', `Synced message to child window directly: ${roomName}`);
-            } catch (error) {
-                this.log('error', `Error syncing to child window: ${error}`);
-                // Fallback: use postMessage if direct access fails
-                if (!childWindow.closed) {
-                    // Always update messages reference first before using postMessage
-                    try {
-                        childWindow.chatClient.messages = this.messages;
-                    } catch (innerError) {
-                        this.log('debug', `Could not directly update messages for child window, will rely on updateMessages() from postMessage`);
-                    }
-                    childWindow.postMessage({ type: 'updateMessages', roomName: roomName }, '*');
-                    this.log('debug', `Fallback to postMessage for child window: ${roomName}`);
-                } else {
-                    // Remove closed window from tracking
-                    delete this.childWindows[childRoomName];
-                    this.log('debug', `Removed closed child window from tracking: ${childRoomName}`);
-                }
-            }
-        });
-    },
-    
+
     handleSystemMessage: function(message) {
         // Determine which room this message belongs to
         let roomName = 'system';
@@ -865,10 +1033,8 @@ let chatClient = {
             this.updateRoomsList();
             
             // Update all open windows with the new room list
-            this.syncWithChildWindows(null, (childWindow, childRoomName) => {
-                childWindow.chatClient.rooms = [...this.rooms];
-                childWindow.chatClient.updateRoomsList();
-                console.log('Updated room list in child window:', childRoomName);
+            this.broadcastToWindows('ROOM_LIST_UPDATE', {
+                rooms: this.rooms
             });
         }
     },
@@ -879,18 +1045,12 @@ let chatClient = {
         const roomName = message.to && message.to.trim() !== '' ? message.to : this.currentRoom;
         if (roomName) {
             this.showMessage(`[System] ${message.from} joined ${roomName}`, true, roomName);
-            
-            // Update all open windows showing this room
-            this.syncMessageToAllWindows(roomName);
         }
     },
     
     handleLeaveMessage: function(message) {
         // Leave message is room-specific
         this.showMessage(`[System] ${message.from} left ${message.to}`, true, message.to);
-        
-        // Update all open windows showing this room
-        this.syncMessageToAllWindows(message.to);
     },
     
     handleListRooms: function(message) {
@@ -1086,100 +1246,40 @@ let chatClient = {
                 this.log('info', 'Stopped periodic child window cleanup');
             }
         },
-    
-    // Generic method to synchronize data with child windows
-    syncWithChildWindows: function(roomName, syncCallback) {
-        if (!this.childWindows || typeof syncCallback !== 'function') {
+
+    // Open a room in a new window - simplified version inspired by test_sync.html
+    openRoomInNewWindow: function(roomName, roomType) {
+        this.log('info', `在新窗口打开房间: ${roomName} (${roomType})`);
+        
+        if (this.childWindows[roomName] && !this.childWindows[roomName].closed) {
+            this.childWindows[roomName].focus();
+            this.log('debug', `房间 ${roomName} 的窗口已存在，聚焦窗口`);
             return;
         }
         
-        for (const [childRoomName, childWindow] of Object.entries(this.childWindows)) {
-            try {
-                // If roomName is provided, only sync with windows showing that room
-                if (roomName && childRoomName !== roomName) {
-                    continue;
-                }
-                
-                if (!childWindow.closed && childWindow.chatClient) {
-                    // Execute the sync callback on the child window
-                    syncCallback(childWindow, childRoomName);
-                }
-            } catch (error) {
-                this.log('error', `Error syncing with child window ${childRoomName}: ${error}`);
-                // If error occurs, remove the window from tracking
-                delete this.childWindows[childRoomName];
-            }
-        }
-    },
-    
-    // Open a room in a new window
-        openRoomInNewWindow: function(roomName, roomType) {
-            this.log('info', `Opening room in new window: ${roomName} (${roomType})`);
-            
-            // Check if window is already open for this room
-            if (this.childWindows[roomName] && !this.childWindows[roomName].closed) {
-                // Focus on the existing window
-                this.childWindows[roomName].focus();
-                this.log('debug', `Window already open for room ${roomName}, focusing instead`);
-                return;
-            }
-        
-        // Ensure room messages are properly initialized
         if (!this.messages[roomName]) {
             this.messages[roomName] = [];
         }
         
-        // Open a new window for the room
-        const windowFeatures = 'width=800,height=600,scrollbars=yes,menubar=yes,toolbar=yes,status=yes';
-        const newWindow = window.open('room.jsp?room=' + encodeURIComponent(roomName) + '&type=' + encodeURIComponent(roomType), '_blank', windowFeatures);
+        const newWindow = window.open(
+            'room.jsp?room=' + encodeURIComponent(roomName) + '&type=' + encodeURIComponent(roomType),
+            'room_' + roomName,
+            'width=800,height=600'
+        );
         
         if (newWindow) {
-            // Store the window reference
             this.childWindows[roomName] = newWindow;
             
-            // Set up event listener for when window closes
             newWindow.addEventListener('beforeunload', () => {
                 delete this.childWindows[roomName];
+                this.log('debug', `子窗口关闭: ${roomName}`);
             });
             
-            // Wait for the new window to load and then sync messages
-            const waitForWindowLoad = setInterval(() => {
-                if (newWindow.document && newWindow.document.readyState === 'complete') {
-                    clearInterval(waitForWindowLoad);
-                    
-                    this.log('debug', `New window for room ${roomName} has loaded`);
-                    
-                    // Ensure main window is joined to this room
-                    if (this.currentRoom !== roomName) {
-                        // Join the room in the main window
-                        this.log('debug', `Joining room ${roomName} in main window`);
-                        this.sendMessage(MessageType.JOIN, roomName, '');
-                    }
-                    
-                    // Force update the new window with all messages
-                    if (newWindow.chatClient) {
-                        newWindow.chatClient.messages = this.messages;
-                        newWindow.chatClient.updateMessagesArea(roomName);
-                        this.log('debug', `Synced messages to new window for room ${roomName}`);
-                    } else {
-                        newWindow.postMessage({ type: 'updateMessages', roomName: roomName }, '*');
-                        this.log('debug', `Sent postMessage to update messages in new window for room ${roomName}`);
-                    }
-                    
-                    // Notify user that new window has been opened and synced
-                    this.showMessage(`已打开房间 "${roomName}" 的新窗口并同步消息`, true);
-                    this.log('info', `Successfully opened and synced new window for room ${roomName}`);
-                }
-            }, 100);
-            
-            // Timeout after 5 seconds
-            setTimeout(() => {
-                clearInterval(waitForWindowLoad);
-                this.log('warn', `Window load timeout for room ${roomName}`);
-            }, 5000);
+            this.showMessage(`已打开房间 "${roomName}" 的新窗口`, true);
+            this.log('info', `成功打开房间 ${roomName} 的新窗口`);
         } else {
             this.showMessage('无法打开新窗口，请检查浏览器弹窗设置', true);
-            this.log('warn', `Failed to open new window for room ${roomName}: Popup blocked`);
+            this.log('warn', `打开房间 ${roomName} 新窗口失败: 弹窗被阻止`);
         }
     },
 
@@ -1458,3 +1558,6 @@ function switchTab(tabName) {
     // Clear message
     document.getElementById('message').textContent = '';
 }
+
+// Expose chatClient to global scope for child windows
+window.chatClient = chatClient;
