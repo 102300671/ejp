@@ -1,6 +1,6 @@
 # Compiled output
-#chatroom/server/bin/
-#chatroom/client/bin/
+chatroom/server/bin/
+chatroom/client/bin/
 *.class
 
 # IDE configuration
@@ -13,10 +13,11 @@
 *~
 
 # Dependencies
-#chatroom/server/lib/
-#chatroom/client/lib/
+chatroom/server/lib/*
+chatroom/client/lib/*
 
 # Configuration files with sensitive information
+chatroom/server/sql/database.properties
 user_cache.properties
 
 # Logs
@@ -31,3 +32,4 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+
