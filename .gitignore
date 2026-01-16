@@ -17,7 +17,6 @@ chatroom/server/lib/*
 chatroom/client/lib/*
 
 # Configuration files with sensitive information
-chatroom/server/sql/database.properties
 user_cache.properties
 
 # Logs
@@ -33,3 +32,4 @@ Thumbs.db
 *.temp
 .cache/
 
+chatroom/server/sql/database.properties
