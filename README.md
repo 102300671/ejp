@@ -39,6 +39,20 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - Java 8 或更高版本
 - MySQL 数据库（可选，用于持久化存储）
 
+### 依赖库
+
+#### 服务器端依赖 (`chatroom/server/lib/`)
+- `bcrypt-0.10.2.jar` - 密码加密库
+- `bytes-1.5.0.jar` - 字节处理工具（bcrypt依赖）
+- `gson-2.13.2.jar` - JSON数据处理
+- `Java-WebSocket-1.5.7.jar` - WebSocket协议支持
+- `mysql-connector-j-9.5.0.jar` - MySQL数据库驱动
+- `slf4j-api-1.7.36.jar` - 日志框架API
+- `slf4j-simple-1.7.36.jar` - 简单日志实现
+
+#### 客户端依赖 (`chatroom/client/lib/`)
+- `gson-2.13.2.jar` - JSON数据处理
+
 ### 安装方法
 
 1. **克隆项目**
@@ -47,55 +61,110 @@ git clone https://github.com/yourusername/ejp.git
 cd ejp
 ```
 
-2. **编译项目**
+2. **使用自动化脚本**（推荐）
+项目提供了一个自动化脚本 `run.sh`，可以简化编译和运行过程：
+
 ```bash
-# 编译客户端
-cd chatroom/client && javac -cp .:lib/* $(find . -name "*.java")
+# 查看脚本帮助信息
+./run.sh -h
 
-# 编译服务器端
-cd chatroom/server && javac -cp .:lib/* $(find . -name "*.java")
-```
+# 编译所有代码（自动下载依赖）
+./run.sh -c
 
-3. **配置数据库**（可选）
-- 创建数据库
-- 修改 `server/sql/database.properties` 配置文件
-
-4. **运行项目**
-```bash
 # 运行服务器端
-cd chatroom/server && java -cp .:bin:lib/* server.ChatServer [port]
+./run.sh -s [port]
 
 # 运行客户端
-cd chatroom/client && java -cp .:bin:lib/* client.Client localhost/[ip] [port]
+./run.sh -cl [server_address] [port]
 ```
+
+**脚本功能说明：**
+- 自动检查Java环境
+- 自动下载所需依赖库
+- 支持编译客户端和服务器端
+- 提供简单的运行命令
+- 支持命令行参数传递
+
+**脚本选项：**
+- `-c, --compile` - 编译所有代码
+- `-s, --server` - 运行服务器端
+- `-cl, --client` - 运行客户端
+- `-h, --help` - 显示帮助信息
+
+3. **手动编译项目**（可选）
+```bash
+# 编译客户端
+javac -cp .:chatroom/client/lib/* -d chatroom/client/bin $(find chatroom/client -name "*.java")
+
+# 编译服务器端
+javac -cp .:chatroom/server/lib/* -d chatroom/server/bin $(find chatroom/server -name "*.java")
+```
+
+4. **配置数据库**（可选）
+- 创建数据库
+- 执行数据库脚本创建表结构：`mysql -u username -p new_database < sql/chatroom/schema.sql`
+- 修改 `server/sql/database.properties` 配置文件
+- 将修改后的配置文件复制到bin目录：`cp chatroom/server/sql/database.properties chatroom/server/bin/server/sql`
+
+5. **MySQL自动配置**
+项目提供了 `setup_mysql.sh` 脚本，可以帮助您自动配置MySQL数据库：
+
+```bash
+# 运行MySQL配置脚本（需要root权限）
+./setup_mysql.sh
+```
+
+脚本功能：
+- 检测并安装MySQL
+- 创建数据库和用户
+- 设置权限
+- 创建表结构
+- 配置时区
+- 更新database.properties文件
+
+6. **运行项目**
 
 ## 使用说明
 
 ### 启动服务器
 
 ```bash
-# 使用默认配置启动服务器
-cd chatroom/server && java -cp .:bin:lib/* server.ChatServer
+# 使用自动化脚本启动服务器（推荐）
+./run.sh -s
 
 # 指定端口启动服务器
-cd chatroom/server && java -cp .:bin:lib/* server.ChatServer [port]
+./run.sh -s [port]
+
+# 使用手动命令启动服务器
+java -cp .:chatroom/server/bin:chatroom/server/lib/* server.ChatServer
+
+# 指定端口启动服务器
+java -cp .:chatroom/server/bin:chatroom/server/lib/* server.ChatServer [port]
 ```
 
 ### 启动客户端
 
 ```bash
-# 使用默认配置连接服务器
-java -cp chatroom/client/bin:chatroom/client/lib/* client.Client
+# 使用自动化脚本启动客户端（推荐）
+./run.sh -cl
 
 # 指定服务器地址和端口连接
-cd chatroom/client && java -cp .:bin:lib/* client.Client localhost/[ip] [port]
+./run.sh -cl localhost/[ip] [port]
+
+# 使用手动命令启动客户端
+java -cp .:chatroom/client/bin:chatroom/client/lib/* client.Client
+
+# 指定服务器地址和端口连接
+java -cp .:chatroom/client/bin:chatroom/client/lib/* client.Client localhost/[ip] [port]
 ```
 
 ### Web客户端
 
 1. 启动服务器
 2. 打开浏览器访问 `http://localhost:[port]`
-3. 输入用户名和密码登录
+3. 注册或登录账号
+4. 创建房间或加入房间
+5. 开始聊天
 
 ## 项目结构
 

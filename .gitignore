@@ -1,1 +1,31 @@
+# Compiled output
 /bin/
+*.class
+
+# IDE configuration
+.idea/
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+*~
+
+# Dependencies
+/lib/
+
+# Configuration files with sensitive information
+user_cache.properties
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
