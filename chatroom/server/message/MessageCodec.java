@@ -43,23 +43,45 @@ public class MessageCodec {
      * @return 解码后的消息对象，如果解码失败则返回null
      */
     public Message decode(String jsonString) {
-        if (jsonString == null || jsonString.isEmpty()) {
+        if (jsonString == null || jsonString.trim().isEmpty()) {
             System.err.println("尝试解码空的JSON字符串");
             return null;
         }
         
         try {
-            // 直接使用原始字符串进行JSON解析
-            Message message = GSON.fromJson(jsonString, Message.class);
+            // 清理字符串，移除可能的非打印字符和BOM标记
+            String cleanJson = jsonString.trim();
+            
+            // 检查是否以{开头，确保是有效的JSON对象
+            if (!cleanJson.startsWith("{")) {
+                System.err.println("无效的JSON格式，必须以{开头: " + cleanJson);
+                return null;
+            }
+            
+            // 直接使用清理后的字符串进行JSON解析
+            Message message = GSON.fromJson(cleanJson, Message.class);
+            
+            // 验证解码后的消息对象是否有效
+            if (message == null) {
+                System.err.println("JSON解析返回null: " + cleanJson);
+                return null;
+            }
+            
+            // 验证消息类型
+            if (message.getType() == null) {
+                System.err.println("消息类型为空: " + message);
+                return null;
+            }
+            
             System.out.println("消息解码成功: " + message);
             return message;
         } catch (JsonSyntaxException e) {
             System.err.println("JSON语法错误，解码失败: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("原始字符串: " + jsonString);
             return null;
         } catch (Exception e) {
             System.err.println("消息解码失败: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("原始字符串: " + jsonString);
             return null;
         }
     }
@@ -70,5 +92,27 @@ public class MessageCodec {
      */
     public static Gson getGson() {
         return GSON;
+    }
+    
+    /**
+     * 将消息列表编码为JSON字符串
+     * @param messages 要编码的消息列表
+     * @return JSON格式的消息列表字符串
+     */
+    public String encodeMessages(java.util.List<Message> messages) {
+        if (messages == null || messages.isEmpty()) {
+            System.err.println("尝试编码空消息列表");
+            return "[]";
+        }
+        
+        try {
+            String jsonString = GSON.toJson(messages);
+            System.out.println("消息列表编码成功: " + jsonString);
+            return jsonString;
+        } catch (Exception e) {
+            System.err.println("消息列表编码失败: " + e.getMessage());
+            e.printStackTrace();
+            return "[]";
+        }
     }
 }

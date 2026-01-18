@@ -34,7 +34,7 @@
                     <div class="message-input">
                         <input type="text" id="message-input" placeholder="Type your message...">
                         <button id="send-btn">Send</button>
-                        <button id="private-msg-btn">Private</button>
+                        <button id="private-msg-btn">Members</button>
                     </div>
                 </div>
             </div>
@@ -286,17 +286,11 @@
                     }
                 });
                 
-                // 设置私信按钮
+                // 设置成员按钮
                 document.getElementById('private-msg-btn').addEventListener('click', () => {
-                    const recipient = prompt('输入要发送私信的用户名:');
-                    if (recipient) {
-                        const message = document.getElementById('message-input').value;
-                        if (message) {
-                            if (window.opener.chatClient.sendMessage(MessageType.TEXT, recipient, message)) {
-                                document.getElementById('message-input').value = '';
-                                console.log('已发送私信给:', recipient);
-                            }
-                        }
+                    // 请求房间用户列表
+                    if (window.opener && window.opener.chatClient) {
+                        window.opener.chatClient.sendMessage(MessageType.LIST_ROOM_USERS, roomName, '');
                     }
                 });
                 

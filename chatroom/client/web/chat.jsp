@@ -47,7 +47,7 @@
                     <div class="message-input">
                         <input type="text" id="message-input" placeholder="Type your message...">
                         <button id="send-btn">Send</button>
-                        <button id="private-msg-btn">Private</button>
+                        <button id="private-msg-btn">Members</button>
                     </div>
                 </div>
             </div>
@@ -95,6 +95,7 @@
         </div>
     </div>
     
+    <script src="js/localStorage.js"></script>
     <script src="js/chat.js"></script>
     <script>
         // Initialize the chat functionality

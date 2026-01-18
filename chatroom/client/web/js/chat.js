@@ -13,7 +13,8 @@ const MessageType = {
     UUID_AUTH_FAILURE: 'UUID_AUTH_FAILURE',
     CREATE_ROOM: 'CREATE_ROOM',
     EXIT_ROOM: 'EXIT_ROOM',
-    LIST_ROOMS: 'LIST_ROOMS'
+    LIST_ROOMS: 'LIST_ROOMS',
+    LIST_ROOM_USERS: 'LIST_ROOM_USERS'
 };
 
 // Chat client object
@@ -37,6 +38,13 @@ let chatClient = {
     broadcastChannel: null, // 主窗口间的BroadcastChannel
     seenMessageIds: new Set(), // 消息去重集合
     syncLog: [], // 同步日志，用于调试
+    
+    // ========== 新增：消息持久化相关属性 ==========
+    messageStorage: null, // 消息存储实例，将在initMessagePersistence中初始化
+    lastSyncTime: {}, // 每个房间的最后同步时间
+    isSyncing: {}, // 每个房间的同步状态
+    maxMessagesPerRoom: 200, // 每个房间最多保存的消息数
+    syncInterval: 30000, // 自动同步间隔（毫秒）
     
     // 日志记录方法
     log: function(level, message) {
@@ -190,6 +198,279 @@ let chatClient = {
         const timestamp = Date.now();
         const random = Math.random().toString(36).substr(2, 9);
         return `${type}_${roomName}_${timestamp}_${random}`;
+    },
+    
+    // ========== 消息持久化核心方法 ==========
+    
+    // 初始化消息持久化系统
+    initMessagePersistence: function() {
+        console.log('=== initMessagePersistence START ===');
+        
+        // 直接测试MessageStorage是否存在
+        console.log('MessageStorage in global scope:', typeof MessageStorage);
+        if (typeof window.MessageStorage !== 'undefined') {
+            console.log('MessageStorage is in window object:', window.MessageStorage);
+        }
+        
+        // 确保MessageStorage可用
+        if (typeof MessageStorage === 'undefined') {
+            console.error('ERROR: MessageStorage is not defined!');
+            console.error('Check if localStorage.js is properly loaded before chat.js');
+            return;
+        }
+        
+        // 重新初始化messageStorage
+        this.messageStorage = MessageStorage;
+        console.log('messageStorage initialized:', this.messageStorage);
+        
+        // 测试IndexedDB连接
+        this.testIndexedDBConnection();
+        
+        this.log('info', '初始化消息持久化系统');
+        
+        // 加载本地缓存的消息
+        this.loadAllLocalMessages();
+        
+        // 启动自动同步
+        this.startAutoSync();
+    },
+    
+    // 测试IndexedDB连接
+    testIndexedDBConnection: function() {
+        console.log('Testing IndexedDB connection...');
+        if (this.messageStorage) {
+            this.messageStorage.openDB()
+                .then(db => {
+                    console.log('IndexedDB connection successful:', db);
+                    // 测试创建存储对象
+                    const transaction = db.transaction([this.messageStorage.STORE_NAME, this.messageStorage.LAST_SYNC_STORE], 'readwrite');
+                    const messageStore = transaction.objectStore(this.messageStorage.STORE_NAME);
+                    const lastSyncStore = transaction.objectStore(this.messageStorage.LAST_SYNC_STORE);
+                    console.log('IndexedDB stores:', messageStore, lastSyncStore);
+                })
+                .catch(error => {
+                    console.error('IndexedDB connection failed:', error);
+                });
+        }
+    },
+    
+    // 加载所有本地消息
+    loadAllLocalMessages: function() {
+        // 这里可以扩展为加载所有房间的本地消息
+        // 目前只加载当前房间的消息
+        this.loadLocalMessages(this.currentRoom);
+    },
+    
+    // 加载指定房间的本地消息
+    loadLocalMessages: function(roomName) {
+        console.log('loadLocalMessages called:', roomName, this.messageStorage);
+        this.log('debug', `加载${roomName}房间的本地消息`);
+        
+        if (!this.messageStorage) {
+            console.error('loadLocalMessages skipped: messageStorage not available');
+            return;
+        }
+        
+        // 确保数据库已经创建
+        console.log('Ensuring database is created...');
+        this.messageStorage.openDB()
+            .then(db => {
+                console.log('Database created, now getting room messages');
+                console.log('Calling getRoomMessages for room:', roomName);
+                return this.messageStorage.getRoomMessages(roomName, this.maxMessagesPerRoom);
+            })
+            .then(messages => {
+                console.log('getRoomMessages returned:', messages);
+                if (messages && messages.length > 0) {
+                        // 确保messages对象中存在该房间
+                        if (!this.messages[roomName]) {
+                            this.messages[roomName] = [];
+                        }
+                        
+                        // 将本地消息添加到内存中
+                        messages.forEach(msg => {
+                            // 转换为内部消息格式
+                            const internalMsg = {
+                                content: msg.content,
+                                from: msg.from,
+                                time: msg.createTime,
+                                isSystem: msg.isSystem || false,
+                                id: msg.id
+                            };
+                            
+                            if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
+                                this.messages[roomName].push(internalMsg);
+                            }
+                        });
+                        
+                        this.log('info', `成功加载${roomName}房间的${messages.length}条本地消息`);
+                        
+                        // 如果当前正在查看该房间，更新显示
+                        if (this.currentRoom === roomName) {
+                            this.updateMessagesArea(roomName);
+                        }
+                        
+                        // 检查是否需要同步最新消息
+                        this.checkAndSyncMessages(roomName);
+                    }
+                })
+                .catch(error => {
+                    this.log('error', `加载本地消息失败: ${error.message}`);
+                });
+    },
+    
+    // 保存消息到本地存储
+    saveMessageToLocal: function(roomName, message) {
+        console.log('saveMessageToLocal called:', roomName, message, this.messageStorage);
+        if (!roomName || !message) {
+            console.log('saveMessageToLocal skipped: missing roomName or message');
+            return;
+        }
+        if (!this.messageStorage) {
+            console.log('saveMessageToLocal skipped: messageStorage not available');
+            // 尝试重新初始化MessageStorage
+            this.messageStorage = typeof MessageStorage !== 'undefined' ? MessageStorage : null;
+            console.log('Reinitialized messageStorage:', this.messageStorage);
+            if (!this.messageStorage) return;
+        }
+        
+        const storageMsg = {
+            roomName: roomName,
+            from: message.from,
+            to: message.to || roomName,
+            content: message.content,
+            createTime: message.time || new Date().toISOString(),
+            type: message.type || 'TEXT',
+            messageType: message.isSystem ? 'SYSTEM' : 'USER',
+            isSystem: message.isSystem || false,
+            id: message.id
+        };
+        
+        this.messageStorage.saveMessage(storageMsg)
+            .then(() => {
+                this.log('debug', `消息已保存到本地存储: ${message.content.substring(0, 20)}...`);
+                // 更新最后同步时间
+                this.lastSyncTime[roomName] = new Date().toISOString();
+                this.saveLastSyncTime();
+            })
+            .catch(error => {
+                this.log('error', `保存消息到本地存储失败: ${error.message}`);
+            });
+    },
+    
+    // 检查并同步消息
+    checkAndSyncMessages: function(roomName) {
+        if (!this.isConnected || this.isSyncing[roomName]) return;
+        
+        this.isSyncing[roomName] = true;
+        this.log('debug', `检查${roomName}房间的消息同步状态`);
+        
+        // 向服务器请求最新消息的时间戳
+        const requestMsg = {
+            type: 'REQUEST_LATEST_TIMESTAMP',
+            from: this.username,
+            to: roomName,
+            time: new Date().toISOString()
+        };
+        
+        this.sendMessage(requestMsg);
+    },
+    
+    // 向服务器请求消息历史
+    requestMessageHistory: function(roomName, lastTimestamp) {
+        if (!this.isConnected || this.isSyncing[roomName]) return;
+        
+        this.isSyncing[roomName] = true;
+        this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳${lastTimestamp}开始`);
+        
+        const requestMsg = {
+            type: 'REQUEST_HISTORY',
+            from: this.username,
+            to: roomName,
+            time: new Date().toISOString(),
+            lastTimestamp: lastTimestamp
+        };
+        
+        this.sendMessage(requestMsg);
+    },
+    
+    // 处理服务器返回的历史消息
+    handleHistoryMessages: function(messages, roomName) {
+        if (!messages || messages.length === 0) {
+            this.log('info', `服务器没有返回${roomName}房间的历史消息`);
+            return;
+        }
+        
+        this.log('info', `收到${roomName}房间的${messages.length}条历史消息`);
+        
+        // 保存消息到本地并更新显示
+        let newMessages = 0;
+        
+        messages.forEach(msg => {
+            // 转换为内部消息格式
+            const internalMsg = {
+                content: msg.content,
+                from: msg.from,
+                time: msg.time,
+                isSystem: msg.type === 'SYSTEM',
+                id: msg.id || this.generateMessageId()
+            };
+            
+            // 检查消息是否已存在
+            if (!this.messages[roomName] || !this.messages[roomName].some(m => m.id === internalMsg.id)) {
+                // 确保messages对象中存在该房间
+                if (!this.messages[roomName]) {
+                    this.messages[roomName] = [];
+                }
+                
+                this.messages[roomName].push(internalMsg);
+                this.saveMessageToLocal(roomName, internalMsg);
+                newMessages++;
+            }
+        });
+        
+        if (newMessages > 0) {
+            // 如果当前正在查看该房间，更新显示
+            if (this.currentRoom === roomName) {
+                this.updateMessagesArea(roomName);
+            }
+            
+            this.log('info', `成功同步${roomName}房间的${newMessages}条新消息`);
+        }
+        
+        // 更新最后同步时间
+        this.lastSyncTime[roomName] = new Date().toISOString();
+        this.saveLastSyncTime();
+        
+        this.isSyncing[roomName] = false;
+    },
+    
+    // 保存最后同步时间
+    saveLastSyncTime: function() {
+        localStorage.setItem('lastSyncTime', JSON.stringify(this.lastSyncTime));
+    },
+    
+    // 加载最后同步时间
+    loadLastSyncTime: function() {
+        const syncTimeStr = localStorage.getItem('lastSyncTime');
+        if (syncTimeStr) {
+            try {
+                this.lastSyncTime = JSON.parse(syncTimeStr);
+            } catch (error) {
+                this.log('error', `加载最后同步时间失败: ${error.message}`);
+                this.lastSyncTime = {};
+            }
+        }
+    },
+    
+    // 启动自动同步
+    startAutoSync: function() {
+        setInterval(() => {
+            // 只同步当前房间的消息
+            if (this.isConnected && this.currentRoom) {
+                this.checkAndSyncMessages(this.currentRoom);
+            }
+        }, this.syncInterval);
     },
     
     // ========== 新增：发送消息到所有窗口 ==========
@@ -727,29 +1008,58 @@ let chatClient = {
             return;
         }
         
-        // Get username from localStorage if this.username is not set
-        const username = this.username || localStorage.getItem('username') || 'unknown';
+        let message;
         
-        const message = {
-            type: type,
-            from: username,
-            to: to,
-            content: content,
-            time: new Date().toISOString().replace('T', ' ').substring(0, 19)
-        };
+        // 检查第一个参数是否是对象（完整的消息对象）
+        if (typeof type === 'object' && type !== null) {
+            // 直接使用完整的消息对象
+            message = type;
+            // 确保有正确的时间格式
+            if (message.time && message.time.includes('T')) {
+                message.time = message.time.replace('T', ' ').substring(0, 19);
+            }
+        } else {
+            // Get username from localStorage if this.username is not set
+            const username = this.username || localStorage.getItem('username') || 'unknown';
+            
+            // 构造标准消息对象
+            message = {
+                type: type,
+                from: username,
+                to: to,
+                content: content,
+                time: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            };
+        }
         
         // Send message through WebSocket
         this.ws.send(JSON.stringify(message));
         
         // 如果是文本消息，立即在本地显示并同步
-        if (type === MessageType.TEXT) {
-            const roomName = to || 'system';
+        if (message.type === MessageType.TEXT) {
+            let roomName = message.to || 'system';
+            let actualContent = message.content;
+            
+            // Check if this is a private message
+            if (this.isInPrivateChat && this.privateChatRecipient) {
+                // For private chat, use the virtual room name
+                roomName = this.currentRoom; // 好友_username
+                
+                // Remove room prefix if present
+                if (actualContent.startsWith('[room:')) {
+                    const roomEnd = actualContent.indexOf(']');
+                    if (roomEnd > 0) {
+                        actualContent = actualContent.substring(roomEnd + 1);
+                    }
+                }
+            }
+            
             if (!this.messages[roomName]) {
                 this.messages[roomName] = [];
             }
             
             const localMessage = {
-                content: content,
+                content: actualContent,
                 from: username,
                 time: message.time,
                 isSystem: false
@@ -795,8 +1105,14 @@ let chatClient = {
             case MessageType.LEAVE:
                 this.handleLeaveMessage(message);
                 break;
-            case MessageType.LIST_ROOMS:
+            case MessageType.LIST_ROOM_USERS:
                 this.handleListRooms(message);
+                break;
+            case 'HISTORY_RESPONSE':
+                this.handleHistoryResponse(message);
+                break;
+            case 'LATEST_TIMESTAMP':
+                this.handleLatestTimestamp(message);
                 break;
             case MessageType.UUID_AUTH_SUCCESS:
                 this.handleUUIDAuthSuccess(message);
@@ -829,6 +1145,15 @@ let chatClient = {
         };
         
         this.messages[targetRoom].push(messageObj);
+        
+        // 保存系统消息到本地存储（但排除连接状态消息）
+        if (this.messageStorage && messageObj.isSystem && !message.includes('Connected to chat server via WebSocket')) {
+            // 确保消息有唯一ID
+            if (!messageObj.id) {
+                messageObj.id = this.generateMessageId();
+            }
+            this.saveMessageToLocal(targetRoom, messageObj);
+        }
         
         // 只更新当前窗口
         if (this.currentRoom === targetRoom) {
@@ -868,6 +1193,56 @@ let chatClient = {
                 });
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }
+        }
+    },
+    
+    // ========== 消息历史和同步处理 ==========
+    
+    // 处理服务器返回的历史消息响应
+    handleHistoryResponse: function(message) {
+        this.log('debug', '收到服务器的历史消息响应');
+        
+        try {
+            const roomName = message.roomName || message.to;
+            const messages = message.messages || [];
+            
+            if (!roomName || !messages || messages.length === 0) {
+                this.log('info', '历史消息响应为空');
+                return;
+            }
+            
+            this.handleHistoryMessages(messages, roomName);
+        } catch (error) {
+            this.log('error', `处理历史消息响应失败: ${error.message}`);
+        }
+    },
+    
+    // 处理服务器返回的最新时间戳
+    handleLatestTimestamp: function(message) {
+        this.log('debug', '收到服务器的最新时间戳响应');
+        
+        try {
+            const roomName = message.roomName || message.to;
+            const serverTimestamp = message.timestamp;
+            
+            if (!roomName || !serverTimestamp) {
+                this.log('info', '最新时间戳响应缺少必要参数');
+                return;
+            }
+            
+            // 获取本地最后一条消息的时间戳
+            const localLastTimestamp = this.lastSyncTime[roomName];
+            
+            // 如果本地没有消息或者服务器时间比本地新，请求历史消息
+            if (!localLastTimestamp || new Date(serverTimestamp) > new Date(localLastTimestamp)) {
+                this.requestMessageHistory(roomName, localLastTimestamp || 0);
+            } else {
+                this.log('info', `${roomName}房间的消息已经是最新的`);
+                this.isSyncing[roomName] = false;
+            }
+        } catch (error) {
+            this.log('error', `处理最新时间戳响应失败: ${error.message}`);
+            this.isSyncing[roomName] = false;
         }
     },
     
@@ -956,28 +1331,64 @@ let chatClient = {
     
     // Message handlers
     handleTextMessage: function(message) {
-        const roomName = message.to || 'system';
+        let roomName = message.to || 'system';
+        let content = message.content;
+        
+        // 首先检查是否是带房间信息的私人消息（包含[room:]前缀）
+        if (content.startsWith('[room:')) {
+            // 这是一个私人消息，但是我们已经在服务器端处理过了
+            // 客户端只需要按照正常消息处理
+            console.log('收到带房间信息的私人消息:', message);
+        } 
+        // 然后检查是否是普通的私人消息（接收者是用户名而不是房间名）
+        else if (message.from && message.to && message.from !== message.to) {
+            // 判断接收者是否为房间名：检查是否存在于已知房间列表中
+            let isRecipientRoom = false;
+            for (const room of this.rooms) {
+                if (room.name === message.to) {
+                    isRecipientRoom = true;
+                    break;
+                }
+            }
+            
+            // 如果接收者不是房间名，则视为私人消息
+            if (!isRecipientRoom) {
+                // 对于私人消息，创建或使用虚拟房间
+                const privateRoomName = `好友${message.from}`;
+                roomName = privateRoomName;
+            }
+        }
         
         if (!this.messages[roomName]) {
             this.messages[roomName] = [];
         }
         
         const localMessage = {
-            content: message.content,
+            content: content,
             from: message.from,
+            to: message.to,
             time: message.time,
             isSystem: false
         };
         
         // 去重检查
         const isDuplicate = this.messages[roomName].some(m => 
-            m.content === message.content && 
+            m.content === content && 
             m.from === message.from && 
             m.time === message.time
         );
         
         if (!isDuplicate) {
             this.messages[roomName].push(localMessage);
+            
+            // 保存消息到本地存储
+            if (this.messageStorage) {
+                // 确保消息有唯一ID
+                if (!localMessage.id) {
+                    localMessage.id = this.generateMessageId();
+                }
+                this.saveMessageToLocal(roomName, localMessage);
+            }
             
             // 更新当前窗口UI
             if (this.currentRoom === roomName) {
@@ -1004,6 +1415,21 @@ let chatClient = {
             const roomMatch = message.content.match(/(加入了房间|离开了房间)\s+([^\s]+)/);
             if (roomMatch && roomMatch[2]) {
                 roomName = roomMatch[2];
+            }
+        }
+        
+        // Check if this is a room users list message (JSON format)
+        if (message.content.startsWith('{') && message.content.includes('"users":[')) {
+            try {
+                const usersData = JSON.parse(message.content);
+                if (usersData.users && Array.isArray(usersData.users)) {
+                    // 获取当前房间名称（从h3元素中获取）
+                    const currentRoomName = document.getElementById('current-room-name')?.textContent || 'system';
+                    this.displayRoomUsers(usersData.users, currentRoomName);
+                    return;
+                }
+            } catch (e) {
+                console.error('Failed to parse room users JSON:', e);
             }
         }
         
@@ -1035,6 +1461,75 @@ let chatClient = {
             // Update all open windows with the new room list
             this.broadcastToWindows('ROOM_LIST_UPDATE', {
                 rooms: this.rooms
+            });
+        }
+    },
+    
+    // Display room users list
+    displayRoomUsers: function(users, roomName) {
+        // Create or update users list panel
+        let usersPanel = document.getElementById('room-users-panel');
+        
+        // If panel doesn't exist, create it
+        if (!usersPanel) {
+            usersPanel = document.createElement('div');
+            usersPanel.id = 'room-users-panel';
+            usersPanel.className = 'users-panel';
+            usersPanel.style.display = 'block'; // Show panel by default when created
+            
+            const panelHeader = document.createElement('div');
+            panelHeader.className = 'panel-header';
+            panelHeader.innerHTML = `<h3>${roomName} - Members</h3>`;
+            usersPanel.appendChild(panelHeader);
+            
+            const usersList = document.createElement('div');
+            usersList.id = 'room-users-list';
+            usersList.className = 'users-list';
+            usersPanel.appendChild(usersList);
+            
+            // Add to the chat content container
+            const chatContent = document.querySelector('.chat-content');
+            if (chatContent) {
+                chatContent.appendChild(usersPanel);
+            }
+        } else {
+            // Update panel header with current room name
+            const panelHeader = usersPanel.querySelector('.panel-header');
+            if (panelHeader) {
+                panelHeader.innerHTML = `<h3>${roomName} - Members</h3>`;
+            }
+        }
+        
+        // Update users list
+        const usersList = document.getElementById('room-users-list');
+        if (usersList) {
+            usersList.innerHTML = '';
+            
+            // Get current logged-in username
+            const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+            
+            users.forEach(user => {
+                const isCurrentUser = user.username === currentUsername;
+                const userItem = document.createElement('div');
+                userItem.className = `user-item ${user.isOnline ? 'user-online' : 'user-offline'} ${isCurrentUser ? 'user-self' : ''}`;
+                
+                // Add visual indicator for current user
+                const usernameDisplay = isCurrentUser ? `${user.username} (我)` : user.username;
+                
+                userItem.innerHTML = `
+                    <div class="user-status-indicator"></div>
+                    <div class="user-name">${usernameDisplay}</div>
+                `;
+                
+                // Only add click event if not the current user
+                if (!isCurrentUser) {
+                    userItem.addEventListener('click', () => {
+                        // Switch to private chat with this user
+                        this.switchToPrivateChat(user.username);
+                    });
+                }
+                
+                usersList.appendChild(userItem);
             });
         }
     },
@@ -1098,16 +1593,191 @@ let chatClient = {
     },
     
     switchRoom: function(roomName, roomType) {
+        // Exit private chat mode if currently in private chat
+        if (this.isInPrivateChat) {
+            this.isInPrivateChat = false;
+            this.privateChatRecipient = null;
+            this.previousRoom = null;
+            this.previousRoomType = null;
+            
+            // Hide return to room button
+            const returnButton = document.getElementById('return-to-room-btn');
+            if (returnButton) {
+                returnButton.style.display = 'none';
+            }
+        }
+        
         this.currentRoom = roomName;
         this.currentRoomType = roomType;
         document.getElementById('current-room-name').textContent = roomName;
         this.updateRoomsList();
         
+        // Update message input placeholder to indicate room chat
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.placeholder = 'Type your message...';
+        }
+        
         // Send JOIN message to server to switch room
         this.sendMessage(MessageType.JOIN, roomName, '');
         
+        // 加载该房间的本地消息
+        this.loadLocalMessages(roomName);
+        
+        // 检查本地消息是否最新
+        this.checkAndSyncMessages(roomName);
+        
         // Update messages area with stored messages for this room
         this.updateMessagesArea(roomName);
+        
+        // Refresh users list if users panel is visible
+        const usersPanel = document.getElementById('room-users-panel');
+        if (usersPanel && usersPanel.style.display !== 'none') {
+            this.sendMessage(MessageType.LIST_ROOM_USERS, roomName, '');
+        }
+        
+        // Update Members button availability based on room type and name
+        this.updateMembersButtonAvailability(roomName, roomType);
+    },
+    
+    // Update Members button availability based on room type and name
+    updateMembersButtonAvailability: function(roomName, roomType) {
+        const membersButton = document.getElementById('private-msg-btn');
+        if (!membersButton) return;
+        
+        // Disable button in system room or private rooms
+        if (roomName === 'system' || roomType === 'PRIVATE') {
+            membersButton.disabled = true;
+            membersButton.classList.add('disabled');
+            
+            // Hide users panel if it's visible
+            const usersPanel = document.getElementById('room-users-panel');
+            if (usersPanel && usersPanel.style.display !== 'none') {
+                usersPanel.style.display = 'none';
+            }
+        } else {
+            // Enable button in public rooms (excluding system)
+            membersButton.disabled = false;
+            membersButton.classList.remove('disabled');
+        }
+    },
+    
+    // Switch to private chat with a specific user
+    switchToPrivateChat: function(username) {
+        if (!username || username === this.username) {
+            return;
+        }
+        
+        // Save current room information for potential return
+        this.previousRoom = this.currentRoom;
+        this.previousRoomType = this.currentRoomType;
+        
+        // Switch to private chat mode
+        this.isInPrivateChat = true;
+        this.privateChatRecipient = username;
+        
+        // Update current room to a virtual room named after the recipient
+        this.currentRoom = `好友${username}`;
+        this.currentRoomType = 'PRIVATE'; // Mark as private chat
+        
+        // Update h3 title to show private chat recipient
+        const currentRoomNameElement = document.getElementById('current-room-name');
+        if (currentRoomNameElement) {
+            currentRoomNameElement.textContent = `与${username}聊天`;
+        }
+        
+        // Update rooms list to reflect the new current room
+        this.updateRoomsList();
+        
+        // Hide users panel after selecting a user
+        const usersPanel = document.getElementById('room-users-panel');
+        if (usersPanel) {
+            usersPanel.style.display = 'none';
+        }
+        
+        // Update message input placeholder to indicate private chat
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.placeholder = `Type message to ${username}...`;
+        }
+        
+        // Update members button availability - disable in private chat
+        const membersButton = document.getElementById('private-msg-btn');
+        if (membersButton) {
+            membersButton.disabled = true;
+            membersButton.classList.add('disabled');
+        }
+        
+        // Add return button to room controls if not already present
+        const roomControls = document.querySelector('.room-controls');
+        if (roomControls) {
+            // Check if return button already exists
+            let returnButton = document.getElementById('return-to-room-btn');
+            if (!returnButton) {
+                returnButton = document.createElement('button');
+                returnButton.id = 'return-to-room-btn';
+                returnButton.textContent = 'Back to Room';
+                returnButton.className = 'return-button';
+                
+                // Add click event to return to previous room
+                returnButton.addEventListener('click', () => {
+                    this.returnToPreviousRoom();
+                });
+                
+                roomControls.appendChild(returnButton);
+            } else {
+                // Show the button if it already exists but is hidden
+                returnButton.style.display = 'inline-block';
+            }
+        }
+        
+        // 加载历史私聊消息
+        this.loadLocalMessages(this.currentRoom);
+        
+        // Update messages area with stored private messages for this user
+        this.updateMessagesArea(this.currentRoom);
+    },
+    
+    // Return to previous room from private chat
+    returnToPreviousRoom: function() {
+        if (this.isInPrivateChat && this.previousRoom) {
+            // Restore previous room
+            this.currentRoom = this.previousRoom;
+            this.currentRoomType = this.previousRoomType;
+            
+            // Update h3 title to show previous room name
+            const currentRoomNameElement = document.getElementById('current-room-name');
+            if (currentRoomNameElement) {
+                currentRoomNameElement.textContent = this.previousRoom;
+            }
+            
+            // Exit private chat mode
+        this.isInPrivateChat = false;
+        this.privateChatRecipient = null;
+        this.previousRoom = null;
+        this.previousRoomType = null;
+        
+        // Hide return to room button
+        const returnButton = document.getElementById('return-to-room-btn');
+        if (returnButton) {
+            returnButton.style.display = 'none';
+        }
+            
+            // Update message input placeholder to indicate room chat
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                messageInput.placeholder = 'Type your message...';
+            }
+            
+            // Update members button availability based on previous room type
+            this.updateMembersButtonAvailability(this.currentRoom, this.currentRoomType);
+            
+            // Update rooms list
+            this.updateRoomsList();
+            
+            // Update messages area with previous room messages
+            this.updateMessagesArea(this.currentRoom);
+        }
     },
     
     // Send private message to a specific user
@@ -1117,11 +1787,15 @@ let chatClient = {
             return;
         }
         
+        // For private messages, always include room info in the format [room:房间名]消息内容
+        const roomName = this.previousRoom || 'unknown';
+        const contentWithRoom = `[room:${roomName}]${content}`;
+        
         // Send private message through WebSocket
-        this.sendMessage(MessageType.TEXT, to, content);
+        this.sendMessage(MessageType.TEXT, to, contentWithRoom);
         
         // Store private message in a virtual room named after the recipient
-        const privateRoomName = `private_${to}`;
+        const privateRoomName = `好友${to}`;
         if (!this.messages[privateRoomName]) {
             this.messages[privateRoomName] = [];
         }
@@ -1136,6 +1810,21 @@ let chatClient = {
         };
         
         this.messages[privateRoomName].push(privateMessage);
+        
+        // 保存私聊消息到本地存储
+        if (this.messageStorage) {
+            // 确保消息有唯一ID
+            if (!privateMessage.id) {
+                privateMessage.id = this.generateMessageId();
+            }
+            this.saveMessageToLocal(privateRoomName, privateMessage);
+        }
+        
+        // 同步私聊消息到其他窗口
+        this.broadcastToWindows('NEW_MESSAGE', {
+            roomName: privateRoomName,
+            message: privateMessage
+        }, privateRoomName);
         
         // Update UI if current room is this private conversation
         const currentRoomName = document.getElementById('current-room-name')?.textContent;
@@ -1381,8 +2070,14 @@ function initChat() {
         currentUserSpan.textContent = username;
     }
     
+    // Update Members button availability based on initial room
+    chatClient.updateMembersButtonAvailability(chatClient.currentRoom, chatClient.currentRoomType);
+    
     // Initialize message synchronization mechanism first
     chatClient.initMessageSync();
+    
+    // Initialize message persistence
+    chatClient.initMessagePersistence();
     
     // Initialize connection
     chatClient.connect();
@@ -1402,20 +2097,29 @@ function initChat() {
     
     document.getElementById('send-btn').addEventListener('click', sendMessage);
     
-    // Private message button functionality
+    // Room members button functionality
     document.getElementById('private-msg-btn').addEventListener('click', function() {
-        const input = document.getElementById('message-input');
-        const message = input.value.trim();
+        // Check if button is disabled
+        if (this.disabled) {
+            return;
+        }
         
-        if (message) {
-            const recipient = prompt('Enter username to send private message:');
-            if (recipient && recipient.trim()) {
-                chatClient.sendPrivateMessage(recipient.trim(), message);
-                input.value = '';
-                chatClient.showMessage(`[Private to ${recipient.trim()}] ${message}`, false);
+        const usersPanel = document.getElementById('room-users-panel');
+        
+        if (usersPanel) {
+            // If panel exists, toggle visibility
+            if (usersPanel.style.display === 'none' || usersPanel.style.display === '') {
+                // If hidden or not set, show it
+                usersPanel.style.display = 'block';
+                // Refresh the user list
+                chatClient.sendMessage(MessageType.LIST_ROOM_USERS, chatClient.currentRoom, '');
+            } else {
+                // If visible, hide it
+                usersPanel.style.display = 'none';
             }
         } else {
-            alert('Please type a message first.');
+            // If panel doesn't exist, create it and request users list
+            chatClient.sendMessage(MessageType.LIST_ROOM_USERS, chatClient.currentRoom, '');
         }
     });
     
@@ -1423,7 +2127,17 @@ function initChat() {
         const input = document.getElementById('message-input');
         const message = input.value.trim();
         if (message) {
-            chatClient.sendMessage(MessageType.TEXT, chatClient.currentRoom, message);
+            let recipient = chatClient.currentRoom;
+            let content = message;
+            
+            // If in private chat, use the private message method
+            if (chatClient.isInPrivateChat && chatClient.privateChatRecipient) {
+                // 使用sendPrivateMessage方法发送私聊消息，确保正确存储和同步
+                chatClient.sendPrivateMessage(chatClient.privateChatRecipient, message);
+            } else {
+                // 普通房间消息发送
+                chatClient.sendMessage(MessageType.TEXT, recipient, content);
+            }
             input.value = '';
         }
     }
@@ -1495,6 +2209,11 @@ function initChat() {
             // Refresh room list to reflect the join
             setTimeout(() => {
                 chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
+                // Refresh users list if users panel is visible
+                const usersPanel = document.getElementById('room-users-panel');
+                if (usersPanel && usersPanel.style.display !== 'none') {
+                    chatClient.sendMessage(MessageType.LIST_ROOM_USERS, roomName, '');
+                }
             }, 100);
         }
     });
@@ -1507,6 +2226,12 @@ function initChat() {
         
         // Refresh room list to reflect the leave
         chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
+        
+        // Refresh users list for system room if users panel is visible
+        const usersPanel = document.getElementById('room-users-panel');
+        if (usersPanel && usersPanel.style.display !== 'none') {
+            chatClient.sendMessage(MessageType.LIST_ROOM_USERS, 'system', '');
+        }
     });
     
     // Exit room button functionality
@@ -1528,6 +2253,12 @@ function initChat() {
         
         // Refresh room list to reflect the exit
         chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
+        
+        // Refresh users list for system room if users panel is visible
+        const usersPanel = document.getElementById('room-users-panel');
+        if (usersPanel && usersPanel.style.display !== 'none') {
+            chatClient.sendMessage(MessageType.LIST_ROOM_USERS, 'system', '');
+        }
     });
     
     document.getElementById('refresh-rooms-btn').addEventListener('click', function() {

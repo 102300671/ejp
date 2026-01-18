@@ -8,6 +8,11 @@ import server.message.MessageType;
 import server.message.MessageCodec;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import server.sql.DatabaseManager;
+import server.sql.room.RoomDAO;
+import server.sql.user.UserDAO;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 public class MessageRouter {
     // 管理所有活动会话，键为用户ID
@@ -118,6 +123,52 @@ public class MessageRouter {
             return null;
         }
         return rooms.get(roomId);
+    }
+    
+    /**
+     * 获取房间用户列表
+     * @param roomId 房间ID
+     * @return 用户列表，包含用户名和在线状态
+     */
+    public List<Map<String, Object>> getRoomUsers(String roomId) {
+        List<Map<String, Object>> usersList = new ArrayList<>();
+        
+        try (Connection connection = new DatabaseManager().getConnection()) {
+            RoomDAO roomDAO = new RoomDAO(this);
+            UserDAO userDAO = new UserDAO();
+            
+            // 从数据库获取房间所有成员ID
+            List<String> memberIds = roomDAO.getRoomMembers(roomId, connection);
+            
+            for (String memberId : memberIds) {
+                int userId = Integer.parseInt(memberId);
+                
+                // 获取用户名
+                String username = userDAO.getUsernameById(userId, connection);
+                
+                if (username != null) {
+                    Map<String, Object> userInfo = new HashMap<>();
+                    userInfo.put("username", username);
+                    
+                    // 检查用户是否在线
+                    boolean isOnline = false;
+                    
+                    // 检查用户会话是否存在
+                    Session session = sessions.get(memberId);
+                    if (session != null && session.isActive()) {
+                        isOnline = true;
+                    }
+                    
+                    userInfo.put("isOnline", isOnline);
+                    usersList.add(userInfo);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("获取房间用户列表失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return usersList;
     }
 
     /**

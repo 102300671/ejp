@@ -9,11 +9,14 @@ import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
 import server.sql.user.uuid.UUIDGenerator;
+import server.sql.message.MessageDAO;
 import server.room.PrivateRoom;
 import server.room.PublicRoom;
 import server.room.Room;
 import server.user.User;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -66,11 +69,8 @@ public class WebSocketConnection {
         System.out.println("收到WebSocket消息: " + message);
         
         try {
-            // 确保消息以UTF-8编码处理
-            String utf8Message = new String(message.getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.charset.StandardCharsets.UTF_8);
-            
-            // 解码消息
-            Message decodedMessage = messageCodec.decode(utf8Message);
+            // 解码消息（java-websocket库已经确保消息是UTF-8编码）
+            Message decodedMessage = messageCodec.decode(message);
             if (decodedMessage == null) {
                 System.err.println("消息解码失败");
                 return;
@@ -95,6 +95,22 @@ public class WebSocketConnection {
                     break;
                 case UUID_AUTH:
                     handleUUIDAuth(message);
+                    break;
+                case REQUEST_HISTORY:
+                    // 已认证，处理请求历史消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleRequestHistory(message);
+                    break;
+                case REQUEST_LATEST_TIMESTAMP:
+                    // 已认证，处理请求最新时间戳
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleRequestLatestTimestamp(message);
                     break;
                 case TEXT:
                     // 已认证，处理文本消息
@@ -194,13 +210,22 @@ public class WebSocketConnection {
                         }
                         
                         // 发送私人消息
-                        Message privateMsg = new Message(MessageType.TEXT, from, to, actualContent);
-                        if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateMsg))) {
-                            System.out.println("私人消息发送成功: 从" + from + "到" + to + "的消息: " + actualContent);
-                        } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "发送私人消息失败: 用户" + to + "可能不在线");
-                            send(messageCodec.encode(errorMsg));
-                        }
+        Message privateMsg = new Message(MessageType.TEXT, from, to, actualContent);
+        if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateMsg))) {
+            System.out.println("私人消息发送成功: 从" + from + "到" + to + "的消息: " + actualContent);
+            
+            // 保存私人消息到数据库
+            try (Connection connection = dbManager.getConnection()) {
+                MessageDAO messageDAO = new MessageDAO();
+                messageDAO.saveMessage(privateMsg, "PRIVATE", connection);
+            } catch (SQLException e) {
+                System.err.println("保存私人消息到数据库失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "发送私人消息失败: 用户" + to + "可能不在线");
+            send(messageCodec.encode(errorMsg));
+        }
                     } else {
                         // 广播消息到目标房间
                         for (String roomId : messageRouter.getRooms().keySet()) {
@@ -215,6 +240,15 @@ public class WebSocketConnection {
                                 );
                                 // 广播消息
                                 messageRouter.broadcastToRoom(roomId, messageCodec.encode(broadcastMessage));
+                                
+                                // 保存房间消息到数据库
+                                try (Connection connection = dbManager.getConnection()) {
+                                    MessageDAO messageDAO = new MessageDAO();
+                                    messageDAO.saveMessage(broadcastMessage, "ROOM", connection);
+                                } catch (SQLException e) {
+                                    System.err.println("保存房间消息到数据库失败: " + e.getMessage());
+                                    e.printStackTrace();
+                                }
                                 break;
                             }
                         }
@@ -433,6 +467,52 @@ public class WebSocketConnection {
                         System.err.println("获取房间列表失败: " + e.getMessage());
                         e.printStackTrace();
                         Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "获取房间列表失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                    
+                case LIST_ROOM_USERS:
+                    // 已认证，处理房间用户列表请求
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间用户列表请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String roomName = message.getTo();
+                        RoomDAO roomDAO = new RoomDAO(messageRouter);
+                        
+                        // 获取房间ID
+                        Room room = roomDAO.getRoomByName(roomName, connection);
+                        if (room == null) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + roomName + "不存在");
+                            send(messageCodec.encode(systemMessage));
+                            break;
+                        }
+                        
+                        // 获取房间用户列表
+                        List<Map<String, Object>> usersList = messageRouter.getRoomUsers(room.getId());
+                        
+                        // 构建JSON响应
+                        StringBuilder response = new StringBuilder("{\"users\":[");
+                        boolean first = true;
+                        for (Map<String, Object> user : usersList) {
+                            if (!first) {
+                                response.append(",");
+                            }
+                            response.append("{\"username\":\"").append(user.get("username")).append("\",\"isOnline\":");
+                            response.append(user.get("isOnline")).append("}");
+                            first = false;
+                        }
+                        response.append("]}");
+                        
+                        // 发送响应，to字段设置为请求用户的用户名，确保只发送给请求者
+                        Message usersMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), response.toString());
+                        send(messageCodec.encode(usersMessage));
+                    } catch (Exception e) {
+                        System.err.println("获取房间用户列表失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取房间用户列表失败: " + e.getMessage());
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -844,7 +924,68 @@ public class WebSocketConnection {
         return currentUser;
     }
     
-    public MessageRouter getMessageRouter() {
+    public server.network.router.MessageRouter getMessageRouter() {
         return messageRouter;
+    }
+    
+    /**
+     * 处理请求历史消息
+     * @param message 请求历史消息
+     */
+    private void handleRequestHistory(Message message) {
+        String from = message.getFrom();
+        String roomName = message.getTo();
+        String lastTimestamp = message.getContent();
+        
+        System.out.println("处理历史消息请求: 从" + from + "到" + roomName + "的消息，最后时间戳: " + lastTimestamp);
+        
+        try (java.sql.Connection connection = dbManager.getConnection()) {
+            server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
+            
+            // 获取历史消息（这里暂时使用固定数量的消息，后续可以根据lastTimestamp进行优化）
+            java.util.List<Message> messages = messageDAO.getRoomMessages(roomName, 100, connection);
+            
+            // 创建历史消息响应
+            String messagesJson = messageCodec.encodeMessages(messages);
+            Message historyResponseMsg = new Message(MessageType.HISTORY_RESPONSE, "server", roomName, messagesJson);
+            
+            // 发送响应
+            send(messageCodec.encode(historyResponseMsg));
+            System.out.println("发送历史消息响应: " + roomName + "房间的" + messages.size() + "条消息");
+        } catch (java.sql.SQLException e) {
+            System.err.println("获取历史消息失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "获取历史消息失败: 服务器内部错误");
+            send(messageCodec.encode(errorMsg));
+        }
+    }
+    
+    /**
+     * 处理请求最新时间戳
+     * @param message 请求最新时间戳
+     */
+    private void handleRequestLatestTimestamp(Message message) {
+        String from = message.getFrom();
+        String roomName = message.getTo();
+        
+        System.out.println("处理最新时间戳请求: 从" + from + "到" + roomName + "的消息");
+        
+        try (java.sql.Connection connection = dbManager.getConnection()) {
+            // 这里可以扩展为获取指定房间的最新消息时间戳
+            // 目前简单返回当前时间
+            String latestTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+            
+            // 创建最新时间戳响应
+            Message latestTimestampMsg = new Message(MessageType.LATEST_TIMESTAMP, "server", roomName, latestTimestamp);
+            
+            // 发送响应
+            send(messageCodec.encode(latestTimestampMsg));
+            System.out.println("发送最新时间戳响应: " + roomName + "房间的最新时间戳: " + latestTimestamp);
+        } catch (java.sql.SQLException e) {
+            System.err.println("获取最新时间戳失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "获取最新时间戳失败: 服务器内部错误");
+            send(messageCodec.encode(errorMsg));
+        }
     }
 }

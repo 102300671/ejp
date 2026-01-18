@@ -92,4 +92,26 @@ CREATE TABLE `user_uuid` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-01-15 21:51:09
+--
+-- Table structure for table `messages`
+--
+
+DROP TABLE IF EXISTS `messages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `messages` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `type` VARCHAR(20) NOT NULL COMMENT '消息类型 (TEXT, SYSTEM, JOIN, LEAVE等)',
+    `from_username` VARCHAR(50) NOT NULL COMMENT '发送者用户名',
+    `to_username` VARCHAR(50) NOT NULL COMMENT '接收者用户名或房间名',
+    `content` TEXT NOT NULL COMMENT '消息内容',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
+    `message_type` VARCHAR(20) NOT NULL COMMENT '消息类别 (ROOM:房间消息, PRIVATE:私人消息)',
+    INDEX `idx_from_username` (`from_username`),
+    INDEX `idx_to_username` (`to_username`),
+    INDEX `idx_create_time` (`create_time`),
+    INDEX `idx_message_type` (`message_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Dump completed on 2026-01-18 10:30:03

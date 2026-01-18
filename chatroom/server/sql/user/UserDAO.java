@@ -121,4 +121,33 @@ public class UserDAO {
         System.out.println("用户验证结果 (" + username + "): " + (isValid ? "成功" : "失败"));
         return isValid;
     }
+    
+    /**
+     * 根据用户ID获取用户名
+     * @param userId 用户ID
+     * @param connection 数据库连接
+     * @return 用户名，如果用户不存在则返回null
+     * @throws SQLException 如果查询过程中发生数据库错误
+     */
+    public String getUsernameById(int userId, Connection connection) throws SQLException {
+        String sql = "SELECT username FROM user WHERE id = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, userId);
+            
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getString("username");
+                }
+            }
+            
+            System.out.println("未找到用户ID对应的用户名: " + userId);
+            return null;
+            
+        } catch (SQLException e) {
+            System.err.println("查询用户名失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }

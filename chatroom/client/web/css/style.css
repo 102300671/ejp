@@ -505,3 +505,128 @@ body {
 #close-window-btn:hover {
     background-color: #5a6268;
 }
+
+/* Users Panel Styles */
+.users-panel {
+    width: 250px;
+    background-color: #f8f9fa;
+    border-left: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+}
+
+.users-panel .panel-header {
+    padding: 15px;
+    border-bottom: 1px solid #dee2e6;
+    background-color: #e9ecef;
+}
+
+.users-panel .panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #495057;
+}
+
+.users-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.user-item:hover {
+    background-color: #e9ecef;
+}
+
+.user-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.user-online .user-status-indicator {
+    background-color: #28a745;
+}
+
+.user-offline .user-status-indicator {
+    background-color: #6c757d;
+}
+
+.user-name {
+    color: #495057;
+    font-size: 14px;
+}
+
+/* Current user (self) styles */
+.user-self {
+    background-color: #d1ecf1 !important;
+    font-weight: bold;
+    border: 1px solid #bee5eb;
+    cursor: default !important;
+}
+
+.user-self:hover {
+    background-color: #d1ecf1 !important;
+}
+
+.user-self .user-name {
+    color: #0c5460;
+}
+
+/* Chat content layout with users panel */
+.chat-content {
+    display: flex;
+    height: 100%;
+}
+
+.rooms-panel {
+    width: 250px;
+    border-right: 1px solid #dee2e6;
+}
+
+.messages-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border: none;
+}
+
+/* Members button disabled state */
+#private-msg-btn.disabled {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Return button style */
+.return-button {
+    margin-left: 5px;
+    padding: 8px 15px;
+    background-color: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.return-button:hover {
+    background-color: #f57c00;
+}
+
+.return-button:active {
+    background-color: #e65100;
+}
