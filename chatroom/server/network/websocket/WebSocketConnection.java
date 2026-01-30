@@ -238,8 +238,8 @@ public class WebSocketConnection {
                                     content,
                                     message.getTime()
                                 );
-                                // 广播消息
-                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(broadcastMessage));
+                                // 广播消息，排除发送者
+                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(broadcastMessage), String.valueOf(currentUser.getId()));
                                 
                                 // 保存房间消息到数据库
                                 try (Connection connection = dbManager.getConnection()) {
@@ -934,29 +934,64 @@ public class WebSocketConnection {
      */
     private void handleRequestHistory(Message message) {
         String from = message.getFrom();
-        String roomName = message.getTo();
+        String to = message.getTo();
         String lastTimestamp = message.getContent();
         
-        System.out.println("处理历史消息请求: 从" + from + "到" + roomName + "的消息，最后时间戳: " + lastTimestamp);
+        System.out.println("处理历史消息请求: 从" + from + "到" + to + "的消息，最后时间戳: " + lastTimestamp);
         
         try (java.sql.Connection connection = dbManager.getConnection()) {
             server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
+            java.util.List<Message> messages;
             
-            // 获取历史消息（这里暂时使用固定数量的消息，后续可以根据lastTimestamp进行优化）
-            java.util.List<Message> messages = messageDAO.getRoomMessages(roomName, 100, connection);
+            // 判断是私聊还是群聊
+            if (isPrivateChat(to)) {
+                // 私聊：获取与指定用户的所有消息，包括离线期间的消息
+                messages = messageDAO.getPrivateMessages(from, to, 100, connection);
+                System.out.println("获取私聊历史消息: " + from + "和" + to + "之间的" + messages.size() + "条消息");
+            } else {
+                // 群聊：获取指定房间的消息
+                messages = messageDAO.getRoomMessages(to, 100, connection);
+                System.out.println("获取群聊历史消息: " + to + "房间的" + messages.size() + "条消息");
+            }
             
             // 创建历史消息响应
             String messagesJson = messageCodec.encodeMessages(messages);
-            Message historyResponseMsg = new Message(MessageType.HISTORY_RESPONSE, "server", roomName, messagesJson);
+            Message historyResponseMsg = new Message(MessageType.HISTORY_RESPONSE, "server", to, messagesJson);
             
             // 发送响应
             send(messageCodec.encode(historyResponseMsg));
-            System.out.println("发送历史消息响应: " + roomName + "房间的" + messages.size() + "条消息");
+            System.out.println("发送历史消息响应: " + to + "的" + messages.size() + "条消息");
         } catch (java.sql.SQLException e) {
             System.err.println("获取历史消息失败: " + e.getMessage());
             e.printStackTrace();
             Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "获取历史消息失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
+        }
+    }
+    
+    /**
+     * 判断是否为私聊
+     * @param targetName 目标名称（用户名或房间名）
+     * @return true表示是私聊，false表示是群聊
+     */
+    private boolean isPrivateChat(String targetName) {
+        // 私聊的目标是用户名，群聊的目标是房间名
+        // 可以通过判断是否是已知房间名来区分
+        // 也可以通过简单的判断：如果是system、create_room等系统保留名，或者以#开头的，可能是房间名
+        // 这里简化处理：排除系统保留名和以#开头的，都认为是私聊
+        if ("system".equals(targetName) || "create_room".equals(targetName) || 
+            "join_room".equals(targetName) || targetName.startsWith("#")) {
+            return false;
+        }
+        
+        // 进一步检查是否是已知的房间名
+        try (java.sql.Connection connection = dbManager.getConnection()) {
+            server.sql.room.RoomDAO roomDAO = new server.sql.room.RoomDAO(messageRouter);
+            return !roomDAO.roomExists(targetName, connection);
+        } catch (java.sql.SQLException e) {
+            System.err.println("检查是否为私聊时发生错误: " + e.getMessage());
+            // 异常情况下，假设是私聊（更安全的选择）
+            return true;
         }
     }
     

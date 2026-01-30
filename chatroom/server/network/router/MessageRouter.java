@@ -304,6 +304,17 @@ public class MessageRouter {
      * @return true表示广播成功，false表示失败
      */
     public boolean broadcastToRoom(String roomId, String message) {
+        return broadcastToRoom(roomId, message, null);
+    }
+
+    /**
+     * 向房间广播消息（可排除指定用户）
+     * @param roomId 房间ID
+     * @param message 消息内容
+     * @param excludeUserId 要排除的用户ID
+     * @return true表示广播成功，false表示失败
+     */
+    public boolean broadcastToRoom(String roomId, String message, String excludeUserId) {
         if (roomId == null || message == null || roomId.isEmpty() || message.isEmpty()) {
             System.err.println("无效的广播参数");
             return false;
@@ -330,6 +341,12 @@ public class MessageRouter {
             }
             
             for (String userId : userIds) {
+                // 跳过要排除的用户
+                if (excludeUserId != null && excludeUserId.equals(userId)) {
+                    System.out.println("跳过广播给用户: " + userId);
+                    continue;
+                }
+                
                 Session session = sessions.get(userId);
                 if (session != null && session.isActive()) {
                     session.getClientConnection().send(message);

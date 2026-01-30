@@ -14,7 +14,9 @@ const MessageType = {
     CREATE_ROOM: 'CREATE_ROOM',
     EXIT_ROOM: 'EXIT_ROOM',
     LIST_ROOMS: 'LIST_ROOMS',
-    LIST_ROOM_USERS: 'LIST_ROOM_USERS'
+    LIST_ROOM_USERS: 'LIST_ROOM_USERS',
+    REQUEST_HISTORY: 'REQUEST_HISTORY',
+    HISTORY_RESPONSE: 'HISTORY_RESPONSE'
 };
 
 // Chat client object
@@ -384,11 +386,11 @@ let chatClient = {
         this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳${lastTimestamp}开始`);
         
         const requestMsg = {
-            type: 'REQUEST_HISTORY',
+            type: MessageType.REQUEST_HISTORY,
             from: this.username,
             to: roomName,
-            time: new Date().toISOString(),
-            lastTimestamp: lastTimestamp
+            content: String(lastTimestamp), // 将lastTimestamp放在content字段中
+            time: new Date().toISOString()
         };
         
         this.sendMessage(requestMsg);
@@ -518,9 +520,14 @@ let chatClient = {
         setTimeout(() => {
             if (!this.isMessageDuplicate(uniqueId)) {
                 console.log('自己处理广播消息:', type, 'ID:', uniqueId);
-                // 这里需要传递message.data而不是整个message对象
-                this.handleBroadcastMessage(message.data);
-                console.log('自己处理广播消息完成');
+                // 对于NEW_MESSAGE类型，sendMessage函数已经添加了消息，不需要自己处理
+                if (type !== 'NEW_MESSAGE') {
+                    // 这里需要传递message.data而不是整个message对象
+                    this.handleBroadcastMessage(message.data);
+                    console.log('自己处理广播消息完成');
+                } else {
+                    console.log('跳过自己处理NEW_MESSAGE消息，因为sendMessage函数已经添加');
+                }
             } else {
                 console.log('忽略重复的广播消息:', uniqueId);
             }
@@ -600,11 +607,12 @@ let chatClient = {
             this.messages[roomName] = [];
         }
         
-        // 检查是否已存在相同消息
+        // 检查是否已存在相同消息 - 使用消息ID优先，然后使用内容+时间+发送者
         const isDuplicate = this.messages[roomName].some(m => 
-            m.content === message.content && 
-            m.from === message.from && 
-            m.time === message.time
+            (message.id && m.id === message.id) || 
+            (!message.id && m.content === message.content && 
+             m.from === message.from && 
+             m.time === message.time)
         );
         
         if (!isDuplicate) {
@@ -1028,8 +1036,14 @@ let chatClient = {
                 from: username,
                 to: to,
                 content: content,
-                time: new Date().toISOString().replace('T', ' ').substring(0, 19)
+                time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+                id: this.generateMessageId('TEXT', to)
             };
+        }
+        
+        // Ensure message has a unique ID
+        if (!message.id) {
+            message.id = this.generateMessageId(message.type, message.to || 'system');
         }
         
         // Send message through WebSocket
@@ -1060,23 +1074,33 @@ let chatClient = {
             
             const localMessage = {
                 content: actualContent,
-                from: username,
+                from: message.from,
                 time: message.time,
-                isSystem: false
+                isSystem: false,
+                id: message.id
             };
             
-            this.messages[roomName].push(localMessage);
-            
-            // 更新当前窗口UI
-            if (this.currentRoom === roomName) {
-                this.updateMessagesArea(roomName);
+            // Check for duplicate before adding
+            const isDuplicate = this.messages[roomName].some(m => m.id === localMessage.id);
+            if (!isDuplicate) {
+                this.messages[roomName].push(localMessage);
+                
+                // 保存消息到本地存储
+                if (this.messageStorage) {
+                    this.saveMessageToLocal(roomName, localMessage);
+                }
+                
+                // 更新当前窗口UI
+                if (this.currentRoom === roomName) {
+                    this.updateMessagesArea(roomName);
+                }
+                
+                // 广播到其他窗口
+                this.broadcastToWindows('NEW_MESSAGE', {
+                    roomName: roomName,
+                    message: localMessage
+                }, roomName);
             }
-            
-            // 广播到其他窗口
-            this.broadcastToWindows('NEW_MESSAGE', {
-                roomName: roomName,
-                message: localMessage
-            }, roomName);
         }
     },
     
@@ -1108,7 +1132,7 @@ let chatClient = {
             case MessageType.LIST_ROOM_USERS:
                 this.handleListRooms(message);
                 break;
-            case 'HISTORY_RESPONSE':
+            case MessageType.HISTORY_RESPONSE:
                 this.handleHistoryResponse(message);
                 break;
             case 'LATEST_TIMESTAMP':
@@ -1204,7 +1228,8 @@ let chatClient = {
         
         try {
             const roomName = message.roomName || message.to;
-            const messages = message.messages || [];
+            // 服务器返回的历史消息在content字段中
+            const messages = message.content ? JSON.parse(message.content) : [];
             
             if (!roomName || !messages || messages.length === 0) {
                 this.log('info', '历史消息响应为空');
@@ -1260,7 +1285,10 @@ let chatClient = {
     },
     
     handleAuthFailure: function(message) {
-        document.getElementById('message').textContent = 'Authentication failed: ' + message.content;
+        const messageElement = document.getElementById('message');
+        if (messageElement) {
+            messageElement.textContent = 'Authentication failed: ' + message.content;
+        }
     },
     
     // UUID Authentication handlers
@@ -1280,6 +1308,10 @@ let chatClient = {
         this.initMessageSync();
         
         const currentRoomName = document.getElementById('current-room-name')?.textContent || 'system';
+        
+        // 请求当前房间的历史消息
+        this.requestMessageHistory(currentRoomName, 0);
+        
         this.updateMessagesArea(currentRoomName);
     },
     
@@ -1359,6 +1391,13 @@ let chatClient = {
             }
         }
         
+        // 如果消息是自己发送的，跳过添加，因为sendMessage函数已经添加了
+        const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+        if (message.from === username) {
+            console.log('跳过自己发送的消息，因为sendMessage函数已经添加');
+            return;
+        }
+        
         if (!this.messages[roomName]) {
             this.messages[roomName] = [];
         }
@@ -1368,14 +1407,16 @@ let chatClient = {
             from: message.from,
             to: message.to,
             time: message.time,
-            isSystem: false
+            isSystem: false,
+            id: message.id || this.generateMessageId('TEXT', roomName)
         };
         
-        // 去重检查
+        // 去重检查 - 使用消息ID优先，然后使用内容+时间+发送者
         const isDuplicate = this.messages[roomName].some(m => 
-            m.content === content && 
-            m.from === message.from && 
-            m.time === message.time
+            (localMessage.id && m.id === localMessage.id) || 
+            (!localMessage.id && m.content === content && 
+             m.from === message.from && 
+             m.time === message.time)
         );
         
         if (!isDuplicate) {
@@ -1383,10 +1424,6 @@ let chatClient = {
             
             // 保存消息到本地存储
             if (this.messageStorage) {
-                // 确保消息有唯一ID
-                if (!localMessage.id) {
-                    localMessage.id = this.generateMessageId();
-                }
                 this.saveMessageToLocal(roomName, localMessage);
             }
             
@@ -1733,6 +1770,9 @@ let chatClient = {
         
         // 加载历史私聊消息
         this.loadLocalMessages(this.currentRoom);
+        
+        // 请求服务器拉取私聊历史消息（包括离线期间的消息）
+        this.requestMessageHistory(username, 0);
         
         // Update messages area with stored private messages for this user
         this.updateMessagesArea(this.currentRoom);
@@ -2214,6 +2254,9 @@ function initChat() {
                 if (usersPanel && usersPanel.style.display !== 'none') {
                     chatClient.sendMessage(MessageType.LIST_ROOM_USERS, roomName, '');
                 }
+                
+                // 请求加入的房间的历史消息
+                chatClient.requestMessageHistory(roomName, 0);
             }, 100);
         }
     });
