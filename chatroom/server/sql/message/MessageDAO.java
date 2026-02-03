@@ -53,7 +53,15 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                MessageType type = MessageType.valueOf(rs.getString("type"));
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr + "，跳过该消息");
+                    continue;
+                }
+                
                 String from = rs.getString("from_username");
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
@@ -99,7 +107,15 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                MessageType type = MessageType.valueOf(rs.getString("type"));
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr + "，跳过该消息");
+                    continue;
+                }
+                
                 String from = rs.getString("from_username");
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
@@ -120,6 +136,155 @@ public class MessageDAO {
     }
     
     /**
+     * 获取指定房间的最新消息时间戳
+     * @param roomName 房间名称
+     * @param connection 数据库连接
+     * @return 最新消息时间戳，如果没有消息则返回null
+     * @throws SQLException SQL异常
+     */
+    public String getLatestRoomTimestamp(String roomName, Connection connection) throws SQLException {
+        String sql = "SELECT create_time FROM messages " +
+                     "WHERE message_type = 'ROOM' AND to_username = ? " +
+                     "ORDER BY create_time DESC LIMIT 1";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, roomName);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("create_time").replace('T', ' ').substring(0, 19);
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取两个用户之间的最新消息时间戳
+     * @param user1 第一个用户名
+     * @param user2 第二个用户名
+     * @param connection 数据库连接
+     * @return 最新消息时间戳，如果没有消息则返回null
+     * @throws SQLException SQL异常
+     */
+    public String getLatestPrivateTimestamp(String user1, String user2, Connection connection) throws SQLException {
+        String sql = "SELECT create_time FROM messages " +
+                     "WHERE message_type = 'PRIVATE' " +
+                     "AND ((from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?)) " +
+                     "ORDER BY create_time DESC LIMIT 1";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, user1);
+            stmt.setString(2, user2);
+            stmt.setString(3, user2);
+            stmt.setString(4, user1);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("create_time").replace('T', ' ').substring(0, 19);
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取指定房间在指定时间戳之后的消息
+     * @param roomName 房间名称
+     * @param afterTimestamp 起始时间戳
+     * @param limit 限制条数
+     * @param connection 数据库连接
+     * @return 消息列表
+     * @throws SQLException SQL异常
+     */
+    public List<Message> getRoomMessagesAfter(String roomName, String afterTimestamp, int limit, Connection connection) throws SQLException {
+        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+                     "WHERE message_type = 'ROOM' AND to_username = ? AND create_time > ? " +
+                     "ORDER BY create_time ASC LIMIT ?";
+        
+        List<Message> messages = new ArrayList<>();
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, roomName);
+            stmt.setString(2, afterTimestamp);
+            stmt.setInt(3, limit);
+            
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr + "，跳过该消息");
+                    continue;
+                }
+                
+                String from = rs.getString("from_username");
+                String to = rs.getString("to_username");
+                String content = rs.getString("content");
+                String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                
+                Message message = new Message(type, from, to, content, time);
+                messages.add(message);
+            }
+        }
+        
+        return messages;
+    }
+    
+    /**
+     * 获取两个用户之间在指定时间戳之后的消息
+     * @param user1 第一个用户名
+     * @param user2 第二个用户名
+     * @param afterTimestamp 起始时间戳
+     * @param limit 限制条数
+     * @param connection 数据库连接
+     * @return 消息列表
+     * @throws SQLException SQL异常
+     */
+    public List<Message> getPrivateMessagesAfter(String user1, String user2, String afterTimestamp, int limit, Connection connection) throws SQLException {
+        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+                     "WHERE message_type = 'PRIVATE' " +
+                     "AND ((from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?)) " +
+                     "AND create_time > ? " +
+                     "ORDER BY create_time ASC LIMIT ?";
+        
+        List<Message> messages = new ArrayList<>();
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, user1);
+            stmt.setString(2, user2);
+            stmt.setString(3, user2);
+            stmt.setString(4, user1);
+            stmt.setString(5, afterTimestamp);
+            stmt.setInt(6, limit);
+            
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr + "，跳过该消息");
+                    continue;
+                }
+                
+                String from = rs.getString("from_username");
+                String to = rs.getString("to_username");
+                String content = rs.getString("content");
+                String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                
+                Message message = new Message(type, from, to, content, time);
+                messages.add(message);
+            }
+        }
+        
+        return messages;
+    }
+    
+    /**
      * 获取用户的所有未读消息（可选功能）
      * @param username 用户名
      * @param connection 数据库连接
@@ -129,5 +294,40 @@ public class MessageDAO {
     public int getUnreadMessageCount(String username, Connection connection) throws SQLException {
         // 这里可以扩展为支持未读消息功能
         return 0;
+    }
+    
+    /**
+     * 获取与指定用户有私聊消息的所有用户列表
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 用户名列表
+     * @throws SQLException SQL异常
+     */
+    public List<String> getPrivateChatUsers(String username, Connection connection) throws SQLException {
+        String sql = "SELECT DISTINCT CASE " +
+                     "WHEN from_username = ? THEN to_username " +
+                     "ELSE from_username " +
+                     "END AS chat_user " +
+                     "FROM messages " +
+                     "WHERE message_type = 'PRIVATE' " +
+                     "AND (from_username = ? OR to_username = ?)";
+        
+        List<String> users = new ArrayList<>();
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, username);
+            stmt.setString(3, username);
+            
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                String chatUser = rs.getString("chat_user");
+                if (chatUser != null && !chatUser.isEmpty()) {
+                    users.add(chatUser);
+                }
+            }
+        }
+        
+        return users;
     }
 }

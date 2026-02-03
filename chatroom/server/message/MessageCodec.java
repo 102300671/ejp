@@ -28,7 +28,20 @@ public class MessageCodec {
                 return null;
             }
             
-            System.out.println("消息编码成功: " + jsonString);
+            // 优化日志输出：对于HISTORY_RESPONSE类型，简化输出
+            if ("HISTORY_RESPONSE".equals(message.getType().toString()) && message.getContent() != null) {
+                try {
+                    // 尝试解析content字段中的JSON数组
+                    com.google.gson.JsonArray jsonArray = GSON.fromJson(message.getContent(), com.google.gson.JsonArray.class);
+                    System.out.println("消息编码成功: {\"type\":\"HISTORY_RESPONSE\",\"from\":\"" + message.getFrom() + "\",\"to\":\"" + message.getTo() + "\",\"content\":[... " + jsonArray.size() + " messages ...],\"time\":\"" + message.getTime() + "\"}");
+                } catch (Exception e) {
+                    // 如果解析失败，使用原始输出
+                    System.out.println("消息编码成功: " + jsonString);
+                }
+            } else {
+                System.out.println("消息编码成功: " + jsonString);
+            }
+            
             return jsonString;
         } catch (Exception e) {
             System.err.println("消息编码失败: " + e.getMessage());

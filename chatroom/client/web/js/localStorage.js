@@ -12,18 +12,81 @@ const MessageStorage = {
     STORE_NAME: 'messages',
     LAST_SYNC_STORE: 'lastSync',
     
+    // 检查IndexedDB是否可用
+    isIndexedDBSupported: function() {
+        return !!(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB);
+    },
+    
+    // ========== 备用存储机制（使用localStorage） ==========
+    // 当IndexedDB不可用时，使用localStorage作为备用存储
+    
+    // 获取备用存储中的所有消息
+    getBackupMessages: function(roomName) {
+        try {
+            const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
+            return allMessages[roomName] || [];
+        } catch (e) {
+            console.error('Error reading backup messages:', e);
+            return [];
+        }
+    },
+    
+    // 保存消息到备用存储
+    saveBackupMessage: function(message) {
+        try {
+            const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
+            const roomName = message.roomName;
+            
+            if (!allMessages[roomName]) {
+                allMessages[roomName] = [];
+            }
+            
+            // 检查消息是否已存在
+            const exists = allMessages[roomName].some(m => m.id === message.id);
+            if (!exists) {
+                allMessages[roomName].push(message);
+                
+                // 限制每个房间最多保存200条消息
+                if (allMessages[roomName].length > 200) {
+                    allMessages[roomName] = allMessages[roomName].slice(-200);
+                }
+                
+                localStorage.setItem('chat_messages_backup', JSON.stringify(allMessages));
+            }
+        } catch (e) {
+            console.error('Error saving backup message:', e);
+        }
+    },
+    
+    // 清理备用存储中的旧消息
+    cleanupBackupMessages: function(roomName, keepCount = 200) {
+        try {
+            const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
+            if (allMessages[roomName] && allMessages[roomName].length > keepCount) {
+                allMessages[roomName] = allMessages[roomName].slice(-keepCount);
+                localStorage.setItem('chat_messages_backup', JSON.stringify(allMessages));
+            }
+        } catch (e) {
+            console.error('Error cleaning up backup messages:', e);
+        }
+    },
+    
     // 打开数据库连接
     openDB: function() {
         console.log('openDB called:', this.DB_NAME, this.DB_VERSION);
+        
+        // 检查IndexedDB支持
+        if (!this.isIndexedDBSupported()) {
+            console.error('IndexedDB is not supported by this browser!');
+            return Promise.reject(new Error('IndexedDB is not supported'));
+        }
+        
+        // 获取正确的IndexedDB实现
+        const indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB;
+        
         // 保存MessageStorage对象的引用，确保在事件处理函数中可以访问到正确的this
         const self = this;
         return new Promise((resolve, reject) => {
-            if (!window.indexedDB) {
-                console.error('IndexedDB is not supported by this browser!');
-                reject(new Error('IndexedDB is not supported'));
-                return;
-            }
-            
             const request = indexedDB.open(self.DB_NAME, self.DB_VERSION);
             console.log('IndexedDB open request created:', request);
             
@@ -288,6 +351,34 @@ const MessageStorage = {
                 };
                 
                 request.onerror = () => reject(new Error('Failed to get messages by time range: ' + request.error));
+            });
+        });
+    },
+    
+    // 获取指定房间的最晚一条消息的时间戳
+    getLatestMessageTimestamp: function(roomName) {
+        return this.openDB().then(db => {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(this.STORE_NAME, 'readonly');
+                const store = transaction.objectStore(this.STORE_NAME);
+                const index = store.index('byRoom');
+                
+                const request = index.getAll(IDBKeyRange.only(roomName));
+                
+                request.onsuccess = () => {
+                    if (request.result.length === 0) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    // 按时间排序，获取最晚的一条消息
+                    const latestMessage = request.result
+                        .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
+                    
+                    resolve(latestMessage.createTime);
+                };
+                
+                request.onerror = () => reject(new Error('Failed to get latest message timestamp: ' + request.error));
             });
         });
     }

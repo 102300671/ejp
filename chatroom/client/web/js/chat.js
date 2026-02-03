@@ -16,7 +16,14 @@ const MessageType = {
     LIST_ROOMS: 'LIST_ROOMS',
     LIST_ROOM_USERS: 'LIST_ROOM_USERS',
     REQUEST_HISTORY: 'REQUEST_HISTORY',
-    HISTORY_RESPONSE: 'HISTORY_RESPONSE'
+    HISTORY_RESPONSE: 'HISTORY_RESPONSE',
+    REQUEST_LATEST_TIMESTAMP: 'REQUEST_LATEST_TIMESTAMP',
+    LATEST_TIMESTAMP: 'LATEST_TIMESTAMP',
+    REQUEST_TOKEN: 'REQUEST_TOKEN',
+    TOKEN_RESPONSE: 'TOKEN_RESPONSE',
+    IMAGE: 'IMAGE',
+    REQUEST_PRIVATE_USERS: 'REQUEST_PRIVATE_USERS',
+    PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE'
 };
 
 // Chat client object
@@ -47,6 +54,14 @@ let chatClient = {
     isSyncing: {}, // 每个房间的同步状态
     maxMessagesPerRoom: 200, // 每个房间最多保存的消息数
     syncInterval: 30000, // 自动同步间隔（毫秒）
+    useLocalStorageFallback: false, // 是否使用localStorage作为备用存储
+    
+    // ========== 新增：自动重连相关属性 ==========
+    reconnectAttempts: 0, // 当前重连尝试次数
+    maxReconnectAttempts: 10, // 最大重连尝试次数
+    reconnectInterval: 3000, // 重连间隔（毫秒）
+    reconnectTimer: null, // 重连定时器
+    isReconnecting: false, // 是否正在重连
     
     // 日志记录方法
     log: function(level, message) {
@@ -225,8 +240,15 @@ let chatClient = {
         this.messageStorage = MessageStorage;
         console.log('messageStorage initialized:', this.messageStorage);
         
-        // 测试IndexedDB连接
-        this.testIndexedDBConnection();
+        // 检查IndexedDB支持
+        if (!this.messageStorage.isIndexedDBSupported()) {
+            console.warn('IndexedDB is not supported, falling back to localStorage');
+            this.log('warn', 'IndexedDB不可用，使用localStorage作为备用存储');
+            this.useLocalStorageFallback = true;
+        } else {
+            // 测试IndexedDB连接
+            this.testIndexedDBConnection();
+        }
         
         this.log('info', '初始化消息持久化系统');
         
@@ -244,6 +266,7 @@ let chatClient = {
             this.messageStorage.openDB()
                 .then(db => {
                     console.log('IndexedDB connection successful:', db);
+                    this.useLocalStorageFallback = false;
                     // 测试创建存储对象
                     const transaction = db.transaction([this.messageStorage.STORE_NAME, this.messageStorage.LAST_SYNC_STORE], 'readwrite');
                     const messageStore = transaction.objectStore(this.messageStorage.STORE_NAME);
@@ -252,6 +275,9 @@ let chatClient = {
                 })
                 .catch(error => {
                     console.error('IndexedDB connection failed:', error);
+                    console.warn('Falling back to localStorage');
+                    this.log('warn', 'IndexedDB连接失败，使用localStorage作为备用存储');
+                    this.useLocalStorageFallback = true;
                 });
         }
     },
@@ -273,52 +299,91 @@ let chatClient = {
             return;
         }
         
-        // 确保数据库已经创建
-        console.log('Ensuring database is created...');
-        this.messageStorage.openDB()
-            .then(db => {
-                console.log('Database created, now getting room messages');
-                console.log('Calling getRoomMessages for room:', roomName);
-                return this.messageStorage.getRoomMessages(roomName, this.maxMessagesPerRoom);
-            })
-            .then(messages => {
-                console.log('getRoomMessages returned:', messages);
-                if (messages && messages.length > 0) {
-                        // 确保messages对象中存在该房间
-                        if (!this.messages[roomName]) {
-                            this.messages[roomName] = [];
-                        }
-                        
-                        // 将本地消息添加到内存中
-                        messages.forEach(msg => {
-                            // 转换为内部消息格式
-                            const internalMsg = {
-                                content: msg.content,
-                                from: msg.from,
-                                time: msg.createTime,
-                                isSystem: msg.isSystem || false,
-                                id: msg.id
-                            };
-                            
-                            if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
-                                this.messages[roomName].push(internalMsg);
-                            }
-                        });
-                        
-                        this.log('info', `成功加载${roomName}房间的${messages.length}条本地消息`);
-                        
-                        // 如果当前正在查看该房间，更新显示
-                        if (this.currentRoom === roomName) {
-                            this.updateMessagesArea(roomName);
-                        }
-                        
-                        // 检查是否需要同步最新消息
-                        this.checkAndSyncMessages(roomName);
+        // 根据是否使用备用存储选择不同的加载方式
+        if (this.useLocalStorageFallback) {
+            // 使用localStorage备用存储
+            const messages = this.messageStorage.getBackupMessages(roomName);
+            console.log('Loaded messages from localStorage backup:', messages);
+            
+            if (messages && messages.length > 0) {
+                if (!this.messages[roomName]) {
+                    this.messages[roomName] = [];
+                }
+                
+                messages.forEach(msg => {
+                    const internalMsg = {
+                        content: msg.content,
+                        from: msg.from,
+                        time: msg.createTime,
+                        isSystem: msg.isSystem || false,
+                        id: msg.id,
+                        type: msg.type || 'TEXT'
+                    };
+                    
+                    if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
+                        this.messages[roomName].push(internalMsg);
                     }
+                });
+                
+                this.log('info', `成功从localStorage加载${roomName}房间的${messages.length}条本地消息`);
+                
+                if (this.currentRoom === roomName) {
+                    this.updateMessagesArea(roomName);
+                }
+            }
+        } else {
+            // 使用IndexedDB
+            this.messageStorage.openDB()
+                .then(db => {
+                    console.log('Database created, now getting room messages');
+                    console.log('Calling getRoomMessages for room:', roomName);
+                    return this.messageStorage.getRoomMessages(roomName, this.maxMessagesPerRoom);
                 })
+                .then(messages => {
+                    console.log('getRoomMessages returned:', messages);
+                    if (messages && messages.length > 0) {
+                            // 确保messages对象中存在该房间
+                            if (!this.messages[roomName]) {
+                                this.messages[roomName] = [];
+                            }
+                            
+                            // 将本地消息添加到内存中
+                            messages.forEach(msg => {
+                                // 转换为内部消息格式
+                                const internalMsg = {
+                                    content: msg.content,
+                                    from: msg.from,
+                                    time: msg.createTime,
+                                    isSystem: msg.isSystem || false,
+                                    id: msg.id,
+                                    type: msg.type || 'TEXT'
+                                };
+                                
+                                if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
+                                    this.messages[roomName].push(internalMsg);
+                                }
+                            });
+                            
+                            this.log('info', `成功加载${roomName}房间的${messages.length}条本地消息`);
+                            
+                            // 如果当前正在查看该房间，更新显示
+                            if (this.currentRoom === roomName) {
+                                this.updateMessagesArea(roomName);
+                            }
+                            
+                            // 检查是否需要同步最新消息
+                            this.checkAndSyncMessages(roomName);
+                        }
+                    })
                 .catch(error => {
                     this.log('error', `加载本地消息失败: ${error.message}`);
+                    // 降级到localStorage
+                    this.useLocalStorageFallback = true;
+                    this.log('warn', 'IndexedDB加载失败，降级到localStorage备用存储');
+                    // 重新加载
+                    this.loadLocalMessages(roomName);
                 });
+        }
     },
     
     // 保存消息到本地存储
@@ -348,21 +413,43 @@ let chatClient = {
             id: message.id
         };
         
-        this.messageStorage.saveMessage(storageMsg)
-            .then(() => {
-                this.log('debug', `消息已保存到本地存储: ${message.content.substring(0, 20)}...`);
-                // 更新最后同步时间
-                this.lastSyncTime[roomName] = new Date().toISOString();
-                this.saveLastSyncTime();
-            })
-            .catch(error => {
-                this.log('error', `保存消息到本地存储失败: ${error.message}`);
-            });
+        // 根据是否使用备用存储选择不同的保存方式
+        if (this.useLocalStorageFallback) {
+            // 使用localStorage作为备用存储
+            this.messageStorage.saveBackupMessage(storageMsg);
+            this.log('debug', `消息已保存到localStorage备用存储: ${message.content.substring(0, 20)}...`);
+        } else {
+            // 使用IndexedDB
+            this.messageStorage.saveMessage(storageMsg)
+                .then(() => {
+                    this.log('debug', `消息已保存到IndexedDB: ${message.content.substring(0, 20)}...`);
+                    // 更新最后同步时间
+                    this.lastSyncTime[roomName] = new Date().toISOString();
+                    this.saveLastSyncTime();
+                })
+                .catch(error => {
+                    this.log('error', `保存消息到IndexedDB失败: ${error.message}`);
+                    // 降级到localStorage
+                    this.useLocalStorageFallback = true;
+                    this.messageStorage.saveBackupMessage(storageMsg);
+                    this.log('warn', '已降级到localStorage备用存储');
+                });
+        }
+        
+        // 更新最后同步时间
+        this.lastSyncTime[roomName] = new Date().toISOString();
+        this.saveLastSyncTime();
     },
     
     // 检查并同步消息
     checkAndSyncMessages: function(roomName) {
         if (!this.isConnected || this.isSyncing[roomName]) return;
+        
+        // 检查是否已认证，未认证时不请求同步
+        if (!this.isAuthenticated) {
+            this.log('debug', `用户未认证，跳过${roomName}房间的消息同步检查`);
+            return;
+        }
         
         this.isSyncing[roomName] = true;
         this.log('debug', `检查${roomName}房间的消息同步状态`);
@@ -383,17 +470,118 @@ let chatClient = {
         if (!this.isConnected || this.isSyncing[roomName]) return;
         
         this.isSyncing[roomName] = true;
-        this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳${lastTimestamp}开始`);
+        
+        // 检查是否是私聊虚拟房间名（格式：好友username）
+        let actualRoomName = roomName;
+        if (roomName.startsWith('好友')) {
+            // 提取真实的用户名
+            actualRoomName = roomName.substring(2);
+            this.log('debug', `检测到私聊虚拟房间名: ${roomName}，实际用户名: ${actualRoomName}`);
+        }
+        
+        // 如果没有提供lastTimestamp，从IndexedDB获取本地最晚消息时间戳
+        if (!lastTimestamp || lastTimestamp === '0' || lastTimestamp === 0) {
+            if (this.messageStorage) {
+                this.messageStorage.getLatestMessageTimestamp(roomName)
+                    .then(localLatestTimestamp => {
+                        const timestampToUse = localLatestTimestamp || 0;
+                        this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳${timestampToUse}开始`);
+                        
+                        const requestMsg = {
+                            type: MessageType.REQUEST_HISTORY,
+                            from: this.username,
+                            to: actualRoomName, // 使用实际的房间名或用户名
+                            content: String(timestampToUse), // 将时间戳放在content字段中
+                            time: new Date().toISOString()
+                        };
+                        
+                        this.sendMessage(requestMsg);
+                    })
+                    .catch(error => {
+                        this.log('error', `获取本地最晚消息时间戳失败: ${error.message}`);
+                        // 失败时使用0作为默认值
+                        this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳0开始`);
+                        
+                        const requestMsg = {
+                            type: MessageType.REQUEST_HISTORY,
+                            from: this.username,
+                            to: actualRoomName, // 使用实际的房间名或用户名
+                            content: '0', // 将0放在content字段中
+                            time: new Date().toISOString()
+                        };
+                        
+                        this.sendMessage(requestMsg);
+                    });
+            } else {
+                // 如果messageStorage不可用，使用0作为默认值
+                this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳0开始`);
+                
+                const requestMsg = {
+                    type: MessageType.REQUEST_HISTORY,
+                    from: this.username,
+                    to: actualRoomName, // 使用实际的房间名或用户名
+                    content: '0', // 将0放在content字段中
+                    time: new Date().toISOString()
+                };
+                
+                this.sendMessage(requestMsg);
+            }
+        } else {
+            // 如果提供了lastTimestamp，直接使用
+            this.log('info', `向服务器请求${roomName}房间的历史消息，从时间戳${lastTimestamp}开始`);
+            
+            const requestMsg = {
+                type: MessageType.REQUEST_HISTORY,
+                from: this.username,
+                to: actualRoomName, // 使用实际的房间名或用户名
+                content: String(lastTimestamp), // 将lastTimestamp放在content字段中
+                time: new Date().toISOString()
+            };
+            
+            this.sendMessage(requestMsg);
+        }
+    },
+    
+    // 请求私聊用户列表
+    requestPrivateUsers: function() {
+        if (!this.isConnected) return;
+        
+        this.log('info', '向服务器请求私聊用户列表');
         
         const requestMsg = {
-            type: MessageType.REQUEST_HISTORY,
+            type: MessageType.REQUEST_PRIVATE_USERS,
             from: this.username,
-            to: roomName,
-            content: String(lastTimestamp), // 将lastTimestamp放在content字段中
+            to: 'server',
+            content: '',
             time: new Date().toISOString()
         };
         
         this.sendMessage(requestMsg);
+    },
+    
+    // 处理私聊用户列表响应
+    handlePrivateUsersResponse: function(message) {
+        this.log('info', '收到服务器返回的私聊用户列表');
+        
+        try {
+            const users = message.content ? JSON.parse(message.content) : [];
+            
+            if (users.length === 0) {
+                this.log('info', '没有私聊用户');
+                return;
+            }
+            
+            this.log('info', `收到${users.length}个私聊用户`);
+            
+            // 为每个私聊用户请求历史消息
+            users.forEach(username => {
+                const privateRoomName = `好友${username}`;
+                this.log('info', `请求与${username}的私聊历史消息`);
+                this.requestMessageHistory(privateRoomName);
+            });
+        } catch (error) {
+            this.log('error', `处理私聊用户列表响应失败: ${error.message}`);
+        }
     },
     
     // 处理服务器返回的历史消息
@@ -415,7 +603,8 @@ let chatClient = {
                 from: msg.from,
                 time: msg.time,
                 isSystem: msg.type === 'SYSTEM',
-                id: msg.id || this.generateMessageId()
+                id: msg.id || this.generateMessageId(),
+                type: msg.type || 'TEXT'
             };
             
             // 检查消息是否已存在
@@ -930,6 +1119,9 @@ let chatClient = {
             this.log('info', 'WebSocket connection established');
             this.isConnected = true;
             
+            // 重置重连状态
+            this.resetReconnectState();
+            
             // Wait a short time to ensure initChat has completed and username is set
             setTimeout(() => {
                 // Ensure username is set correctly from storage
@@ -949,6 +1141,8 @@ let chatClient = {
                         console.log('Sending UUID authentication');
                         this.sendMessage(MessageType.UUID_AUTH, username, uuid);
                     }
+                    // 注意：不要在这里调用 checkAndSyncMessages，因为认证是异步的
+                    // 消息同步会在 handleUUIDAuthSuccess 中触发
                 }
             }, 100);
         };
@@ -966,6 +1160,13 @@ let chatClient = {
         this.ws.onclose = (event) => {
             this.log('info', `WebSocket connection closed: ${event.code} ${event.reason}`);
             this.isConnected = false;
+            this.isAuthenticated = false;
+            
+            // 如果不是手动关闭，则尝试自动重连
+            if (event.code !== 1000 && !this.isReconnecting) {
+                this.scheduleReconnect();
+            }
+            
             this.showMessage('Connection closed');
         };
         
@@ -995,12 +1196,56 @@ let chatClient = {
                 statusDiv.className = 'status error';
             }
             
-            // If on chat.jsp, show reconnect option
+            // If on chat.jsp, show reconnect option and attempt auto-reconnect
             const messagesArea = document.getElementById('messages-area');
             if (messagesArea && window.location.pathname.includes('chat.jsp')) {
-                messagesArea.innerHTML += '<div class="system-message">Connection lost. Please refresh the page to reconnect.</div>';
+                if (!this.isReconnecting) {
+                    messagesArea.innerHTML += '<div class="system-message">Connection lost. Attempting to reconnect...</div>';
+                    this.scheduleReconnect();
+                }
             }
         };
+    },
+    
+    // ========== 新增：自动重连机制 ==========
+    scheduleReconnect: function() {
+        if (this.isReconnecting) {
+            return;
+        }
+        
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.log('error', 'Max reconnection attempts reached. Please refresh the page to reconnect.');
+            const messagesArea = document.getElementById('messages-area');
+            if (messagesArea) {
+                messagesArea.innerHTML += '<div class="system-message error">Failed to reconnect after multiple attempts. Please refresh the page.</div>';
+            }
+            return;
+        }
+        
+        this.isReconnecting = true;
+        this.reconnectAttempts++;
+        
+        const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1); // 指数退避
+        const maxDelay = 30000; // 最大延迟30秒
+        const actualDelay = Math.min(delay, maxDelay);
+        
+        this.log('info', `Scheduling reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${actualDelay}ms`);
+        
+        this.reconnectTimer = setTimeout(() => {
+            this.log('info', `Attempting to reconnect (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            this.connect();
+        }, actualDelay);
+    },
+    
+    // ========== 新增：重置重连状态 ==========
+    resetReconnectState: function() {
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+        
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
     },
     
     // Send message - child windows send through parent window
@@ -1049,8 +1294,8 @@ let chatClient = {
         // Send message through WebSocket
         this.ws.send(JSON.stringify(message));
         
-        // 如果是文本消息，立即在本地显示并同步
-        if (message.type === MessageType.TEXT) {
+        // 如果是文本消息或图片消息，立即在本地显示并同步
+        if (message.type === MessageType.TEXT || message.type === MessageType.IMAGE) {
             let roomName = message.to || 'system';
             let actualContent = message.content;
             
@@ -1060,7 +1305,7 @@ let chatClient = {
                 roomName = this.currentRoom; // 好友_username
                 
                 // Remove room prefix if present
-                if (actualContent.startsWith('[room:')) {
+                if (actualContent.startsWith('[room:') && message.type === MessageType.TEXT) {
                     const roomEnd = actualContent.indexOf(']');
                     if (roomEnd > 0) {
                         actualContent = actualContent.substring(roomEnd + 1);
@@ -1077,7 +1322,8 @@ let chatClient = {
                 from: message.from,
                 time: message.time,
                 isSystem: false,
-                id: message.id
+                id: message.id,
+                type: message.type
             };
             
             // Check for duplicate before adding
@@ -1138,11 +1384,20 @@ let chatClient = {
             case 'LATEST_TIMESTAMP':
                 this.handleLatestTimestamp(message);
                 break;
+            case MessageType.TOKEN_RESPONSE:
+                this.handleTokenResponse(message);
+                break;
+            case MessageType.IMAGE:
+                this.handleImageMessage(message);
+                break;
             case MessageType.UUID_AUTH_SUCCESS:
                 this.handleUUIDAuthSuccess(message);
                 break;
             case MessageType.UUID_AUTH_FAILURE:
                 this.handleUUIDAuthFailure(message);
+                break;
+            case MessageType.PRIVATE_USERS_RESPONSE:
+                this.handlePrivateUsersResponse(message);
                 break;
             default:
                 console.log('Unknown message type:', message.type);
@@ -1199,7 +1454,6 @@ let chatClient = {
         if (messagesArea) {
             messagesArea.innerHTML = '';
             if (this.messages[roomName]) {
-                // Get the latest username to ensure correctness
                 const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                 
                 this.messages[roomName].forEach(msg => {
@@ -1208,16 +1462,42 @@ let chatClient = {
                         messageDiv.className = 'system-message';
                         messageDiv.innerHTML = msg.content;
                     } else {
-                        // Use the stored username from the message
                         const displayedUsername = msg.from;
-                        messageDiv.className = displayedUsername === currentUsername ? 'sent-message' : 'received-message';
-                        messageDiv.innerHTML = `<strong>${displayedUsername}</strong>: ${msg.content}<br><small>${msg.time}</small>`;
+                        const isSent = displayedUsername === currentUsername;
+                        
+                        const messageWrapper = document.createElement('div');
+                        messageWrapper.className = isSent ? 'sent-message-wrapper' : 'received-message-wrapper';
+                        
+                        const usernameDiv = document.createElement('div');
+                        usernameDiv.className = 'message-username';
+                        usernameDiv.textContent = displayedUsername;
+                        messageWrapper.appendChild(usernameDiv);
+                        
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = isSent ? 'sent-message' : 'received-message';
+                        
+                        let contentHtml = '';
+                        if (msg.type === MessageType.IMAGE) {
+                            contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open('${msg.content}', '_blank')">`;
+                        } else {
+                            contentHtml = this.escapeHtml(msg.content);
+                        }
+                        
+                        messageDiv.innerHTML = `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${msg.time}</small></div>`;
+                        messageWrapper.appendChild(messageDiv);
+                        
+                        messagesArea.appendChild(messageWrapper);
                     }
-                    messagesArea.appendChild(messageDiv);
                 });
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }
         }
+    },
+    
+    escapeHtml: function(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
     
     // ========== 消息历史和同步处理 ==========
@@ -1227,18 +1507,38 @@ let chatClient = {
         this.log('debug', '收到服务器的历史消息响应');
         
         try {
-            const roomName = message.roomName || message.to;
+            let roomName = message.roomName || message.to;
             // 服务器返回的历史消息在content字段中
             const messages = message.content ? JSON.parse(message.content) : [];
             
             if (!roomName || !messages || messages.length === 0) {
                 this.log('info', '历史消息响应为空');
+                this.isSyncing[roomName] = false;
                 return;
+            }
+            
+            // 检查是否是私聊消息的历史响应
+            // 私聊消息的历史响应中，message.to 是用户名，而不是房间名
+            if (messages.length > 0) {
+                const firstMessage = messages[0];
+                // 判断是否是私聊消息：检查消息的 from 和 to 是否都是用户名（非房间名）
+                if (firstMessage.from && firstMessage.to && firstMessage.from !== firstMessage.to) {
+                    // 检查接收者是否为当前用户
+                    const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+                    if (firstMessage.to === username) {
+                        // 私聊消息，来自 firstMessage.from，使用虚拟房间名
+                        roomName = `好友${firstMessage.from}`;
+                    } else if (firstMessage.from === username) {
+                        // 私聊消息，发送给 firstMessage.to，使用虚拟房间名
+                        roomName = `好友${firstMessage.to}`;
+                    }
+                }
             }
             
             this.handleHistoryMessages(messages, roomName);
         } catch (error) {
             this.log('error', `处理历史消息响应失败: ${error.message}`);
+            this.isSyncing[message.to] = false;
         }
     },
     
@@ -1309,8 +1609,11 @@ let chatClient = {
         
         const currentRoomName = document.getElementById('current-room-name')?.textContent || 'system';
         
-        // 请求当前房间的历史消息
-        this.requestMessageHistory(currentRoomName, 0);
+        // 请求当前房间的历史消息（不传入时间戳，让方法自己从IndexedDB获取本地最晚消息时间戳）
+        this.requestMessageHistory(currentRoomName);
+        
+        // 请求私聊用户列表
+        this.requestPrivateUsers();
         
         this.updateMessagesArea(currentRoomName);
     },
@@ -1324,6 +1627,223 @@ let chatClient = {
             return;
         }
         this.logout();
+    },
+    
+    handleTokenResponse: function(message) {
+        this.log('debug', '收到上传 token 响应');
+        
+        try {
+            const tokenInfo = message.content;
+            const parts = tokenInfo.split('|');
+            
+            if (parts.length !== 2) {
+                this.log('error', 'token 响应格式错误');
+                return;
+            }
+            
+            this.uploadToken = parts[0];
+            this.zfileServerUrl = parts[1];
+            
+            this.log('info', '上传 token 获取成功');
+            
+            if (this.pendingImageUpload) {
+                this.uploadImageToZfile(this.pendingImageUpload);
+            }
+        } catch (error) {
+            this.log('error', `处理 token 响应失败: ${error.message}`);
+        }
+    },
+    
+    handleImageMessage: function(message) {
+        this.log('debug', '收到图片消息');
+        
+        try {
+            const imageUrl = message.content;
+            const from = message.from;
+            const to = message.to;
+            const time = message.time;
+            
+            const messageObj = {
+                type: MessageType.IMAGE,
+                content: imageUrl,
+                from: from,
+                to: to,
+                time: time,
+                isSystem: false
+            };
+            
+            let targetRoom = to === this.username ? from : to;
+            
+            // 检查是否是私聊消息
+            const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+            if (from && to && from !== to) {
+                // 判断接收者是否为房间名：检查是否存在于已知房间列表中
+                let isRecipientRoom = false;
+                for (const room of this.rooms) {
+                    if (room.name === to) {
+                        isRecipientRoom = true;
+                        break;
+                    }
+                }
+                
+                // 如果接收者不是房间名，则视为私人消息
+                if (!isRecipientRoom) {
+                    // 对于私人消息，使用虚拟房间名
+                    targetRoom = `好友${from}`;
+                }
+            }
+            
+            if (!this.messages[targetRoom]) {
+                this.messages[targetRoom] = [];
+            }
+            
+            this.messages[targetRoom].push(messageObj);
+            
+            if (this.messageStorage) {
+                this.saveMessageToLocal(targetRoom, messageObj);
+            }
+            
+            if (this.currentRoom === targetRoom) {
+                this.updateMessagesArea(targetRoom);
+            }
+        } catch (error) {
+            this.log('error', `处理图片消息失败: ${error.message}`);
+        }
+    },
+    
+    requestUploadToken: function() {
+        if (!this.isConnected || !this.isAuthenticated) {
+            this.log('error', '未连接或未认证，无法请求上传 token');
+            return;
+        }
+        
+        this.log('info', '请求上传 token');
+        this.sendMessage(MessageType.REQUEST_TOKEN, 'server', '');
+    },
+    
+    uploadImageToZfile: function(file) {
+        this.log('info', '开始上传图片到 zfile');
+        
+        // 生成日期路径 (YYYY/MM/DD)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const datePath = `${year}/${month}/${day}`;
+        
+        // 根据聊天类型构建基础路径
+        let basePath = '';
+        if (this.currentRoomType === 'PUBLIC') {
+            basePath = `/images/group/public/${this.currentRoom}`;
+        } else if (this.currentRoomType === 'PRIVATE') {
+            basePath = `/images/group/private/${this.currentRoom}`;
+        } else if (this.isInPrivateChat && this.privateChatRecipient) {
+            basePath = `/images/private/${this.privateChatRecipient}`;
+        } else {
+            basePath = '/images';
+        }
+        
+        // 完整的上传路径
+        const uploadPath = `${basePath}/${datePath}`;
+        
+        // 第一步：创建上传任务
+        const createUploadUrl = `${this.zfileServerUrl}/api/file/operator/upload/file`;
+        
+        fetch(createUploadUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Zfile-Token': this.uploadToken,
+                'Axios-Request': 'true',
+                'Axios-From': this.zfileServerUrl
+            },
+            body: JSON.stringify({
+                storageKey: 'chatroom-files',
+                path: uploadPath,
+                name: file.name,
+                size: file.size,
+                password: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.log('debug', '创建上传任务响应:', data);
+            
+            if (data && data.code === '0' && data.data) {
+                let uploadUrl = data.data;
+                // 检查上传URL是否使用了正确的端口（8081）
+                if (uploadUrl.includes('localhost:8080')) {
+                    uploadUrl = uploadUrl.replace('localhost:8080', 'localhost:8081');
+                    this.log('info', '修正上传URL端口:', uploadUrl);
+                }
+                this.log('info', '上传URL获取成功:', uploadUrl);
+                
+                // 第二步：实际上传文件
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                return fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Zfile-Token': this.uploadToken,
+                        'Axios-Request': 'true',
+                        'Axios-From': this.zfileServerUrl
+                    },
+                    body: formData
+                });
+            } else {
+                throw new Error('创建上传任务失败');
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.log('debug', '文件上传响应:', data);
+            
+            if (data && data.code === '0') {
+                this.log('info', '图片上传成功');
+                // 构建完整的图片URL
+                const imageUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(file.name)}`;
+                this.sendImageMessage(imageUrl);
+            } else {
+                throw new Error('文件上传失败');
+            }
+        })
+        .catch(error => {
+            this.log('error', `图片上传失败: ${error.message}`);
+        })
+        .finally(() => {
+            this.uploadToken = null;
+            this.pendingImageUpload = null;
+        });
+    },
+    
+    sendImageMessage: function(imageUrl) {
+        const message = {
+            type: MessageType.IMAGE,
+            from: this.username,
+            to: this.currentRoom,
+            content: imageUrl,
+            time: new Date().toISOString()
+        };
+        
+        this.sendMessage(message);
+        this.log('info', '发送图片消息');
+    },
+    
+    handleImageUpload: function(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            this.log('error', '请选择有效的图片文件');
+            return;
+        }
+        
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.log('error', '图片大小不能超过 10MB');
+            return;
+        }
+        
+        this.pendingImageUpload = file;
+        this.requestUploadToken();
     },
     
     // Logout function - can be called from child windows
@@ -1771,8 +2291,8 @@ let chatClient = {
         // 加载历史私聊消息
         this.loadLocalMessages(this.currentRoom);
         
-        // 请求服务器拉取私聊历史消息（包括离线期间的消息）
-        this.requestMessageHistory(username, 0);
+        // 请求服务器拉取私聊历史消息（包括离线期间的消息，不传入时间戳，让方法自己从IndexedDB获取本地最晚消息时间戳）
+        this.requestMessageHistory(username);
         
         // Update messages area with stored private messages for this user
         this.updateMessagesArea(this.currentRoom);
@@ -2137,6 +2657,20 @@ function initChat() {
     
     document.getElementById('send-btn').addEventListener('click', sendMessage);
     
+    // Image upload button functionality
+    document.getElementById('image-btn').addEventListener('click', function() {
+        const imageInput = document.getElementById('image-input');
+        imageInput.click();
+    });
+    
+    document.getElementById('image-input').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            chatClient.handleImageUpload(file);
+            e.target.value = '';
+        }
+    });
+    
     // Room members button functionality
     document.getElementById('private-msg-btn').addEventListener('click', function() {
         // Check if button is disabled
@@ -2255,8 +2789,8 @@ function initChat() {
                     chatClient.sendMessage(MessageType.LIST_ROOM_USERS, roomName, '');
                 }
                 
-                // 请求加入的房间的历史消息
-                chatClient.requestMessageHistory(roomName, 0);
+                // 请求加入的房间的历史消息（不传入时间戳，让方法自己从IndexedDB获取本地最晚消息时间戳）
+                chatClient.requestMessageHistory(roomName);
             }, 100);
         }
     });

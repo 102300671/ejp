@@ -46,6 +46,8 @@
                         <!-- Messages will be displayed here -->
                     </div>
                     <div class="message-input">
+                        <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        <button id="image-btn" title="Send Image">📷</button>
                         <input type="text" id="message-input" placeholder="Type your message...">
                         <button id="send-btn">Send</button>
                         <button id="private-msg-btn">Members</button>

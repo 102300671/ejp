@@ -324,17 +324,30 @@
                     messagesArea.innerHTML = '';
                     if (window.opener.chatClient.messages[room] && window.opener.chatClient.messages[room].length > 0) {
                         window.opener.chatClient.messages[room].forEach(msg => {
-                            const messageDiv = document.createElement('div');
                             if (msg.isSystem) {
+                                const messageDiv = document.createElement('div');
                                 messageDiv.className = 'system-message';
                                 messageDiv.innerHTML = msg.content;
+                                messagesArea.appendChild(messageDiv);
                             } else {
                                 const isSent = msg.from === window.opener.chatClient.username;
+                                
+                                const messageWrapper = document.createElement('div');
+                                messageWrapper.className = isSent ? 'sent-message-wrapper' : 'received-message-wrapper';
+                                
+                                const usernameDiv = document.createElement('div');
+                                usernameDiv.className = 'message-username';
+                                usernameDiv.textContent = msg.from;
+                                messageWrapper.appendChild(usernameDiv);
+                                
+                                const messageDiv = document.createElement('div');
                                 messageDiv.className = isSent ? 'sent-message' : 'received-message';
                                 messageDiv.innerHTML = 
-                                    `<strong>${msg.from}</strong>: ${msg.content}<br><small>${msg.time}</small>`;
+                                    `<div class="message-content">${msg.content}</div><div class="message-time"><small>${msg.time}</small></div>`;
+                                messageWrapper.appendChild(messageDiv);
+                                
+                                messagesArea.appendChild(messageWrapper);
                             }
-                            messagesArea.appendChild(messageDiv);
                         });
                         messagesArea.scrollTop = messagesArea.scrollHeight;
                         console.log('成功更新消息显示区域，消息数:', window.opener.chatClient.messages[room].length);
