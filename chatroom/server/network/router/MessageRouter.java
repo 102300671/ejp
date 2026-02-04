@@ -199,7 +199,8 @@ public class MessageRouter {
         // 将用户添加到房间
         if (room.addUser(userId, session.getUsername())) {
             // 记录用户所属的房间
-            userRooms.get(userId).add(roomId);
+            List<String> userRoomList = userRooms.computeIfAbsent(userId, key -> new ArrayList<>());
+            userRoomList.add(roomId);
             System.out.println("用户" + session.getUsername() + "(ID: " + userId + ") 加入房间: " + room.getName());
             
             // 创建并广播加入房间消息
