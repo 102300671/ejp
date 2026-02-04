@@ -32,11 +32,25 @@
                         <!-- Messages will be displayed here -->
                     </div>
                     <div class="message-input">
-                        <input type="text" id="message-input" placeholder="Type your message...">
-                        <button id="send-btn">Send</button>
-                        <button id="private-msg-btn">Members</button>
+                        <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        <div class="message-input-buttons">
+                            <button id="image-btn" title="Send Image">Image</button>
+                        </div>
+                        <div class="message-input-main">
+                            <input type="text" id="message-input" placeholder="Type your message...">
+                            <button id="send-btn">Send</button>
+                            <button id="private-msg-btn">Members</button>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Image Preview Modal -->
+        <div id="image-modal" class="modal">
+            <div class="modal-content image-modal-content">
+                <span class="close">&times;</span>
+                <img id="modal-image" src="" alt="图片预览">
             </div>
         </div>
     </div>
@@ -294,6 +308,22 @@
                     }
                 });
                 
+                // 图片上传按钮功能
+                document.getElementById('image-btn').addEventListener('click', function() {
+                    const imageInput = document.getElementById('image-input');
+                    imageInput.click();
+                });
+                
+                document.getElementById('image-input').addEventListener('change', function(e) {
+                    if (e.target.files && e.target.files.length > 0) {
+                        const file = e.target.files[0];
+                        if (window.opener && window.opener.chatClient) {
+                            window.opener.chatClient.handleImageUpload(file);
+                        }
+                        e.target.value = '';
+                    }
+                });
+                
                 // 窗口关闭时清理
                 window.addEventListener('beforeunload', function() {
                     console.log('子窗口关闭:', roomName);
@@ -342,8 +372,16 @@
                                 
                                 const messageDiv = document.createElement('div');
                                 messageDiv.className = isSent ? 'sent-message' : 'received-message';
+                                
+                                let contentHtml = '';
+                                if (msg.type === 'IMAGE') {
+                                    contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">`;
+                                } else {
+                                    contentHtml = msg.content;
+                                }
+                                
                                 messageDiv.innerHTML = 
-                                    `<div class="message-content">${msg.content}</div><div class="message-time"><small>${msg.time}</small></div>`;
+                                    `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${msg.time}</small></div>`;
                                 messageWrapper.appendChild(messageDiv);
                                 
                                 messagesArea.appendChild(messageWrapper);
@@ -394,6 +432,39 @@
             }
             window.close();
         }
+        
+        // Image modal functionality
+        const imageModal = document.getElementById('image-modal');
+        const modalImage = document.getElementById('modal-image');
+        const imageModalCloseBtn = imageModal.querySelector('.close');
+        
+        // Function to open image modal
+        window.openImageModal = function(imageSrc) {
+            modalImage.src = imageSrc;
+            imageModal.style.display = 'block';
+        };
+        
+        // Close image modal when close button is clicked
+        imageModalCloseBtn.addEventListener('click', function() {
+            imageModal.style.display = 'none';
+            modalImage.src = '';
+        });
+        
+        // Close image modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === imageModal) {
+                imageModal.style.display = 'none';
+                modalImage.src = '';
+            }
+        });
+        
+        // Close image modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && imageModal.style.display === 'block') {
+                imageModal.style.display = 'none';
+                modalImage.src = '';
+            }
+        });
     </script>
 </body>
 </html>

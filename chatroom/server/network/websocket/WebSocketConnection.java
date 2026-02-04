@@ -14,6 +14,7 @@ import server.room.PrivateRoom;
 import server.room.PublicRoom;
 import server.room.Room;
 import server.user.User;
+import server.util.AESUtil;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -885,15 +886,28 @@ public class WebSocketConnection {
         String from = currentUser.getUsername();
         String to = message.getTo();
         String imageUrl = message.getContent();
+        boolean isNSFW = message.isNSFW();
+        String iv = message.getIv();
         
-        System.out.println("处理图片消息: 从" + from + "到" + to + "的图片: " + imageUrl);
+        System.out.println("处理图片消息: 从" + from + "到" + to + "的图片: " + imageUrl + ", NSFW: " + isNSFW);
+        
+        if (isNSFW && iv != null && !iv.isEmpty()) {
+            try {
+                logNSFWImageAudit(from, to, imageUrl, "NSFW图片已标记，服务器已记录用于审核");
+                System.out.println("NSFW图片审核日志已记录: 发送者=" + from + ", 接收者=" + to);
+            } catch (Exception e) {
+                System.err.println("记录NSFW审核日志失败: " + e.getMessage());
+            }
+        }
         
         Message imageMessage = new Message(
             MessageType.IMAGE,
             from,
             to,
             imageUrl,
-            message.getTime()
+            message.getTime(),
+            isNSFW,
+            iv
         );
         
         boolean isPrivateChat = isPrivateChat(to);
@@ -1154,6 +1168,32 @@ public class WebSocketConnection {
             // 异常情况下，假设是私聊（更安全的选择）
             return true;
         }
+    }
+    
+    /**
+     * 记录NSFW图片审核日志
+     * @param from 发送者
+     * @param to 接收者
+     * @param imageUrl 图片URL
+     * @param note 备注
+     */
+    private void logNSFWImageAudit(String from, String to, String imageUrl, String note) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String timestamp = now.format(formatter);
+        
+        String logEntry = String.format(
+            "[%s] NSFW图片审核 - 发送者: %s, 接收者: %s, 图片URL: %s, 备注: %s",
+            timestamp, from, to, imageUrl, note
+        );
+        
+        System.out.println("========================================");
+        System.out.println("NSFW图片审核日志");
+        System.out.println("========================================");
+        System.out.println(logEntry);
+        System.out.println("警告：此内容已标记为NSFW，服务器已记录用于审核");
+        System.out.println("禁止内容：未成年内容、非自愿内容、非法内容");
+        System.out.println("========================================");
     }
     
     /**

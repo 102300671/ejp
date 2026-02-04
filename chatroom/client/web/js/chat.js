@@ -26,6 +26,94 @@ const MessageType = {
     PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE'
 };
 
+const AES_KEY = 'ChatRoomNSFWKey2024!@#';
+const AES_IV_LENGTH = 12;
+
+async function generateKey() {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(AES_KEY);
+    const hash = await crypto.subtle.digest('SHA-256', keyData);
+    return await crypto.subtle.importKey(
+        'raw',
+        hash,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function encryptData(data) {
+    const encoder = new TextEncoder();
+    const dataBytes = encoder.encode(data);
+    
+    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
+    const key = await generateKey();
+    
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        dataBytes
+    );
+    
+    const ivArray = Array.from(iv);
+    const encryptedArray = Array.from(new Uint8Array(encrypted));
+    
+    return {
+        iv: ivArray,
+        data: encryptedArray
+    };
+}
+
+async function decryptData(encryptedData, ivArray) {
+    const key = await generateKey();
+    const iv = new Uint8Array(ivArray);
+    const encrypted = new Uint8Array(encryptedData);
+    
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encrypted
+    );
+    
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+}
+
+function getLocalTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function getLocalTimeWithMillis() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
+function getLocalTimeISO() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
 // Chat client object
 let chatClient = {
     ws: null,
@@ -62,6 +150,8 @@ let chatClient = {
     reconnectInterval: 3000, // 重连间隔（毫秒）
     reconnectTimer: null, // 重连定时器
     isReconnecting: false, // 是否正在重连
+    pendingImageUpload: null, // 待上传的图片文件
+    pendingImageNSFW: false, // 待上传图片是否为NSFW
     
     // 日志记录方法
     log: function(level, message) {
@@ -72,7 +162,7 @@ let chatClient = {
             level = 'info';
         }
         
-        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
+        const timestamp = getLocalTimeWithMillis();
         
         if (console && console[level]) {
             console[level](`[${timestamp}] [${level.toUpperCase()}] ${message}`);
@@ -406,7 +496,7 @@ let chatClient = {
             from: message.from,
             to: message.to || roomName,
             content: message.content,
-            createTime: message.time || new Date().toISOString(),
+            createTime: message.time || getLocalTimeISO(),
             type: message.type || 'TEXT',
             messageType: message.isSystem ? 'SYSTEM' : 'USER',
             isSystem: message.isSystem || false,
@@ -424,7 +514,7 @@ let chatClient = {
                 .then(() => {
                     this.log('debug', `消息已保存到IndexedDB: ${message.content.substring(0, 20)}...`);
                     // 更新最后同步时间
-                    this.lastSyncTime[roomName] = new Date().toISOString();
+                    this.lastSyncTime[roomName] = getLocalTimeISO();
                     this.saveLastSyncTime();
                 })
                 .catch(error => {
@@ -437,7 +527,7 @@ let chatClient = {
         }
         
         // 更新最后同步时间
-        this.lastSyncTime[roomName] = new Date().toISOString();
+        this.lastSyncTime[roomName] = getLocalTimeISO();
         this.saveLastSyncTime();
     },
     
@@ -459,7 +549,7 @@ let chatClient = {
             type: 'REQUEST_LATEST_TIMESTAMP',
             from: this.username,
             to: roomName,
-            time: new Date().toISOString()
+            time: getLocalTimeISO()
         };
         
         this.sendMessage(requestMsg);
@@ -492,7 +582,7 @@ let chatClient = {
                             from: this.username,
                             to: actualRoomName, // 使用实际的房间名或用户名
                             content: String(timestampToUse), // 将时间戳放在content字段中
-                            time: new Date().toISOString()
+                            time: getLocalTimeISO()
                         };
                         
                         this.sendMessage(requestMsg);
@@ -507,7 +597,7 @@ let chatClient = {
                             from: this.username,
                             to: actualRoomName, // 使用实际的房间名或用户名
                             content: '0', // 将0放在content字段中
-                            time: new Date().toISOString()
+                            time: getLocalTimeISO()
                         };
                         
                         this.sendMessage(requestMsg);
@@ -521,7 +611,7 @@ let chatClient = {
                     from: this.username,
                     to: actualRoomName, // 使用实际的房间名或用户名
                     content: '0', // 将0放在content字段中
-                    time: new Date().toISOString()
+                    time: getLocalTimeISO()
                 };
                 
                 this.sendMessage(requestMsg);
@@ -535,7 +625,7 @@ let chatClient = {
                 from: this.username,
                 to: actualRoomName, // 使用实际的房间名或用户名
                 content: String(lastTimestamp), // 将lastTimestamp放在content字段中
-                time: new Date().toISOString()
+                time: getLocalTimeISO()
             };
             
             this.sendMessage(requestMsg);
@@ -553,7 +643,7 @@ let chatClient = {
             from: this.username,
             to: 'server',
             content: '',
-            time: new Date().toISOString()
+            time: getLocalTimeISO()
         };
         
         this.sendMessage(requestMsg);
@@ -630,7 +720,7 @@ let chatClient = {
         }
         
         // 更新最后同步时间
-        this.lastSyncTime[roomName] = new Date().toISOString();
+        this.lastSyncTime[roomName] = getLocalTimeISO();
         this.saveLastSyncTime();
         
         this.isSyncing[roomName] = false;
@@ -1267,10 +1357,6 @@ let chatClient = {
         if (typeof type === 'object' && type !== null) {
             // 直接使用完整的消息对象
             message = type;
-            // 确保有正确的时间格式
-            if (message.time && message.time.includes('T')) {
-                message.time = message.time.replace('T', ' ').substring(0, 19);
-            }
         } else {
             // Get username from localStorage if this.username is not set
             const username = this.username || localStorage.getItem('username') || 'unknown';
@@ -1281,7 +1367,7 @@ let chatClient = {
                 from: username,
                 to: to,
                 content: content,
-                time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+                time: getLocalTime(),
                 id: this.generateMessageId('TEXT', to)
             };
         }
@@ -1419,7 +1505,7 @@ let chatClient = {
         const messageObj = {
             content: message,
             isSystem: isSystem,
-            time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            time: getLocalTime(),
             from: isSystem ? 'System' : username
         };
         
@@ -1478,7 +1564,18 @@ let chatClient = {
                         
                         let contentHtml = '';
                         if (msg.type === MessageType.IMAGE) {
-                            contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open('${msg.content}', '_blank')">`;
+                            if (msg.isNSFW) {
+                                const messageId = `nsfw-${msg.id || Date.now()}`;
+                                const ivAttr = msg.iv ? `data-iv='${JSON.stringify(msg.iv).replace(/'/g, "\\'")}'` : '';
+                                contentHtml = `
+                                    <div class="nsfw-image-wrapper" id="${messageId}">
+                                        <img src="${msg.content}" alt="图片" data-original-url="${msg.content}" ${ivAttr} style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">
+                                        <button class="nsfw-toggle-btn" onclick="toggleNSFWImage('${messageId}')">显示NSFW内容</button>
+                                    </div>
+                                `;
+                            } else {
+                                contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">`;
+                            }
                         } else {
                             contentHtml = this.escapeHtml(msg.content);
                         }
@@ -1662,6 +1759,8 @@ let chatClient = {
             const from = message.from;
             const to = message.to;
             const time = message.time;
+            const isNSFW = message.isNSFW || false;
+            const iv = message.iv || null;
             
             const messageObj = {
                 type: MessageType.IMAGE,
@@ -1669,7 +1768,9 @@ let chatClient = {
                 from: from,
                 to: to,
                 time: time,
-                isSystem: false
+                isSystem: false,
+                isNSFW: isNSFW,
+                iv: iv
             };
             
             let targetRoom = to === this.username ? from : to;
@@ -1721,8 +1822,23 @@ let chatClient = {
         this.sendMessage(MessageType.REQUEST_TOKEN, 'server', '');
     },
     
-    uploadImageToZfile: function(file) {
+    uploadImageToZfile: async function(file) {
         this.log('info', '开始上传图片到 zfile');
+        
+        let uploadFile = file;
+        
+        // 如果是NSFW图片，先加密
+        if (this.pendingImageNSFW) {
+            this.log('info', '加密NSFW图片');
+            try {
+                uploadFile = await this.encryptFile(file);
+            } catch (error) {
+                this.log('error', `加密图片失败: ${error.message}`);
+                this.pendingImageUpload = null;
+                this.pendingImageNSFW = false;
+                return;
+            }
+        }
         
         // 生成日期路径 (YYYY/MM/DD)
         const now = new Date();
@@ -1760,8 +1876,8 @@ let chatClient = {
             body: JSON.stringify({
                 storageKey: 'chatroom-files',
                 path: uploadPath,
-                name: file.name,
-                size: file.size,
+                name: uploadFile.name,
+                size: uploadFile.size,
                 password: ''
             })
         })
@@ -1780,7 +1896,7 @@ let chatClient = {
                 
                 // 第二步：实际上传文件
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', uploadFile);
                 
                 return fetch(uploadUrl, {
                     method: 'PUT',
@@ -1802,8 +1918,9 @@ let chatClient = {
             if (data && data.code === '0') {
                 this.log('info', '图片上传成功');
                 // 构建完整的图片URL
-                const imageUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(file.name)}`;
-                this.sendImageMessage(imageUrl);
+                const imageUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                const iv = uploadFile.iv || null;
+                this.sendImageMessage(imageUrl, iv);
             } else {
                 throw new Error('文件上传失败');
             }
@@ -1817,15 +1934,18 @@ let chatClient = {
         });
     },
     
-    sendImageMessage: function(imageUrl) {
+    sendImageMessage: function(imageUrl, iv = null) {
         const message = {
             type: MessageType.IMAGE,
             from: this.username,
             to: this.currentRoom,
             content: imageUrl,
-            time: new Date().toISOString()
+            time: getLocalTime(),
+            isNSFW: this.pendingImageNSFW || false,
+            iv: iv
         };
         
+        this.pendingImageNSFW = false;
         this.sendMessage(message);
         this.log('info', '发送图片消息');
     },
@@ -1843,7 +1963,94 @@ let chatClient = {
         }
         
         this.pendingImageUpload = file;
+        this.showImageUploadPreview(file);
+    },
+    
+    showImageUploadPreview: function(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('upload-preview-image').src = e.target.result;
+            document.getElementById('nsfw-checkbox').checked = false;
+            document.getElementById('image-upload-modal').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    },
+    
+    confirmImageUpload: function() {
+        const isNSFW = document.getElementById('nsfw-checkbox').checked;
+        this.pendingImageNSFW = isNSFW;
+        document.getElementById('image-upload-modal').style.display = 'none';
         this.requestUploadToken();
+    },
+    
+    encryptFile: async function(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                try {
+                    const fileData = e.target.result;
+                    
+                    const encrypted = await encryptData(fileData);
+                    
+                    const encryptedData = new Uint8Array(encrypted.data);
+                    
+                    const encryptedFile = new File(
+                        [encryptedData],
+                        file.name + '.encrypted',
+                        { type: 'application/octet-stream' }
+                    );
+                    
+                    encryptedFile.iv = encrypted.iv;
+                    encryptedFile.originalName = file.name;
+                    encryptedFile.originalType = file.type;
+                    
+                    resolve(encryptedFile);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            reader.onerror = function() {
+                reject(new Error('读取文件失败'));
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    },
+    
+    decryptImage: async function(imageUrl, iv) {
+        try {
+            const response = await fetch(imageUrl);
+            const encryptedData = await response.arrayBuffer();
+            
+            const ivArray = JSON.parse(iv);
+            
+            const decrypted = await decryptData(new Uint8Array(encryptedData), ivArray);
+            
+            const blob = this.dataURLtoBlob(decrypted);
+            return URL.createObjectURL(blob);
+        } catch (error) {
+            throw new Error(`解密图片失败: ${error.message}`);
+        }
+    },
+    
+    dataURLtoBlob: function(dataURL) {
+        const parts = dataURL.split(',');
+        const mime = parts[0].match(/:(.*?);/)[1];
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+    },
+    
+    cancelImageUpload: function() {
+        this.pendingImageUpload = null;
+        this.pendingImageNSFW = false;
+        document.getElementById('image-upload-modal').style.display = 'none';
     },
     
     // Logout function - can be called from child windows
@@ -2364,7 +2571,7 @@ let chatClient = {
             content: content,
             from: this.username,
             to: to,
-            time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            time: getLocalTime(),
             isSystem: false,
             isPrivate: true
         };
@@ -2792,6 +2999,115 @@ function initChat() {
                 // 请求加入的房间的历史消息（不传入时间戳，让方法自己从IndexedDB获取本地最晚消息时间戳）
                 chatClient.requestMessageHistory(roomName);
             }, 100);
+        }
+    });
+    
+    // Image modal functionality
+    const imageModal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const imageModalCloseBtn = imageModal.querySelector('.close');
+    
+    // Image upload modal functionality
+    const imageUploadModal = document.getElementById('image-upload-modal');
+    const imageUploadCloseBtn = imageUploadModal.querySelector('.close');
+    
+    // Close image upload modal when close button is clicked
+    imageUploadCloseBtn.addEventListener('click', function() {
+        chatClient.cancelImageUpload();
+    });
+    
+    // Cancel upload button
+    document.getElementById('cancel-upload-btn').addEventListener('click', function() {
+        chatClient.cancelImageUpload();
+    });
+    
+    // Confirm upload button
+    document.getElementById('confirm-upload-btn').addEventListener('click', function() {
+        chatClient.confirmImageUpload();
+    });
+    
+    // NSFW checkbox toggle
+    document.getElementById('nsfw-checkbox').addEventListener('change', function() {
+        const warningDiv = document.getElementById('nsfw-warning');
+        if (this.checked) {
+            warningDiv.style.display = 'flex';
+        } else {
+            warningDiv.style.display = 'none';
+        }
+    });
+    
+    // Function to open image modal
+    window.openImageModal = function(imageSrc) {
+        modalImage.src = imageSrc;
+        imageModal.style.display = 'block';
+    };
+    
+    // Function to toggle NSFW image visibility
+    window.toggleNSFWImage = async function(wrapperId) {
+        const wrapper = document.getElementById(wrapperId);
+        if (!wrapper) return;
+        
+        const img = wrapper.querySelector('img');
+        const btn = wrapper.querySelector('.nsfw-toggle-btn');
+        
+        if (img.classList.contains('showing')) {
+            img.classList.remove('showing');
+            btn.textContent = '显示NSFW内容';
+            btn.classList.remove('hidden');
+        } else {
+            const imageUrl = img.getAttribute('data-original-url') || img.src;
+            const iv = img.getAttribute('data-iv');
+            
+            if (iv) {
+                btn.textContent = '解密中...';
+                btn.disabled = true;
+                
+                try {
+                    const decryptedUrl = await chatClient.decryptImage(imageUrl, iv);
+                    img.src = decryptedUrl;
+                    img.classList.add('showing');
+                    btn.textContent = '隐藏NSFW内容';
+                    setTimeout(() => {
+                        btn.classList.add('hidden');
+                    }, 2000);
+                } catch (error) {
+                    console.error('解密图片失败:', error);
+                    btn.textContent = '解密失败';
+                    setTimeout(() => {
+                        btn.textContent = '显示NSFW内容';
+                    }, 2000);
+                } finally {
+                    btn.disabled = false;
+                }
+            } else {
+                img.classList.add('showing');
+                btn.textContent = '隐藏NSFW内容';
+                setTimeout(() => {
+                    btn.classList.add('hidden');
+                }, 2000);
+            }
+        }
+    };
+    
+    // Close image modal when close button is clicked
+    imageModalCloseBtn.addEventListener('click', function() {
+        imageModal.style.display = 'none';
+        modalImage.src = '';
+    });
+    
+    // Close image modal when clicking outside
+    window.addEventListener('click', function(e) {
+        if (e.target === imageModal) {
+            imageModal.style.display = 'none';
+            modalImage.src = '';
+        }
+    });
+    
+    // Close image modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && imageModal.style.display === 'block') {
+            imageModal.style.display = 'none';
+            modalImage.src = '';
         }
     });
     

@@ -47,10 +47,14 @@
                     </div>
                     <div class="message-input">
                         <input type="file" id="image-input" accept="image/*" style="display: none;">
-                        <button id="image-btn" title="Send Image">📷</button>
-                        <input type="text" id="message-input" placeholder="Type your message...">
-                        <button id="send-btn">Send</button>
-                        <button id="private-msg-btn">Members</button>
+                        <div class="message-input-buttons">
+                            <button id="image-btn" title="Send Image">Image</button>
+                        </div>
+                        <div class="message-input-main">
+                            <input type="text" id="message-input" placeholder="Type your message...">
+                            <button id="send-btn">Send</button>
+                            <button id="private-msg-btn">Members</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -94,6 +98,50 @@
                         <button type="submit">Join</button>
                     </div>
                 </form>
+            </div>
+        </div>
+        
+        <!-- Image Preview Modal -->
+        <div id="image-modal" class="modal">
+            <div class="modal-content image-modal-content">
+                <span class="close">&times;</span>
+                <img id="modal-image" src="" alt="图片预览">
+            </div>
+        </div>
+        
+        <!-- Image Upload Preview Modal -->
+        <div id="image-upload-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>图片预览</h3>
+                <div class="image-preview-container">
+                    <img id="upload-preview-image" src="" alt="图片预览">
+                </div>
+                <div class="form-group">
+                    <label class="nsfw-checkbox-label">
+                        <input type="checkbox" id="nsfw-checkbox">
+                        <span>标记为NSFW（敏感内容）</span>
+                    </label>
+                </div>
+                <div class="nsfw-warning" id="nsfw-warning" style="display: none;">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <strong>重要提示</strong>
+                        <p>NSFW内容将被加密传输并默认模糊显示</p>
+                        <p class="prohibited-content">禁止内容：</p>
+                        <ul class="prohibited-list">
+                            <li>未成年内容</li>
+                            <li>非自愿内容</li>
+                            <li>非法内容</li>
+                            <li>暴力、血腥内容</li>
+                        </ul>
+                        <p class="audit-notice">服务器将记录所有NSFW内容用于审核</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="button" id="cancel-upload-btn">取消</button>
+                    <button type="button" id="confirm-upload-btn">发送</button>
+                </div>
             </div>
         </div>
     </div>
