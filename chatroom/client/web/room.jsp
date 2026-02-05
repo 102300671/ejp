@@ -1,3 +1,4 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -50,7 +51,10 @@
         <div id="image-modal" class="modal">
             <div class="modal-content image-modal-content">
                 <span class="close">&times;</span>
-                <img id="modal-image" src="" alt="图片预览">
+                <div class="nsfw-modal-wrapper">
+                    <img id="modal-image" src="" alt="图片预览">
+                    <button id="modal-nsfw-toggle-btn" class="nsfw-toggle-btn" style="display: none;">显示NSFW内容</button>
+                </div>
             </div>
         </div>
     </div>
@@ -437,17 +441,75 @@
         const imageModal = document.getElementById('image-modal');
         const modalImage = document.getElementById('modal-image');
         const imageModalCloseBtn = imageModal.querySelector('.close');
+        const modalNsfwToggleBtn = document.getElementById('modal-nsfw-toggle-btn');
         
         // Function to open image modal
-        window.openImageModal = function(imageSrc) {
+        window.openImageModal = async function(imageSrc) {
+            const imgBySrc = document.querySelector(`img[src="${imageSrc}"]`);
+            
+            if (imgBySrc) {
+                const iv = imgBySrc.getAttribute('data-iv');
+                const encryptedUrl = imgBySrc.getAttribute('data-encrypted-url');
+                const isShowing = imgBySrc.classList.contains('showing');
+                
+                if (iv && encryptedUrl) {
+                    if (isShowing) {
+                        modalImage.classList.remove('blurred');
+                        modalImage.classList.add('showing');
+                        modalNsfwToggleBtn.style.display = 'block';
+                        modalNsfwToggleBtn.classList.add('minimized');
+                        modalNsfwToggleBtn.textContent = '隐藏';
+                        modalImage.src = imageSrc;
+                    } else {
+                        modalImage.classList.add('blurred');
+                        modalImage.classList.remove('showing');
+                        modalNsfwToggleBtn.style.display = 'block';
+                        modalNsfwToggleBtn.classList.remove('minimized');
+                        modalNsfwToggleBtn.textContent = '显示NSFW内容';
+                        
+                        try {
+                            const decryptedUrl = await window.opener.chatClient.decryptImage(encryptedUrl, iv);
+                            modalImage.src = decryptedUrl;
+                        } catch (error) {
+                            console.error('解密图片失败:', error);
+                            modalImage.src = imageSrc;
+                        }
+                    }
+                } else {
+                    modalImage.classList.remove('blurred', 'showing');
+                    modalNsfwToggleBtn.style.display = 'none';
+                    modalImage.src = imageSrc;
+                }
+                imageModal.style.display = 'block';
+                return;
+            }
+            
+            modalImage.classList.remove('blurred', 'showing');
+            modalNsfwToggleBtn.style.display = 'none';
             modalImage.src = imageSrc;
             imageModal.style.display = 'block';
         };
+        
+        // Modal NSFW toggle button functionality
+        modalNsfwToggleBtn.addEventListener('click', function() {
+            if (modalImage.classList.contains('showing')) {
+                modalImage.classList.remove('showing');
+                modalNsfwToggleBtn.textContent = '显示NSFW内容';
+                modalNsfwToggleBtn.classList.remove('minimized');
+            } else {
+                modalImage.classList.add('showing');
+                modalNsfwToggleBtn.textContent = '隐藏';
+                modalNsfwToggleBtn.classList.add('minimized');
+            }
+        });
         
         // Close image modal when close button is clicked
         imageModalCloseBtn.addEventListener('click', function() {
             imageModal.style.display = 'none';
             modalImage.src = '';
+            modalImage.classList.remove('blurred', 'showing');
+            modalNsfwToggleBtn.style.display = 'none';
+            modalNsfwToggleBtn.classList.remove('minimized');
         });
         
         // Close image modal when clicking outside
@@ -455,6 +517,9 @@
             if (e.target === imageModal) {
                 imageModal.style.display = 'none';
                 modalImage.src = '';
+                modalImage.classList.remove('blurred', 'showing');
+                modalNsfwToggleBtn.style.display = 'none';
+                modalNsfwToggleBtn.classList.remove('minimized');
             }
         });
         
@@ -463,6 +528,9 @@
             if (e.key === 'Escape' && imageModal.style.display === 'block') {
                 imageModal.style.display = 'none';
                 modalImage.src = '';
+                modalImage.classList.remove('blurred', 'showing');
+                modalNsfwToggleBtn.style.display = 'none';
+                modalNsfwToggleBtn.classList.remove('minimized');
             }
         });
     </script>

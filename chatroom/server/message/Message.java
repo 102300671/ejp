@@ -11,6 +11,7 @@ public class Message {
     private final String time;
     private final boolean isNSFW;
     private final String iv;
+    private final String id;
     
     // 日期时间格式化器
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -31,6 +32,7 @@ public class Message {
         this.time = time;
         this.isNSFW = false;
         this.iv = null;
+        this.id = null;
     }
     
     /**
@@ -50,6 +52,7 @@ public class Message {
         this.time = time;
         this.isNSFW = isNSFW;
         this.iv = null;
+        this.id = null;
     }
     
     /**
@@ -70,6 +73,29 @@ public class Message {
         this.time = time;
         this.isNSFW = isNSFW;
         this.iv = iv;
+        this.id = null;
+    }
+    
+    /**
+     * 构造消息对象
+     * @param type 消息类型
+     * @param from 发送者
+     * @param to 接收者
+     * @param content 消息内容
+     * @param time 发送时间
+     * @param isNSFW 是否为NSFW内容
+     * @param iv 加密初始化向量
+     * @param id 消息ID
+     */
+    public Message(MessageType type, String from, String to, String content, String time, boolean isNSFW, String iv, String id) {
+        this.type = type;
+        this.from = from;
+        this.to = to;
+        this.content = content;
+        this.time = time;
+        this.isNSFW = isNSFW;
+        this.iv = iv;
+        this.id = id;
     }
     
     /**
@@ -87,6 +113,7 @@ public class Message {
         this.time = LocalDateTime.now().format(DATE_TIME_FORMATTER);
         this.isNSFW = false;
         this.iv = null;
+        this.id = null;
     }
     
     // Getter方法
@@ -118,6 +145,10 @@ public class Message {
         return iv;
     }
     
+    public String getId() {
+        return id;
+    }
+    
     /**
      * 获取消息的字符串表示
      * @return 消息的字符串表示
@@ -132,6 +163,7 @@ public class Message {
                 ", time='" + time + '\'' +
                 ", isNSFW=" + isNSFW +
                 ", iv='" + iv + '\'' +
+                ", id='" + id + '\'' +
                 '}';
     }
 }

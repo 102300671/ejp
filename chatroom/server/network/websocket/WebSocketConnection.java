@@ -137,6 +137,14 @@ public class WebSocketConnection {
                     }
                     handleImageMessage(message);
                     break;
+                case FILE:
+                    // 已认证，处理文件消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleFileMessage(message);
+                    break;
                 case TEXT:
                     // 已认证，处理文本消息
                     if (!isAuthenticated) {
@@ -907,8 +915,11 @@ public class WebSocketConnection {
             imageUrl,
             message.getTime(),
             isNSFW,
-            iv
+            iv,
+            null
         );
+        
+        System.out.println("创建的imageMessage: " + imageMessage.toString());
         
         boolean isPrivateChat = isPrivateChat(to);
         
@@ -941,6 +952,68 @@ public class WebSocketConnection {
                         messageDAO.saveMessage(imageMessage, "ROOM", connection);
                     } catch (SQLException e) {
                         System.err.println("保存房间图片消息到数据库失败: " + e.getMessage());
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    
+    /**
+     * 处理文件消息
+     * @param message 文件消息
+     */
+    private void handleFileMessage(Message message) {
+        String from = currentUser.getUsername();
+        String to = message.getTo();
+        String fileContent = message.getContent();
+        
+        System.out.println("处理文件消息: 从" + from + "到" + to + "的文件");
+        
+        Message fileMessage = new Message(
+            MessageType.FILE,
+            from,
+            to,
+            fileContent,
+            message.getTime(),
+            message.isNSFW(),
+            null,
+            null
+        );
+        
+        System.out.println("创建的fileMessage: " + fileMessage.toString());
+        
+        boolean isPrivateChat = isPrivateChat(to);
+        
+        if (isPrivateChat) {
+            String recipientId = null;
+            for (Session session : messageRouter.getSessions().values()) {
+                if (session.getUsername().equals(to)) {
+                    recipientId = session.getUserId();
+                    break;
+                }
+            }
+            
+            if (recipientId != null) {
+                if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(fileMessage))) {
+                    try (Connection connection = dbManager.getConnection()) {
+                        MessageDAO messageDAO = new MessageDAO();
+                        messageDAO.saveMessage(fileMessage, "PRIVATE", connection);
+                    } catch (SQLException e) {
+                        System.err.println("保存私聊文件消息到数据库失败: " + e.getMessage());
+                    }
+                }
+            }
+        } else {
+            for (String roomId : messageRouter.getRooms().keySet()) {
+                if (to.equals(messageRouter.getRooms().get(roomId).getName())) {
+                    messageRouter.broadcastToRoom(roomId, messageCodec.encode(fileMessage), String.valueOf(currentUser.getId()));
+                    
+                    try (Connection connection = dbManager.getConnection()) {
+                        MessageDAO messageDAO = new MessageDAO();
+                        messageDAO.saveMessage(fileMessage, "ROOM", connection);
+                    } catch (SQLException e) {
+                        System.err.println("保存房间文件消息到数据库失败: " + e.getMessage());
                     }
                     break;
                 }

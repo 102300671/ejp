@@ -22,6 +22,7 @@ const MessageType = {
     REQUEST_TOKEN: 'REQUEST_TOKEN',
     TOKEN_RESPONSE: 'TOKEN_RESPONSE',
     IMAGE: 'IMAGE',
+    FILE: 'FILE',
     REQUEST_PRIVATE_USERS: 'REQUEST_PRIVATE_USERS',
     PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE'
 };
@@ -43,8 +44,16 @@ async function generateKey() {
 }
 
 async function encryptData(data) {
-    const encoder = new TextEncoder();
-    const dataBytes = encoder.encode(data);
+    let dataBytes;
+    
+    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+        dataBytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+    } else if (typeof data === 'string') {
+        const encoder = new TextEncoder();
+        dataBytes = encoder.encode(data);
+    } else {
+        throw new Error('不支持的数据类型');
+    }
     
     const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
     const key = await generateKey();
@@ -75,8 +84,7 @@ async function decryptData(encryptedData, ivArray) {
         encrypted
     );
     
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+    return decrypted;
 }
 
 function getLocalTime() {
@@ -152,6 +160,9 @@ let chatClient = {
     isReconnecting: false, // 是否正在重连
     pendingImageUpload: null, // 待上传的图片文件
     pendingImageNSFW: false, // 待上传图片是否为NSFW
+    pendingFileUpload: null, // 待上传的文件
+    pendingFileType: null, // 待上传文件的类型
+    uploadToken: null, // 上传token
     
     // 日志记录方法
     log: function(level, message) {
@@ -407,7 +418,9 @@ let chatClient = {
                         time: msg.createTime,
                         isSystem: msg.isSystem || false,
                         id: msg.id,
-                        type: msg.type || 'TEXT'
+                        type: msg.type || 'TEXT',
+                        isNSFW: msg.isNSFW || false,
+                        iv: msg.iv || null
                     };
                     
                     if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
@@ -439,14 +452,15 @@ let chatClient = {
                             
                             // 将本地消息添加到内存中
                             messages.forEach(msg => {
-                                // 转换为内部消息格式
                                 const internalMsg = {
                                     content: msg.content,
                                     from: msg.from,
                                     time: msg.createTime,
                                     isSystem: msg.isSystem || false,
                                     id: msg.id,
-                                    type: msg.type || 'TEXT'
+                                    type: msg.type || 'TEXT',
+                                    isNSFW: msg.isNSFW || false,
+                                    iv: msg.iv || null
                                 };
                                 
                                 if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
@@ -500,8 +514,13 @@ let chatClient = {
             type: message.type || 'TEXT',
             messageType: message.isSystem ? 'SYSTEM' : 'USER',
             isSystem: message.isSystem || false,
-            id: message.id
+            isNSFW: message.isNSFW || false,
+            iv: message.iv || null,
+            id: message.id || this.generateMessageId(message.type || 'TEXT', roomName)
         };
+        
+        console.log('Storage message to save:', JSON.stringify(storageMsg, null, 2));
+        console.log('Storage message ID:', storageMsg.id, 'Type:', typeof storageMsg.id);
         
         // 根据是否使用备用存储选择不同的保存方式
         if (this.useLocalStorageFallback) {
@@ -693,8 +712,10 @@ let chatClient = {
                 from: msg.from,
                 time: msg.time,
                 isSystem: msg.type === 'SYSTEM',
-                id: msg.id || this.generateMessageId(),
-                type: msg.type || 'TEXT'
+                id: msg.id || this.generateMessageId(msg.type || 'TEXT', roomName),
+                type: msg.type || 'TEXT',
+                isNSFW: msg.isNSFW || false,
+                iv: msg.iv || null
             };
             
             // 检查消息是否已存在
@@ -1241,6 +1262,8 @@ let chatClient = {
             this.log('debug', `Received message: ${event.data}`);
             try {
                 const message = JSON.parse(event.data);
+                console.log('Parsed message:', JSON.stringify(message, null, 2));
+                console.log('Message ID:', message.id, 'Type:', typeof message.id);
                 this.handleMessage(message);
             } catch (e) {
                 console.error('Error parsing message:', e);
@@ -1380,8 +1403,8 @@ let chatClient = {
         // Send message through WebSocket
         this.ws.send(JSON.stringify(message));
         
-        // 如果是文本消息或图片消息，立即在本地显示并同步
-        if (message.type === MessageType.TEXT || message.type === MessageType.IMAGE) {
+        // 如果是文本消息或图片消息或文件消息，立即在本地显示并同步
+        if (message.type === MessageType.TEXT || message.type === MessageType.IMAGE || message.type === MessageType.FILE) {
             let roomName = message.to || 'system';
             let actualContent = message.content;
             
@@ -1408,8 +1431,10 @@ let chatClient = {
                 from: message.from,
                 time: message.time,
                 isSystem: false,
-                id: message.id,
-                type: message.type
+                id: message.id || this.generateMessageId(message.type || 'TEXT', roomName),
+                type: message.type,
+                isNSFW: message.isNSFW || false,
+                iv: message.iv || null
             };
             
             // Check for duplicate before adding
@@ -1476,6 +1501,9 @@ let chatClient = {
             case MessageType.IMAGE:
                 this.handleImageMessage(message);
                 break;
+            case MessageType.FILE:
+                this.handleFileMessage(message);
+                break;
             case MessageType.UUID_AUTH_SUCCESS:
                 this.handleUUIDAuthSuccess(message);
                 break;
@@ -1515,7 +1543,7 @@ let chatClient = {
         if (this.messageStorage && messageObj.isSystem && !message.includes('Connected to chat server via WebSocket')) {
             // 确保消息有唯一ID
             if (!messageObj.id) {
-                messageObj.id = this.generateMessageId();
+                messageObj.id = this.generateMessageId('SYSTEM', targetRoom);
             }
             this.saveMessageToLocal(targetRoom, messageObj);
         }
@@ -1564,17 +1592,41 @@ let chatClient = {
                         
                         let contentHtml = '';
                         if (msg.type === MessageType.IMAGE) {
+                            const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+                            const isSender = msg.from === username;
+                            
                             if (msg.isNSFW) {
                                 const messageId = `nsfw-${msg.id || Date.now()}`;
-                                const ivAttr = msg.iv ? `data-iv='${JSON.stringify(msg.iv).replace(/'/g, "\\'")}'` : '';
+                                const ivAttr = msg.iv ? `data-iv='${msg.iv.replace(/'/g, "\\'")}'` : '';
                                 contentHtml = `
                                     <div class="nsfw-image-wrapper" id="${messageId}">
-                                        <img src="${msg.content}" alt="图片" data-original-url="${msg.content}" ${ivAttr} style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">
+                                        <img src="${msg.content}" alt="图片" ${ivAttr} data-encrypted-url="${msg.content}" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;">
                                         <button class="nsfw-toggle-btn" onclick="toggleNSFWImage('${messageId}')">显示NSFW内容</button>
                                     </div>
                                 `;
                             } else {
                                 contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">`;
+                            }
+                        } else if (msg.type === MessageType.FILE) {
+                            try {
+                                const fileInfo = JSON.parse(msg.content);
+                                const icon = fileInfo.type === 'code' ? '📄' : (fileInfo.type === 'text' ? '📝' : '📎');
+                                const fileClass = fileInfo.type === 'code' ? 'code-file' : (fileInfo.type === 'text' ? 'text-file' : 'binary-file');
+                                const isNSFW = msg.isNSFW || false;
+                                contentHtml = `
+                                    <div class="file-message ${fileClass}" onclick="openFileModal('${fileInfo.url}', '${fileInfo.name}', '${fileInfo.type}', ${isNSFW})" style="cursor: pointer;">
+                                        <div class="file-header">
+                                            <span class="file-icon">${icon}</span>
+                                            <div class="file-info">
+                                                <span class="file-name">${this.escapeHtml(fileInfo.name)}</span>
+                                                <span class="file-size">${fileInfo.size}</span>
+                                            </div>
+                                        </div>
+                                        ${isNSFW ? '<div class="nsfw-badge">NSFW</div>' : ''}
+                                    </div>
+                                `;
+                            } catch (error) {
+                                contentHtml = this.escapeHtml(msg.content);
                             }
                         } else {
                             contentHtml = this.escapeHtml(msg.content);
@@ -1587,6 +1639,30 @@ let chatClient = {
                     }
                 });
                 messagesArea.scrollTop = messagesArea.scrollHeight;
+                
+                // 自动解密NSFW图片并应用模糊效果
+                const nsfwImages = messagesArea.querySelectorAll('.nsfw-image-wrapper img[data-iv]');
+                nsfwImages.forEach(async img => {
+                    const iv = img.getAttribute('data-iv');
+                    const encryptedUrl = img.getAttribute('data-encrypted-url');
+                    if (iv && encryptedUrl && !img.classList.contains('decrypted')) {
+                        try {
+                            const decryptedUrl = await chatClient.decryptImage(encryptedUrl, iv);
+                            img.src = decryptedUrl;
+                            img.classList.add('decrypted');
+                        } catch (error) {
+                            console.error('自动解密图片失败:', error);
+                        }
+                    }
+                });
+                
+                // 更新所有NSFW图片的onclick，传递当前解密后的URL
+                const allNsfwImages = messagesArea.querySelectorAll('.nsfw-image-wrapper img');
+                allNsfwImages.forEach(img => {
+                    img.onclick = function() {
+                        openImageModal(img.src);
+                    };
+                });
             }
         }
     },
@@ -1618,9 +1694,17 @@ let chatClient = {
             // 私聊消息的历史响应中，message.to 是用户名，而不是房间名
             if (messages.length > 0) {
                 const firstMessage = messages[0];
-                // 判断是否是私聊消息：检查消息的 from 和 to 是否都是用户名（非房间名）
-                if (firstMessage.from && firstMessage.to && firstMessage.from !== firstMessage.to) {
-                    // 检查接收者是否为当前用户
+                // 判断是否是私聊消息：首先检查to是否是房间名
+                let isRecipientRoom = false;
+                for (const room of this.rooms) {
+                    if (room.name === firstMessage.to) {
+                        isRecipientRoom = true;
+                        break;
+                    }
+                }
+                
+                // 只有当to不是房间名，且from和to不同时，才认为是私聊消息
+                if (!isRecipientRoom && firstMessage.from && firstMessage.to && firstMessage.from !== firstMessage.to) {
                     const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                     if (firstMessage.to === username) {
                         // 私聊消息，来自 firstMessage.from，使用虚拟房间名
@@ -1745,6 +1829,8 @@ let chatClient = {
             
             if (this.pendingImageUpload) {
                 this.uploadImageToZfile(this.pendingImageUpload);
+            } else if (this.pendingFileUpload) {
+                this.uploadFileToZfile(this.pendingFileUpload, this.pendingFileType);
             }
         } catch (error) {
             this.log('error', `处理 token 响应失败: ${error.message}`);
@@ -1761,7 +1847,6 @@ let chatClient = {
             const time = message.time;
             const isNSFW = message.isNSFW || false;
             const iv = message.iv || null;
-            
             const messageObj = {
                 type: MessageType.IMAGE,
                 content: imageUrl,
@@ -1770,7 +1855,8 @@ let chatClient = {
                 time: time,
                 isSystem: false,
                 isNSFW: isNSFW,
-                iv: iv
+                iv: iv,
+                id: message.id || this.generateMessageId('IMAGE', to)
             };
             
             let targetRoom = to === this.username ? from : to;
@@ -1812,6 +1898,65 @@ let chatClient = {
         }
     },
     
+    handleFileMessage: function(message) {
+        this.log('debug', '收到文件消息');
+        
+        try {
+            const fileContent = message.content;
+            const from = message.from;
+            const to = message.to;
+            const time = message.time;
+            const messageObj = {
+                type: MessageType.FILE,
+                content: fileContent,
+                from: from,
+                to: to,
+                time: time,
+                isSystem: false,
+                isNSFW: message.isNSFW || false,
+                iv: null,
+                id: message.id || this.generateMessageId('FILE', to)
+            };
+            
+            let targetRoom = to === this.username ? from : to;
+            
+            // 检查是否是私聊消息
+            const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+            if (from && to && from !== to) {
+                // 判断接收者是否为房间名：检查是否存在于已知房间列表中
+                let isRecipientRoom = false;
+                for (const room of this.rooms) {
+                    if (room.name === to) {
+                        isRecipientRoom = true;
+                        break;
+                    }
+                }
+                
+                // 如果接收者不是房间名，则视为私人消息
+                if (!isRecipientRoom) {
+                    // 对于私人消息，使用虚拟房间名
+                    targetRoom = `好友${from}`;
+                }
+            }
+            
+            if (!this.messages[targetRoom]) {
+                this.messages[targetRoom] = [];
+            }
+            
+            this.messages[targetRoom].push(messageObj);
+            
+            if (this.messageStorage) {
+                this.saveMessageToLocal(targetRoom, messageObj);
+            }
+            
+            if (this.currentRoom === targetRoom) {
+                this.updateMessagesArea(targetRoom);
+            }
+        } catch (error) {
+            this.log('error', `处理文件消息失败: ${error.message}`);
+        }
+    },
+    
     requestUploadToken: function() {
         if (!this.isConnected || !this.isAuthenticated) {
             this.log('error', '未连接或未认证，无法请求上传 token');
@@ -1822,10 +1967,36 @@ let chatClient = {
         this.sendMessage(MessageType.REQUEST_TOKEN, 'server', '');
     },
     
+    getViewToken: function() {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('获取token超时'));
+            }, 10000);
+            
+            const originalHandleTokenResponse = this.handleTokenResponse;
+            this.handleTokenResponse = function(message) {
+                clearTimeout(timeout);
+                this.handleTokenResponse = originalHandleTokenResponse;
+                originalHandleTokenResponse.call(this, message);
+                resolve(this.uploadToken);
+            };
+            
+            this.sendMessage(MessageType.REQUEST_TOKEN, 'server', '');
+        });
+    },
+    
     uploadImageToZfile: async function(file) {
         this.log('info', '开始上传图片到 zfile');
         
         let uploadFile = file;
+        let originalImageDataUrl = null;
+        
+        // 保存原始图片的 dataURL，用于发送者自己查看
+        const reader = new FileReader();
+        originalImageDataUrl = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
         
         // 如果是NSFW图片，先加密
         if (this.pendingImageNSFW) {
@@ -1849,12 +2020,12 @@ let chatClient = {
         
         // 根据聊天类型构建基础路径
         let basePath = '';
-        if (this.currentRoomType === 'PUBLIC') {
+        if (this.isInPrivateChat && this.privateChatRecipient) {
+            basePath = `/images/private/${this.privateChatRecipient}`;
+        } else if (this.currentRoomType === 'PUBLIC') {
             basePath = `/images/group/public/${this.currentRoom}`;
         } else if (this.currentRoomType === 'PRIVATE') {
             basePath = `/images/group/private/${this.currentRoom}`;
-        } else if (this.isInPrivateChat && this.privateChatRecipient) {
-            basePath = `/images/private/${this.privateChatRecipient}`;
         } else {
             basePath = '/images';
         }
@@ -1920,7 +2091,7 @@ let chatClient = {
                 // 构建完整的图片URL
                 const imageUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
                 const iv = uploadFile.iv || null;
-                this.sendImageMessage(imageUrl, iv);
+                this.sendImageMessage(imageUrl, iv, originalImageDataUrl);
             } else {
                 throw new Error('文件上传失败');
             }
@@ -1942,7 +2113,7 @@ let chatClient = {
             content: imageUrl,
             time: getLocalTime(),
             isNSFW: this.pendingImageNSFW || false,
-            iv: iv
+            iv: iv ? JSON.stringify(iv) : null
         };
         
         this.pendingImageNSFW = false;
@@ -1964,6 +2135,431 @@ let chatClient = {
         
         this.pendingImageUpload = file;
         this.showImageUploadPreview(file);
+    },
+    
+    detectFileType: function(file) {
+        const fileName = file.name.toLowerCase();
+        const mimeType = file.type.toLowerCase();
+        
+        const textExtensions = ['.txt', '.md', '.log', '.csv', '.json', '.xml', '.yaml', '.yml', '.ini', '.conf', '.cfg'];
+        const codeExtensions = ['.js', '.java', '.py', '.c', '.cpp', '.h', '.hpp', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', '.ts', '.tsx', '.jsx', '.vue', '.html', '.css', '.scss', '.sass', '.less', '.sql', '.sh', '.bash', '.bat', '.ps1', '.pl', '.lua', '.r', '.m', '.scala', '.groovy', '.dart', '.fl', '.fs', '.v', '.nim', '.zig', '.jl', '.ex', '.exs', '.erl', '.hs', '.clj', '.cljs', '.cljc', '.edn', '.lisp', '.scm', '.rkt', '.ml', '.mli', '.fsi', '.fsx', '.vbs', '.vbe', '.wsf', '.wsc', '.ws', '.asp', '.aspx', '.jsp', '.jspx', '.cfm', '.cfc', '.hbm', '.xhtml', '.xsl', '.xslt', '.xquery', '.xpath', '.xproc', '.xinclude', '.xlink', '.xbase', '.xforms', '.xhtml', '.xhtml2', '.xhtml+xml', '.xhtml+svg', '.xhtml+mathml', '.xhtml+rdfa', '.xhtml+aria', '.xhtml+role', '.xhtml+microdata', '.xhtml+jsonld', '.xhtml+microdata+jsonld', '.xhtml+aria+microdata', '.xhtml+aria+jsonld', '.xhtml+aria+microdata+jsonld', '.xhtml+role+microdata', '.xhtml+role+jsonld', '.xhtml+role+microdata+jsonld', '.xhtml+aria+role+microdata', '.xhtml+aria+role+jsonld', '.xhtml+aria+role+microdata+jsonld'];
+        
+        const textMimeTypes = ['text/plain', 'text/markdown', 'text/csv', 'text/json', 'text/xml', 'text/yaml', 'text/x-yaml', 'application/json', 'application/xml', 'application/yaml', 'application/x-yaml'];
+        const codeMimeTypes = ['text/javascript', 'text/typescript', 'text/x-java-source', 'text/x-python', 'text/x-c', 'text/x-c++', 'text/x-csharp', 'text/x-php', 'text/x-ruby', 'text/x-go', 'text/x-rust', 'text/x-swift', 'text/x-kotlin', 'text/x-scala', 'text/x-groovy', 'text/x-dart', 'text/x-lua', 'text/x-perl', 'text/x-r', 'text/x-haskell', 'text/x-erlang', 'text/x-clojure', 'text/x-lisp', 'text/x-scheme', 'text/x-ocaml', 'text/x-fsharp', 'text/x-vb', 'text/x-powershell', 'text/x-shellscript', 'application/javascript', 'application/typescript', 'application/x-java-archive', 'application/x-python-code', 'application/x-ruby', 'application/x-go', 'application/x-rust', 'application/x-swift', 'application/x-kotlin', 'application/x-scala', 'application/x-groovy', 'application/x-dart', 'application/x-lua', 'application/x-perl', 'application/x-r', 'application/x-haskell', 'application/x-erlang', 'application/x-clojure', 'application/x-lisp', 'application/x-scheme', 'application/x-ocaml', 'application/x-fsharp', 'application/x-vb', 'application/x-powershell', 'application/x-shellscript'];
+        
+        const extension = fileName.substring(fileName.lastIndexOf('.'));
+        
+        if (codeExtensions.includes(extension) || codeMimeTypes.includes(mimeType)) {
+            return 'code';
+        } else if (textExtensions.includes(extension) || textMimeTypes.includes(mimeType) || mimeType.startsWith('text/')) {
+            return 'text';
+        } else {
+            return 'binary';
+        }
+    },
+    
+    handleFileUpload: function(file) {
+        if (!file) {
+            this.log('error', '请选择有效的文件');
+            return;
+        }
+        
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.log('error', '文件大小不能超过 50MB');
+            return;
+        }
+        
+        const fileType = this.detectFileType(file);
+        this.log('info', `检测到文件类型: ${fileType}, 文件名: ${file.name}`);
+        
+        this.pendingFileUpload = file;
+        this.pendingFileType = fileType;
+        this.showFileUploadPreview(file, fileType);
+    },
+    
+    uploadFileToZfile: async function(file, fileType) {
+        this.log('info', '开始上传文件到 zfile');
+        
+        const uploadFile = file;
+        
+        // 生成日期路径 (YYYY/MM/DD)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const datePath = `${year}/${month}/${day}`;
+        
+        // 根据聊天类型构建基础路径
+        let basePath = '';
+        if (this.isInPrivateChat && this.privateChatRecipient) {
+            basePath = `/files/private/${this.privateChatRecipient}`;
+        } else if (this.currentRoomType === 'PUBLIC') {
+            basePath = `/files/group/public/${this.currentRoom}`;
+        } else if (this.currentRoomType === 'PRIVATE') {
+            basePath = `/files/group/private/${this.currentRoom}`;
+        } else {
+            basePath = '/files';
+        }
+        
+        // 完整的上传路径
+        const uploadPath = `${basePath}/${datePath}`;
+        
+        // 第一步：创建上传任务
+        const createUploadUrl = `${this.zfileServerUrl}/api/file/operator/upload/file`;
+        
+        fetch(createUploadUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Zfile-Token': this.uploadToken,
+                'Axios-Request': 'true',
+                'Axios-From': this.zfileServerUrl
+            },
+            body: JSON.stringify({
+                storageKey: 'chatroom-files',
+                path: uploadPath,
+                name: uploadFile.name,
+                size: uploadFile.size,
+                password: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.log('debug', '创建上传任务响应:', data);
+            
+            if (data && data.code === '0' && data.data) {
+                let uploadUrl = data.data;
+                // 检查上传URL是否使用了正确的端口（8081）
+                if (uploadUrl.includes('localhost:8080')) {
+                    uploadUrl = uploadUrl.replace('localhost:8080', 'localhost:8081');
+                    this.log('info', '修正上传URL端口:', uploadUrl);
+                }
+                this.log('info', '上传URL获取成功:', uploadUrl);
+                
+                // 第二步：实际上传文件
+                const formData = new FormData();
+                formData.append('file', uploadFile);
+                
+                return fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Zfile-Token': this.uploadToken,
+                        'Axios-Request': 'true',
+                        'Axios-From': this.zfileServerUrl
+                    },
+                    body: formData
+                });
+            } else {
+                throw new Error('创建上传任务失败');
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.log('debug', '文件上传响应:', data);
+            
+            if (data && data.code === '0') {
+                this.log('info', '文件上传成功');
+                // 构建完整的文件URL
+                const fileUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                let fileName = file.name;
+                let fileSize = this.formatFileSize(file.size);
+                let fileTypeDisplay = fileType === 'code' ? '代码' : (fileType === 'text' ? '文本' : '文件');
+                
+                let messageContent = JSON.stringify({
+                    type: fileType,
+                    name: fileName,
+                    size: fileSize,
+                    url: fileUrl
+                });
+                
+                const message = {
+                    type: MessageType.FILE,
+                    from: this.username,
+                    to: this.currentRoom,
+                    content: messageContent,
+                    time: getLocalTime(),
+                    isNSFW: this.pendingFileNSFW || false
+                };
+                
+                this.sendMessage(message);
+                this.log('info', '发送文件消息');
+            } else {
+                throw new Error('文件上传失败');
+            }
+        })
+        .catch(error => {
+            this.log('error', `上传文件失败: ${error.message}`);
+        })
+        .finally(() => {
+            this.uploadToken = null;
+            this.pendingFileUpload = null;
+            this.pendingFileType = null;
+        });
+    },
+    
+    readFileAsText: function(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('读取文件失败'));
+            reader.readAsText(file);
+        });
+    },
+    
+    formatFileSize: function(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    },
+    
+    showFileUploadPreview: function(file, fileType) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const fileContent = e.target.result;
+            const fileName = file.name;
+            const fileSize = this.formatFileSize(file.size);
+            const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+            
+            const fileIcon = this.getFileIcon(fileExtension, fileType);
+            
+            let previewContent = '';
+            let isExpandable = false;
+            
+            if (fileType === 'text' || fileType === 'code') {
+                const lines = fileContent.split('\n');
+                const previewLines = lines.slice(0, 10).join('\n');
+                const totalLines = lines.length;
+                isExpandable = totalLines > 10;
+                
+                previewContent = `
+                    <div class="file-preview-content">
+                        <div class="file-preview-summary">
+                            <pre class="file-preview-text">${this.escapeHtml(previewLines)}</pre>
+                            ${isExpandable ? `<div class="file-preview-truncated">... 共 ${totalLines} 行，点击展开查看完整内容</div>` : ''}
+                        </div>
+                        ${isExpandable ? `
+                            <div class="file-preview-full" style="display: none;">
+                                <pre class="file-preview-text">${this.escapeHtml(fileContent)}</pre>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                const canPreviewWithOnlyOffice = this.canPreviewWithOnlyOffice(fileExtension);
+                previewContent = `
+                    <div class="file-preview-binary">
+                        <div class="binary-file-icon">${fileIcon}</div>
+                        <div class="binary-file-info">
+                            <p>二进制文件${canPreviewWithOnlyOffice ? '，可通过OnlyOffice预览' : '，无法预览内容'}</p>
+                            <p class="binary-file-warning">${canPreviewWithOnlyOffice ? '点击文件可在线预览和编辑' : '文件将以原始格式传输'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const modalHtml = `
+                <div id="file-upload-modal" class="modal">
+                    <div class="modal-content file-upload-modal-content">
+                        <span class="close" onclick="document.getElementById('file-upload-modal').style.display='none'">&times;</span>
+                        <h3>文件上传预览</h3>
+                        
+                        <div class="file-card">
+                            <div class="file-card-header">
+                                <div class="file-card-icon">${fileIcon}</div>
+                                <div class="file-card-info">
+                                    <h4 class="file-card-name">${this.escapeHtml(fileName)}</h4>
+                                    <div class="file-card-meta">
+                                        <span class="file-size">${fileSize}</span>
+                                        <span class="file-type">${fileType}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="file-card-body">
+                                ${previewContent}
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="nsfw-checkbox-label">
+                                <input type="checkbox" id="file-nsfw-checkbox">
+                                <span>标记为NSFW（敏感内容）</span>
+                            </label>
+                        </div>
+                        
+                        <div class="nsfw-warning" id="file-nsfw-warning" style="display: none;">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-content">
+                                <strong>重要提示</strong>
+                                <p>NSFW内容将被加密传输并默认不自动展开</p>
+                                <p class="prohibited-content">禁止内容：</p>
+                                <ul class="prohibited-list">
+                                    <li>未成年内容</li>
+                                    <li>非自愿内容</li>
+                                    <li>非法内容</li>
+                                    <li>暴力、血腥内容</li>
+                                </ul>
+                                <p class="audit-notice">服务器将记录所有NSFW内容用于审核</p>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" id="cancel-file-upload-btn">取消</button>
+                            <button type="button" id="confirm-file-upload-btn">发送</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const existingModal = document.getElementById('file-upload-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            const modal = document.getElementById('file-upload-modal');
+            modal.style.display = 'block';
+            
+            const nsfwCheckbox = document.getElementById('file-nsfw-checkbox');
+            const nsfwWarning = document.getElementById('file-nsfw-warning');
+            
+            nsfwCheckbox.addEventListener('change', function() {
+                nsfwWarning.style.display = this.checked ? 'block' : 'none';
+            });
+            
+            if (isExpandable) {
+                const summaryDiv = modal.querySelector('.file-preview-summary');
+                const fullDiv = modal.querySelector('.file-preview-full');
+                const truncatedDiv = modal.querySelector('.file-preview-truncated');
+                
+                summaryDiv.addEventListener('click', function() {
+                    if (fullDiv.style.display === 'none') {
+                        fullDiv.style.display = 'block';
+                        summaryDiv.style.display = 'none';
+                    }
+                });
+                
+                fullDiv.addEventListener('click', function() {
+                    summaryDiv.style.display = 'block';
+                    fullDiv.style.display = 'none';
+                });
+            }
+            
+            document.getElementById('cancel-file-upload-btn').addEventListener('click', () => {
+                modal.style.display = 'none';
+                this.pendingFileUpload = null;
+                this.pendingFileType = null;
+            });
+            
+            document.getElementById('confirm-file-upload-btn').addEventListener('click', () => {
+                const isNSFW = nsfwCheckbox.checked;
+                this.pendingFileNSFW = isNSFW;
+                modal.style.display = 'none';
+                this.requestUploadToken();
+            });
+            
+            const closeBtn = modal.querySelector('.close');
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                this.pendingFileUpload = null;
+                this.pendingFileType = null;
+            });
+        };
+        
+        if (fileType === 'text' || fileType === 'code') {
+            reader.readAsText(file);
+        } else {
+            reader.readAsDataURL(file);
+        }
+    },
+    
+    canPreviewWithOnlyOffice: function(extension) {
+        const onlyOfficeExtensions = [
+            '.doc', '.docx', '.docm', '.dot', '.dotx', '.dotm', '.odt', '.fodt',
+            '.xls', '.xlsx', '.xlsm', '.xlt', '.xltx', '.xltm', '.ods', '.fods',
+            '.ppt', '.pptx', '.pptm', '.pps', '.ppsx', '.ppsm', '.odp', '.fodp',
+            '.pdf', '.txt', '.rtf', '.csv', '.html', '.htm', '.xml', '.mht', '.mhtml',
+            '.epub', '.djvu', '.xps', '.oxps'
+        ];
+        return onlyOfficeExtensions.includes(extension.toLowerCase());
+    },
+    
+    getFileIcon: function(extension, fileType) {
+        const iconMap = {
+            '.js': '📜',
+            '.ts': '📜',
+            '.java': '☕',
+            '.py': '🐍',
+            '.c': '🔧',
+            '.cpp': '🔧',
+            '.h': '📄',
+            '.hpp': '📄',
+            '.cs': '💻',
+            '.php': '🐘',
+            '.rb': '💎',
+            '.go': '🔵',
+            '.rs': '🦀',
+            '.swift': '🍎',
+            '.kt': '🎯',
+            '.html': '🌐',
+            '.css': '🎨',
+            '.scss': '🎨',
+            '.sass': '🎨',
+            '.json': '📋',
+            '.xml': '📋',
+            '.yaml': '📋',
+            '.yml': '📋',
+            '.md': '📝',
+            '.txt': '📄',
+            '.log': '📋',
+            '.csv': '📊',
+            '.sql': '🗄️',
+            '.sh': '⌨️',
+            '.bash': '⌨️',
+            '.ps1': '💻',
+            '.dockerfile': '🐳',
+            '.zip': '📦',
+            '.rar': '📦',
+            '.7z': '📦',
+            '.tar': '📦',
+            '.gz': '📦',
+            '.pdf': '📕',
+            '.doc': '📘',
+            '.docx': '📘',
+            '.xls': '📗',
+            '.xlsx': '📗',
+            '.ppt': '📙',
+            '.pptx': '📙',
+            '.mp3': '🎵',
+            '.mp4': '🎬',
+            '.avi': '🎬',
+            '.mov': '🎬',
+            '.wav': '🎵',
+            '.png': '🖼️',
+            '.jpg': '🖼️',
+            '.jpeg': '🖼️',
+            '.gif': '🖼️',
+            '.svg': '🖼️',
+            '.bmp': '🖼️'
+        };
+        
+        if (iconMap[extension]) {
+            return iconMap[extension];
+        }
+        
+        if (fileType === 'code') return '💻';
+        if (fileType === 'text') return '📄';
+        return '📁';
+    },
+    
+    escapeHtml: function(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
     
     showImageUploadPreview: function(file) {
@@ -2015,22 +2611,46 @@ let chatClient = {
                 reject(new Error('读取文件失败'));
             };
             
-            reader.readAsDataURL(file);
+            reader.readAsArrayBuffer(file);
         });
     },
     
     decryptImage: async function(imageUrl, iv) {
         try {
+            console.log('开始解密图片:', imageUrl);
+            console.log('原始IV字符串:', iv);
+            console.log('IV类型:', typeof iv);
+            
             const response = await fetch(imageUrl);
             const encryptedData = await response.arrayBuffer();
+            console.log('加密数据长度:', encryptedData.byteLength);
             
-            const ivArray = JSON.parse(iv);
+            let ivArray;
+            try {
+                ivArray = JSON.parse(iv);
+                console.log('解析后的IV数组:', ivArray);
+                console.log('IV数组长度:', ivArray.length);
+                console.log('IV数组类型:', Array.isArray(ivArray));
+            } catch (e) {
+                console.error('解析IV失败:', e);
+                throw new Error('IV格式错误');
+            }
+            
+            if (!Array.isArray(ivArray) || ivArray.length !== 12) {
+                console.error('IV长度不正确，期望12字节，实际:', ivArray.length);
+                throw new Error(`IV长度不正确，期望12字节，实际${ivArray.length}`);
+            }
             
             const decrypted = await decryptData(new Uint8Array(encryptedData), ivArray);
+            console.log('解密成功，数据长度:', decrypted.byteLength);
             
-            const blob = this.dataURLtoBlob(decrypted);
-            return URL.createObjectURL(blob);
+            const blob = new Blob([decrypted], { type: 'image/png' });
+            const url = URL.createObjectURL(blob);
+            console.log('创建Blob URL:', url);
+            return url;
         } catch (error) {
+            console.error('解密图片失败:', error);
+            console.error('错误堆栈:', error.stack);
             throw new Error(`解密图片失败: ${error.message}`);
         }
     },
@@ -2582,7 +3202,7 @@ let chatClient = {
         if (this.messageStorage) {
             // 确保消息有唯一ID
             if (!privateMessage.id) {
-                privateMessage.id = this.generateMessageId();
+                privateMessage.id = this.generateMessageId('PRIVATE', privateRoomName);
             }
             this.saveMessageToLocal(privateRoomName, privateMessage);
         }
@@ -2878,6 +3498,20 @@ function initChat() {
         }
     });
     
+    // File upload button functionality
+    document.getElementById('file-btn').addEventListener('click', function() {
+        const fileInput = document.getElementById('file-input');
+        fileInput.click();
+    });
+    
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            chatClient.handleFileUpload(file);
+            e.target.value = '';
+        }
+    });
+    
     // Room members button functionality
     document.getElementById('private-msg-btn').addEventListener('click', function() {
         // Check if button is disabled
@@ -3006,6 +3640,7 @@ function initChat() {
     const imageModal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
     const imageModalCloseBtn = imageModal.querySelector('.close');
+    const modalNsfwToggleBtn = document.getElementById('modal-nsfw-toggle-btn');
     
     // Image upload modal functionality
     const imageUploadModal = document.getElementById('image-upload-modal');
@@ -3037,10 +3672,460 @@ function initChat() {
     });
     
     // Function to open image modal
-    window.openImageModal = function(imageSrc) {
+    window.openImageModal = async function(imageSrc) {
+        const imgBySrc = document.querySelector(`img[src="${imageSrc}"]`);
+        
+        if (imgBySrc) {
+            const iv = imgBySrc.getAttribute('data-iv');
+            const encryptedUrl = imgBySrc.getAttribute('data-encrypted-url');
+            const isShowing = imgBySrc.classList.contains('showing');
+            
+            if (iv && encryptedUrl) {
+                if (isShowing) {
+                    modalImage.classList.remove('blurred');
+                    modalImage.classList.add('showing');
+                    modalNsfwToggleBtn.style.display = 'block';
+                    modalNsfwToggleBtn.classList.add('minimized');
+                    modalNsfwToggleBtn.textContent = '隐藏';
+                    modalImage.src = imageSrc;
+                } else {
+                    modalImage.classList.add('blurred');
+                    modalImage.classList.remove('showing');
+                    modalNsfwToggleBtn.style.display = 'block';
+                    modalNsfwToggleBtn.classList.remove('minimized');
+                    modalNsfwToggleBtn.textContent = '显示NSFW内容';
+                    
+                    try {
+                        const decryptedUrl = await chatClient.decryptImage(encryptedUrl, iv);
+                        modalImage.src = decryptedUrl;
+                    } catch (error) {
+                        console.error('解密图片失败:', error);
+                        modalImage.src = imageSrc;
+                    }
+                }
+            } else {
+                modalImage.classList.remove('blurred', 'showing');
+                modalNsfwToggleBtn.style.display = 'none';
+                modalImage.src = imageSrc;
+            }
+            imageModal.style.display = 'block';
+            return;
+        }
+        
+        modalImage.classList.remove('blurred', 'showing');
+        modalNsfwToggleBtn.style.display = 'none';
         modalImage.src = imageSrc;
         imageModal.style.display = 'block';
     };
+    
+    window.openFileModal = async function(fileUrl, fileName, fileType, isNSFW = false) {
+        let fileModal = document.getElementById('file-modal');
+        const previewContainerId = 'file-preview-container';
+        
+        if (!fileModal || !document.getElementById(previewContainerId)) {
+            const existingModal = document.getElementById('file-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            const modalHtml = `
+                <div id="file-modal" class="modal">
+                    <div class="modal-content file-modal-content">
+                        <span class="close" onclick="document.getElementById('file-modal').style.display='none'">&times;</span>
+                        <h3 id="file-title">${fileName}</h3>
+                        <div id="file-loading" style="text-align: center; padding: 20px;">加载中...</div>
+                        <div id="${previewContainerId}"></div>
+                        <pre id="file-content" class="file-content-display"></pre>
+                    </div>
+                </div>
+                <div id="office-preview-mask" hidden>
+                    <div id="office-preview">
+                        <span class="close" onclick="document.getElementById('office-preview-mask').style.display='none'">&times;</span>
+                        <div id="office-body"></div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            fileModal = document.getElementById('file-modal');
+        }
+        
+        const fileContent = document.getElementById('file-content');
+        const fileTitle = document.getElementById('file-title');
+        const previewContainer = document.getElementById(previewContainerId);
+        
+        fileTitle.textContent = fileName;
+        fileContent.textContent = '';
+        fileContent.style.display = 'none';
+        previewContainer.innerHTML = '';
+        previewContainer.style.display = 'none';
+        document.getElementById('file-loading').style.display = 'block';
+        fileModal.style.display = 'block';
+        
+        const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+        const canPreviewWithOnlyOffice = chatClient.canPreviewWithOnlyOffice(fileExtension);
+        
+        console.log('文件名:', fileName);
+        console.log('文件扩展名:', fileExtension);
+        console.log('是否支持OnlyOffice预览:', canPreviewWithOnlyOffice);
+        console.log('是否NSFW:', isNSFW);
+        console.log('文件类型:', fileType);
+        
+        try {
+            if (canPreviewWithOnlyOffice && !isNSFW) {
+                console.log('进入OnlyOffice预览分支');
+                
+                const urlObj = new URL(fileUrl);
+                let filePath = urlObj.pathname;
+                
+                if (filePath.startsWith('/pd/chatroom-files/chatroom')) {
+                    filePath = filePath.replace('/pd/chatroom-files/chatroom', '');
+                }
+                
+                const pathParts = filePath.split('/');
+                const encodedFileName = pathParts[pathParts.length - 1];
+                const decodedFileName = decodeURIComponent(encodedFileName);
+                pathParts[pathParts.length - 1] = decodedFileName;
+                filePath = pathParts.join('/');
+                
+                const configData = {
+                    storageKey: 'chatroom-files',
+                    path: filePath,
+                    password: ''
+                };
+                
+                console.log('原始文件URL:', fileUrl);
+                console.log('OnlyOffice配置请求:', configData);
+                
+                try {
+                    document.getElementById('file-loading').textContent = '正在获取访问权限...';
+                    console.log('开始获取token');
+                    await chatClient.getViewToken();
+                    console.log('Token获取成功:', chatClient.uploadToken);
+                    document.getElementById('file-loading').textContent = '加载中...';
+                    
+                    console.log('开始请求OnlyOffice配置');
+                    const configResponse = await fetch('http://localhost:8081/onlyOffice/config/token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Zfile-Token': chatClient.uploadToken || ''
+                        },
+                        body: JSON.stringify(configData)
+                    });
+                    
+                    console.log('OnlyOffice配置响应状态:', configResponse.status);
+                    
+                    if (!configResponse.ok) {
+                        throw new Error(`配置请求失败: ${configResponse.status}`);
+                    }
+                    
+                    const configResult = await configResponse.json();
+                    
+                    console.log('OnlyOffice配置响应:', configResult);
+                    
+                    if (configResult.code !== '0') {
+                        throw new Error(`配置错误: ${configResult.msg}`);
+                    }
+                    
+                    const config = configResult.data;
+                    
+                    console.log('OnlyOffice配置:', JSON.stringify(config, null, 2));
+                    
+                    if (config.document && config.document.url) {
+                        console.log('文档URL:', config.document.url);
+                        
+                        const testUrl = new URL(config.document.url);
+                        console.log('文档URL主机:', testUrl.hostname);
+                        console.log('文档URL路径:', testUrl.pathname);
+                    }
+                    
+                    console.log('开始初始化OnlyOffice编辑器');
+                    
+                    console.log('测试文档URL是否可访问...');
+                    try {
+                        const testResponse = await fetch(config.document.url, { method: 'HEAD' });
+                        console.log('文档URL访问状态:', testResponse.status);
+                    } catch (error) {
+                        console.error('文档URL访问失败:', error);
+                    }
+                    
+                    if (typeof DocsAPI === 'undefined') {
+                        console.log('OnlyOffice API未加载，开始加载...');
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.type = 'text/javascript';
+                            script.charset = 'UTF-8';
+                            script.src = 'http://localhost:8082/web-apps/apps/api/documents/api.js';
+                            
+                            script.addEventListener('load', () => {
+                                console.log('OnlyOffice API加载成功');
+                                resolve();
+                            }, false);
+                            
+                            script.addEventListener('error', () => {
+                                console.error('OnlyOffice API加载失败');
+                                reject(new Error('加载OnlyOffice API失败'));
+                            }, false);
+                            
+                            document.head.appendChild(script);
+                        });
+                    } else {
+                        console.log('OnlyOffice API已加载');
+                    }
+                    
+                    console.log('开始创建DocEditor实例');
+                    try {
+                        console.log('当前页面URL:', window.location.href);
+                        console.log('当前页面Origin:', window.location.origin);
+                        console.log('当前页面protocol:', window.location.protocol);
+                        console.log('当前页面host:', window.location.host);
+                        
+                        const documentUrl = new URL(config.document.url);
+                        console.log('文档URL hostname:', documentUrl.hostname);
+                        console.log('文档URL protocol:', documentUrl.protocol);
+                        
+                        let officePreviewMask = document.getElementById('office-preview-mask');
+                        if (officePreviewMask) {
+                            officePreviewMask.remove();
+                        }
+                        
+                        const modalHtml = `
+                            <div id="office-preview-mask">
+                                <div id="office-preview">
+                                    <span class="close" onclick="document.getElementById('office-preview-mask').style.display='none'">&times;</span>
+                                    <div id="office-body"></div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.insertAdjacentHTML('beforeend', modalHtml);
+                        
+                        officePreviewMask = document.getElementById('office-preview-mask');
+                        const officePreview = document.getElementById('office-preview');
+                        const officeBody = document.getElementById('office-body');
+                        
+                        officePreviewMask.style.display = 'block';
+                        
+                        console.log('已创建并显示OnlyOffice预览容器');
+                        
+                        new DocsAPI.DocEditor('office-body', config);
+                        console.log('DocEditor实例创建成功');
+                        
+                        console.log('等待2秒后检查office-body元素...');
+                        setTimeout(() => {
+                            console.log('开始检查office-body元素...');
+                            if (officeBody) {
+                                console.log('office-body元素存在');
+                                console.log('office-body内容:', officeBody.innerHTML.substring(0, 500));
+                                console.log('office-body子元素数量:', officeBody.children.length);
+                                
+                                if (officeBody.children.length > 0) {
+                                    for (let i = 0; i < officeBody.children.length; i++) {
+                                        console.log(`子元素${i}:`, officeBody.children[i].tagName, officeBody.children[i].className);
+                                    }
+                                }
+                                
+                                const iframe = officeBody.querySelector('iframe');
+                                if (iframe) {
+                                    console.log('OnlyOffice iframe已创建');
+                                    console.log('iframe src:', iframe.src);
+                                    console.log('iframe width:', iframe.width);
+                                    console.log('iframe height:', iframe.height);
+                                    console.log('iframe computed width:', window.getComputedStyle(iframe).width);
+                                    console.log('iframe computed height:', window.getComputedStyle(iframe).height);
+                                    console.log('office-body computed width:', window.getComputedStyle(officeBody).width);
+                                    console.log('office-body computed height:', window.getComputedStyle(officeBody).height);
+                                    
+                                    const urlParams = new URLSearchParams(new URL(iframe.src).search);
+                                    console.log('iframe parentOrigin:', urlParams.get('parentOrigin'));
+                                    
+                                    setTimeout(() => {
+                                        console.log('5秒后再次检查iframe...');
+                                        console.log('iframe当前src:', iframe.src);
+                                        console.log('iframe当前width:', iframe.width);
+                                        console.log('iframe currentheight:', iframe.height);
+                                    }, 5000);
+                                } else {
+                                    console.log('未找到iframe，检查是否有其他元素');
+                                }
+                            } else {
+                                console.log('office-body元素不存在');
+                            }
+                        }, 2000);
+                    } catch (error) {
+                        console.error('DocEditor实例创建失败:', error);
+                        throw error;
+                    }
+                    
+                    document.getElementById('file-loading').style.display = 'none';
+                    fileModal.style.display = 'none';
+                    
+                    console.log('file-modal已隐藏');
+                    
+                    chatClient.uploadToken = null;
+                } catch (error) {
+                    console.error('OnlyOffice预览失败:', error);
+                    document.getElementById('file-loading').style.display = 'none';
+                    previewContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #dc3545;">
+                            <p>预览失败: ${error.message}</p>
+                            <p style="font-size: 12px; margin-top: 10px;">请检查OnlyOffice服务是否正常运行</p>
+                        </div>
+                    `;
+                    previewContainer.style.display = 'block';
+                }
+            } else {
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                
+                document.getElementById('file-loading').style.display = 'none';
+                
+                if (isNSFW && (fileType === 'text' || fileType === 'code')) {
+                    const lines = text.split('\n');
+                    const previewLines = lines.slice(0, 10).join('\n');
+                    const totalLines = lines.length;
+                    const isExpandable = totalLines > 10;
+                    
+                    const language = getPrismLanguage(fileName);
+                    
+                    previewContainer.innerHTML = `
+                        <div class="file-preview-content">
+                            <div class="file-preview-summary" id="nsfw-preview-summary">
+                                <pre class="file-preview-text">${escapeHtml(previewLines)}</pre>
+                                ${isExpandable ? `<div class="file-preview-truncated">... 共 ${totalLines} 行，点击展开查看完整内容</div>` : ''}
+                            </div>
+                            ${isExpandable ? `
+                                <div class="file-preview-full" id="nsfw-preview-full" style="display: none;">
+                                    <pre class="file-preview-text language-${language}">${escapeHtml(text)}</pre>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    previewContainer.style.display = 'block';
+                    
+                    if (isExpandable) {
+                        const summaryDiv = document.getElementById('nsfw-preview-summary');
+                        const fullDiv = document.getElementById('nsfw-preview-full');
+                        
+                        summaryDiv.addEventListener('click', function() {
+                            if (fullDiv.style.display === 'none') {
+                                fullDiv.style.display = 'block';
+                                summaryDiv.style.display = 'none';
+                                if (typeof Prism !== 'undefined') {
+                                    Prism.highlightElement(fullDiv.querySelector('pre'));
+                                }
+                            }
+                        });
+                        
+                        fullDiv.addEventListener('click', function() {
+                            summaryDiv.style.display = 'block';
+                            fullDiv.style.display = 'none';
+                        });
+                    }
+                } else {
+                    if (fileType === 'code') {
+                        const language = getPrismLanguage(fileName);
+                        fileContent.className = `file-content-display language-${language}`;
+                        fileContent.textContent = text;
+                        if (typeof Prism !== 'undefined') {
+                            Prism.highlightElement(fileContent);
+                        }
+                    } else {
+                        fileContent.className = 'file-content-display';
+                        fileContent.textContent = text;
+                    }
+                    
+                    fileContent.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('加载文件失败:', error);
+            fileContent.textContent = '加载失败: ' + error.message;
+            document.getElementById('file-loading').style.display = 'none';
+            fileContent.style.display = 'block';
+        }
+    };
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function getPrismLanguage(fileName) {
+        const extension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+        const languageMap = {
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.java': 'java',
+            '.py': 'python',
+            '.c': 'c',
+            '.cpp': 'cpp',
+            '.h': 'c',
+            '.hpp': 'cpp',
+            '.cs': 'csharp',
+            '.php': 'php',
+            '.rb': 'ruby',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.swift': 'swift',
+            '.kt': 'kotlin',
+            '.scala': 'scala',
+            '.groovy': 'groovy',
+            '.dart': 'dart',
+            '.lua': 'lua',
+            '.r': 'r',
+            '.m': 'objectivec',
+            '.swift': 'swift',
+            '.pl': 'perl',
+            '.sh': 'bash',
+            '.bash': 'bash',
+            '.zsh': 'bash',
+            '.ps1': 'powershell',
+            '.sql': 'sql',
+            '.html': 'html',
+            '.htm': 'html',
+            '.xml': 'xml',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.sass': 'sass',
+            '.less': 'less',
+            '.json': 'json',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+            '.toml': 'toml',
+            '.ini': 'ini',
+            '.conf': 'ini',
+            '.cfg': 'ini',
+            '.md': 'markdown',
+            '.tex': 'latex',
+            '.vue': 'vue',
+            '.jsx': 'jsx',
+            '.tsx': 'tsx',
+            '.tsv': 'tsv',
+            '.csv': 'csv',
+            '.dockerfile': 'docker',
+            '.docker': 'docker',
+            '.makefile': 'makefile',
+            '.cmake': 'cmake',
+            '.gradle': 'gradle',
+            '.maven': 'xml',
+            '.pom': 'xml',
+            '.gitignore': 'ignore',
+            '.gitattributes': 'ignore',
+            '.editorconfig': 'ini',
+            '.eslintrc': 'json',
+            '.prettierrc': 'json',
+            '.babelrc': 'json',
+            '.tsconfig': 'json',
+            '.package': 'json',
+            '.lock': 'json'
+        };
+        
+        return languageMap[extension] || 'plaintext';
+    }
     
     // Function to toggle NSFW image visibility
     window.toggleNSFWImage = async function(wrapperId) {
@@ -3053,9 +4138,8 @@ function initChat() {
         if (img.classList.contains('showing')) {
             img.classList.remove('showing');
             btn.textContent = '显示NSFW内容';
-            btn.classList.remove('hidden');
+            btn.classList.remove('minimized');
         } else {
-            const imageUrl = img.getAttribute('data-original-url') || img.src;
             const iv = img.getAttribute('data-iv');
             
             if (iv) {
@@ -3063,13 +4147,13 @@ function initChat() {
                 btn.disabled = true;
                 
                 try {
-                    const decryptedUrl = await chatClient.decryptImage(imageUrl, iv);
+                    const encryptedUrl = img.getAttribute('data-encrypted-url') || img.src;
+                    const decryptedUrl = await chatClient.decryptImage(encryptedUrl, iv);
                     img.src = decryptedUrl;
                     img.classList.add('showing');
-                    btn.textContent = '隐藏NSFW内容';
-                    setTimeout(() => {
-                        btn.classList.add('hidden');
-                    }, 2000);
+                    
+                    btn.textContent = '隐藏';
+                    btn.classList.add('minimized');
                 } catch (error) {
                     console.error('解密图片失败:', error);
                     btn.textContent = '解密失败';
@@ -3081,18 +4165,32 @@ function initChat() {
                 }
             } else {
                 img.classList.add('showing');
-                btn.textContent = '隐藏NSFW内容';
-                setTimeout(() => {
-                    btn.classList.add('hidden');
-                }, 2000);
+                btn.textContent = '隐藏';
+                btn.classList.add('minimized');
             }
         }
     };
+    
+    // Modal NSFW toggle button functionality
+    modalNsfwToggleBtn.addEventListener('click', function() {
+        if (modalImage.classList.contains('showing')) {
+            modalImage.classList.remove('showing');
+            modalNsfwToggleBtn.textContent = '显示NSFW内容';
+            modalNsfwToggleBtn.classList.remove('minimized');
+        } else {
+            modalImage.classList.add('showing');
+            modalNsfwToggleBtn.textContent = '隐藏';
+            modalNsfwToggleBtn.classList.add('minimized');
+        }
+    });
     
     // Close image modal when close button is clicked
     imageModalCloseBtn.addEventListener('click', function() {
         imageModal.style.display = 'none';
         modalImage.src = '';
+        modalImage.classList.remove('blurred', 'showing');
+        modalNsfwToggleBtn.style.display = 'none';
+        modalNsfwToggleBtn.classList.remove('minimized');
     });
     
     // Close image modal when clicking outside
@@ -3100,6 +4198,9 @@ function initChat() {
         if (e.target === imageModal) {
             imageModal.style.display = 'none';
             modalImage.src = '';
+            modalImage.classList.remove('blurred', 'showing');
+            modalNsfwToggleBtn.style.display = 'none';
+            modalNsfwToggleBtn.classList.remove('minimized');
         }
     });
     
@@ -3108,6 +4209,9 @@ function initChat() {
         if (e.key === 'Escape' && imageModal.style.display === 'block') {
             imageModal.style.display = 'none';
             modalImage.src = '';
+            modalImage.classList.remove('blurred', 'showing');
+            modalNsfwToggleBtn.style.display = 'none';
+            modalNsfwToggleBtn.classList.remove('minimized');
         }
     });
     

@@ -19,7 +19,7 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public void saveMessage(Message message, String messageType, Connection connection) throws SQLException {
-        String sql = "INSERT INTO messages (type, from_username, to_username, content, message_type) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO messages (type, from_username, to_username, content, message_type, is_nsfw, iv) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, message.getType().name());
@@ -27,6 +27,8 @@ public class MessageDAO {
             stmt.setString(3, message.getTo());
             stmt.setString(4, message.getContent());
             stmt.setString(5, messageType);
+            stmt.setBoolean(6, message.isNSFW());
+            stmt.setString(7, message.getIv());
             
             stmt.executeUpdate();
         }
@@ -41,7 +43,7 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getRoomMessages(String roomName, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+        String sql = "SELECT id, type, from_username, to_username, content, create_time, is_nsfw, iv FROM messages " +
                      "WHERE message_type = 'ROOM' AND to_username = ? " +
                      "ORDER BY create_time DESC LIMIT ?";
         
@@ -53,6 +55,7 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
+                int dbId = rs.getInt("id");
                 String typeStr = rs.getString("type");
                 MessageType type;
                 try {
@@ -66,13 +69,15 @@ public class MessageDAO {
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
                 String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
                 
-                Message message = new Message(type, from, to, content, time);
+                String messageId = String.format("%s_%s_%d", type.name(), roomName, dbId);
+                Message message = new Message(type, from, to, content, time, isNSFW, iv, messageId);
                 messages.add(message);
             }
         }
         
-        // 反转列表，使最早的消息在前面
         List<Message> reversedMessages = new ArrayList<>(messages.size());
         for (int i = messages.size() - 1; i >= 0; i--) {
             reversedMessages.add(messages.get(i));
@@ -91,7 +96,7 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getPrivateMessages(String user1, String user2, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+        String sql = "SELECT id, type, from_username, to_username, content, create_time, is_nsfw, iv FROM messages " +
                      "WHERE message_type = 'PRIVATE' " +
                      "AND ((from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?)) " +
                      "ORDER BY create_time DESC LIMIT ?";
@@ -107,6 +112,7 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
+                int dbId = rs.getInt("id");
                 String typeStr = rs.getString("type");
                 MessageType type;
                 try {
@@ -120,13 +126,15 @@ public class MessageDAO {
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
                 String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
                 
-                Message message = new Message(type, from, to, content, time);
+                String messageId = String.format("%s_%s_%d", type.name(), from + "_" + to, dbId);
+                Message message = new Message(type, from, to, content, time, isNSFW, iv, messageId);
                 messages.add(message);
             }
         }
         
-        // 反转列表，使最早的消息在前面
         List<Message> reversedMessages = new ArrayList<>(messages.size());
         for (int i = messages.size() - 1; i >= 0; i--) {
             reversedMessages.add(messages.get(i));
@@ -198,7 +206,7 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getRoomMessagesAfter(String roomName, String afterTimestamp, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+        String sql = "SELECT id, type, from_username, to_username, content, create_time, is_nsfw, iv FROM messages " +
                      "WHERE message_type = 'ROOM' AND to_username = ? AND create_time > ? " +
                      "ORDER BY create_time ASC LIMIT ?";
         
@@ -211,6 +219,7 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
+                int dbId = rs.getInt("id");
                 String typeStr = rs.getString("type");
                 MessageType type;
                 try {
@@ -224,8 +233,11 @@ public class MessageDAO {
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
                 String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
                 
-                Message message = new Message(type, from, to, content, time);
+                String messageId = String.format("%s_%s_%d", type.name(), roomName, dbId);
+                Message message = new Message(type, from, to, content, time, isNSFW, iv, messageId);
                 messages.add(message);
             }
         }
@@ -244,7 +256,7 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getPrivateMessagesAfter(String user1, String user2, String afterTimestamp, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, to_username, content, create_time FROM messages " +
+        String sql = "SELECT id, type, from_username, to_username, content, create_time, is_nsfw, iv FROM messages " +
                      "WHERE message_type = 'PRIVATE' " +
                      "AND ((from_username = ? AND to_username = ?) OR (from_username = ? AND to_username = ?)) " +
                      "AND create_time > ? " +
@@ -262,6 +274,7 @@ public class MessageDAO {
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
+                int dbId = rs.getInt("id");
                 String typeStr = rs.getString("type");
                 MessageType type;
                 try {
@@ -275,8 +288,11 @@ public class MessageDAO {
                 String to = rs.getString("to_username");
                 String content = rs.getString("content");
                 String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
                 
-                Message message = new Message(type, from, to, content, time);
+                String messageId = String.format("%s_%s_%d", type.name(), from + "_" + to, dbId);
+                Message message = new Message(type, from, to, content, time, isNSFW, iv, messageId);
                 messages.add(message);
             }
         }

@@ -23,6 +23,7 @@ public enum MessageType {
     REQUEST_TOKEN,
     TOKEN_RESPONSE,
     IMAGE,
+    FILE,
     REQUEST_PRIVATE_USERS,
     PRIVATE_USERS_RESPONSE
 }

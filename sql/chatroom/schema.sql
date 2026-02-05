@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS `messages` (
     `content` TEXT NOT NULL COMMENT '消息内容',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
     `message_type` VARCHAR(20) NOT NULL COMMENT '消息类别 (ROOM:房间消息, PRIVATE:私人消息)',
+    `is_nsfw` BOOLEAN DEFAULT FALSE COMMENT '是否为不适宜内容',
+    `iv` VARCHAR(255) DEFAULT NULL COMMENT '加密初始化向量',
     INDEX `idx_from_username` (`from_username`),
     INDEX `idx_to_username` (`to_username`),
     INDEX `idx_create_time` (`create_time`),

@@ -483,6 +483,33 @@ body {
 
 #modal-image.blurred {
     filter: blur(20px);
+    transition: filter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#modal-image.showing {
+    filter: blur(0);
+}
+
+.nsfw-modal-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    height: 100%;
+}
+
+.nsfw-modal-wrapper .nsfw-toggle-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.nsfw-modal-wrapper .nsfw-toggle-btn.minimized {
+    top: auto;
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+    transform: none;
 }
 
 .nsfw-image-wrapper {
@@ -535,6 +562,28 @@ body {
 
 .nsfw-toggle-btn.hidden {
     display: none;
+}
+
+.nsfw-toggle-btn.minimized {
+    top: auto;
+    bottom: 8px;
+    right: 8px;
+    left: auto;
+    transform: none;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 15px;
+    background: rgba(102, 126, 234, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.nsfw-toggle-btn.minimized:hover {
+    background: rgba(118, 75, 162, 0.9);
+    transform: scale(1.05);
+}
+
+.nsfw-toggle-btn.minimized:active {
+    transform: scale(0.95);
 }
 
 .image-preview-container {
@@ -972,4 +1021,603 @@ body {
 
 .return-button:active {
     background-color: #e65100;
+}
+
+/* File Message Styles */
+.file-message {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.file-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.file-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+    word-break: break-all;
+}
+
+.file-size {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.nsfw-badge {
+    display: inline-block;
+    background-color: #dc3545;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* Code File Styles */
+.code-file {
+    background-color: #282c34;
+    border-color: #21252b;
+}
+
+.code-file .file-header {
+    border-bottom-color: #3e4451;
+}
+
+.code-file .file-name {
+    color: #abb2bf;
+}
+
+.code-file .file-size {
+    color: #788296;
+}
+
+.code-block {
+    background-color: #21252b;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.code-block code {
+    font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #abb2bf;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Text File Styles */
+.text-file {
+    background-color: #f8f9fa;
+}
+
+.text-block {
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #495057;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Binary File Styles */
+.binary-file {
+    background-color: #e9ecef;
+}
+
+.binary-file .download-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.binary-file .download-link:hover {
+    background-color: #0069d9;
+}
+
+/* Scrollbar for code and text blocks */
+.code-block::-webkit-scrollbar,
+.text-block::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.code-block::-webkit-scrollbar-track,
+.text-block::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb,
+.text-block::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb:hover,
+.text-block::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Syntax highlighting colors (basic) */
+.code-block code {
+    color: #abb2bf;
+}
+
+/* File button style */
+#file-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#file-btn:hover {
+    background-color: #218838;
+}
+
+/* File Modal Styles */
+.file-modal-content {
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+#file-title {
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 18px;
+}
+
+.file-content-display {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 60vh;
+    overflow: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #495057;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 10px 0;
+}
+
+.file-content-display.language-javascript,
+.file-content-display.language-typescript,
+.file-content-display.language-java,
+.file-content-display.language-python,
+.file-content-display.language-c,
+.file-content-display.language-cpp,
+.file-content-display.language-csharp,
+.file-content-display.language-go,
+.file-content-display.language-rust,
+.file-content-display.language-ruby,
+.file-content-display.language-php,
+.file-content-display.language-swift,
+.file-content-display.language-kotlin,
+.file-content-display.language-scala,
+.file-content-display.language-groovy,
+.file-content-display.language-dart,
+.file-content-display.language-lua,
+.file-content-display.language-perl,
+.file-content-display.language-bash,
+.file-content-display.language-powershell,
+.file-content-display.language-sql,
+.file-content-display.language-html,
+.file-content-display.language-xml,
+.file-content-display.language-css,
+.file-content-display.language-scss,
+.file-content-display.language-sass,
+.file-content-display.language-less,
+.file-content-display.language-json,
+.file-content-display.language-yaml,
+.file-content-display.language-toml,
+.file-content-display.language-ini,
+.file-content-display.language-markdown,
+.file-content-display.language-latex,
+.file-content-display.language-vue,
+.file-content-display.language-jsx,
+.file-content-display.language-tsx,
+.file-content-display.language-csv,
+.file-content-display.language-docker,
+.file-content-display.language-makefile,
+.file-content-display.language-cmake,
+.file-content-display.language-gradle {
+    background-color: #2d2d2d;
+    color: #f8f8f2;
+    white-space: pre;
+    word-wrap: normal;
+}
+
+.file-content-display::-webkit-scrollbar {
+    width: 10px;
+}
+
+.file-content-display::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+
+.file-content-display::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 5px;
+}
+
+.file-content-display::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.file-content-display.language-javascript::-webkit-scrollbar-track,
+.file-content-display.language-typescript::-webkit-scrollbar-track,
+.file-content-display.language-java::-webkit-scrollbar-track,
+.file-content-display.language-python::-webkit-scrollbar-track,
+.file-content-display.language-c::-webkit-scrollbar-track,
+.file-content-display.language-cpp::-webkit-scrollbar-track,
+.file-content-display.language-csharp::-webkit-scrollbar-track,
+.file-content-display.language-go::-webkit-scrollbar-track,
+.file-content-display.language-rust::-webkit-scrollbar-track,
+.file-content-display.language-ruby::-webkit-scrollbar-track,
+.file-content-display.language-php::-webkit-scrollbar-track,
+.file-content-display.language-swift::-webkit-scrollbar-track,
+.file-content-display.language-kotlin::-webkit-scrollbar-track,
+.file-content-display.language-scala::-webkit-scrollbar-track,
+.file-content-display.language-groovy::-webkit-scrollbar-track,
+.file-content-display.language-dart::-webkit-scrollbar-track,
+.file-content-display.language-lua::-webkit-scrollbar-track,
+.file-content-display.language-perl::-webkit-scrollbar-track,
+.file-content-display.language-bash::-webkit-scrollbar-track,
+.file-content-display.language-powershell::-webkit-scrollbar-track,
+.file-content-display.language-sql::-webkit-scrollbar-track,
+.file-content-display.language-html::-webkit-scrollbar-track,
+.file-content-display.language-xml::-webkit-scrollbar-track,
+.file-content-display.language-css::-webkit-scrollbar-track,
+.file-content-display.language-scss::-webkit-scrollbar-track,
+.file-content-display.language-sass::-webkit-scrollbar-track,
+.file-content-display.language-less::-webkit-scrollbar-track,
+.file-content-display.language-json::-webkit-scrollbar-track,
+.file-content-display.language-yaml::-webkit-scrollbar-track,
+.file-content-display.language-toml::-webkit-scrollbar-track,
+.file-content-display.language-ini::-webkit-scrollbar-track,
+.file-content-display.language-markdown::-webkit-scrollbar-track,
+.file-content-display.language-latex::-webkit-scrollbar-track,
+.file-content-display.language-vue::-webkit-scrollbar-track,
+.file-content-display.language-jsx::-webkit-scrollbar-track,
+.file-content-display.language-tsx::-webkit-scrollbar-track,
+.file-content-display.language-csv::-webkit-scrollbar-track,
+.file-content-display.language-docker::-webkit-scrollbar-track,
+.file-content-display.language-makefile::-webkit-scrollbar-track,
+.file-content-display.language-cmake::-webkit-scrollbar-track,
+.file-content-display.language-gradle::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.file-content-display.language-javascript::-webkit-scrollbar-thumb,
+.file-content-display.language-typescript::-webkit-scrollbar-thumb,
+.file-content-display.language-java::-webkit-scrollbar-thumb,
+.file-content-display.language-python::-webkit-scrollbar-thumb,
+.file-content-display.language-c::-webkit-scrollbar-thumb,
+.file-content-display.language-cpp::-webkit-scrollbar-thumb,
+.file-content-display.language-csharp::-webkit-scrollbar-thumb,
+.file-content-display.language-go::-webkit-scrollbar-thumb,
+.file-content-display.language-rust::-webkit-scrollbar-thumb,
+.file-content-display.language-ruby::-webkit-scrollbar-thumb,
+.file-content-display.language-php::-webkit-scrollbar-thumb,
+.file-content-display.language-swift::-webkit-scrollbar-thumb,
+.file-content-display.language-kotlin::-webkit-scrollbar-thumb,
+.file-content-display.language-scala::-webkit-scrollbar-thumb,
+.file-content-display.language-groovy::-webkit-scrollbar-thumb,
+.file-content-display.language-dart::-webkit-scrollbar-thumb,
+.file-content-display.language-lua::-webkit-scrollbar-thumb,
+.file-content-display.language-perl::-webkit-scrollbar-thumb,
+.file-content-display.language-bash::-webkit-scrollbar-thumb,
+.file-content-display.language-powershell::-webkit-scrollbar-thumb,
+.file-content-display.language-sql::-webkit-scrollbar-thumb,
+.file-content-display.language-html::-webkit-scrollbar-thumb,
+.file-content-display.language-xml::-webkit-scrollbar-thumb,
+.file-content-display.language-css::-webkit-scrollbar-thumb,
+.file-content-display.language-scss::-webkit-scrollbar-thumb,
+.file-content-display.language-sass::-webkit-scrollbar-thumb,
+.file-content-display.language-less::-webkit-scrollbar-thumb,
+.file-content-display.language-json::-webkit-scrollbar-thumb,
+.file-content-display.language-yaml::-webkit-scrollbar-thumb,
+.file-content-display.language-toml::-webkit-scrollbar-thumb,
+.file-content-display.language-ini::-webkit-scrollbar-thumb,
+.file-content-display.language-markdown::-webkit-scrollbar-thumb,
+.file-content-display.language-latex::-webkit-scrollbar-thumb,
+.file-content-display.language-vue::-webkit-scrollbar-thumb,
+.file-content-display.language-jsx::-webkit-scrollbar-thumb,
+.file-content-display.language-tsx::-webkit-scrollbar-thumb,
+.file-content-display.language-csv::-webkit-scrollbar-thumb,
+.file-content-display.language-docker::-webkit-scrollbar-thumb,
+.file-content-display.language-makefile::-webkit-scrollbar-thumb,
+.file-content-display.language-cmake::-webkit-scrollbar-thumb,
+.file-content-display.language-gradle::-webkit-scrollbar-thumb {
+    background: #555;
+}
+
+.file-content-display.language-javascript::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-typescript::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-java::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-python::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-c::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-cpp::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-csharp::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-go::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-rust::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-ruby::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-php::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-swift::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-kotlin::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-scala::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-groovy::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-dart::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-lua::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-perl::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-bash::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-powershell::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-sql::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-html::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-xml::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-css::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-scss::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-sass::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-less::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-json::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-yaml::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-toml::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-ini::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-markdown::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-latex::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-vue::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-jsx::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-tsx::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-csv::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-docker::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-makefile::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-cmake::-webkit-scrollbar-thumb:hover,
+.file-content-display.language-gradle::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+#file-loading {
+    color: #6c757d;
+    font-size: 16px;
+}
+
+.file-upload-modal-content {
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.file-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.file-card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.file-card-icon {
+    font-size: 48px;
+    flex-shrink: 0;
+}
+
+.file-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-card-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    word-break: break-all;
+    color: white;
+}
+
+.file-card-meta {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.file-card-body {
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.file-preview-content {
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.file-preview-summary {
+    cursor: pointer;
+    position: relative;
+}
+
+.file-preview-summary:hover {
+    background-color: #3d3d3d;
+}
+
+.file-preview-text {
+    margin: 0;
+    padding: 15px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #f8f8f2;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow: auto;
+}
+
+.file-preview-truncated {
+    background-color: #3d3d3d;
+    color: #a0a0a0;
+    padding: 10px 15px;
+    text-align: center;
+    font-size: 13px;
+    border-top: 1px solid #4d4d4d;
+    cursor: pointer;
+}
+
+.file-preview-truncated:hover {
+    background-color: #4d4d4d;
+    color: #ffffff;
+}
+
+.file-preview-full {
+    cursor: pointer;
+}
+
+.file-preview-binary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.binary-file-icon {
+    font-size: 64px;
+    margin-bottom: 15px;
+}
+
+.binary-file-info {
+    text-align: center;
+    color: #6c757d;
+}
+
+.binary-file-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.binary-file-warning {
+    color: #dc3545;
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+#office-preview-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    z-index: 9999;
+}
+
+#office-preview {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    max-width: 1200px;
+    max-height: 800px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#office-preview .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #333;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    background: rgba(255,255,255,0.8);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+#office-preview .close:hover,
+#office-preview .close:focus {
+    color: #000;
+    background: rgba(255,255,255,1);
+}
+
+#office-body {
+    width: 100%;
+    height: 100%;
 }

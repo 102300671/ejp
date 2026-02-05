@@ -13,12 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ZFileTokenManager {
     private static ZFileTokenManager instance;
-    private String zfileServerUrl = "http://localhost:8081";
-    private String zfileUsername = "chatroom-system";
-    private String zfilePassword = "zeXvrDUDacr56Nt";
-    
-    private String zfileToken;
-    private long zfileTokenExpireTime;
+    private ZFileConfig config;
     
     private Map<String, TokenInfo> uploadTokens;
     
@@ -39,8 +34,9 @@ public class ZFileTokenManager {
     }
     
     private ZFileTokenManager() {
+        config = new ZFileConfig("http://ip:port", "username", "password");
         uploadTokens = new ConcurrentHashMap<>();
-        System.out.println("zfile 配置初始化完成: " + zfileServerUrl);
+        System.out.println("zfile 配置初始化完成: " + config.getZfileServerUrl());
     }
     
     public static synchronized ZFileTokenManager getInstance() {
@@ -51,18 +47,14 @@ public class ZFileTokenManager {
     }
     
     private String getZFileToken() throws Exception {
-        if (zfileToken != null && System.currentTimeMillis() < zfileTokenExpireTime) {
-            return zfileToken;
-        }
-        
-        String loginUrl = zfileServerUrl + "/user/login";
+        String loginUrl = config.getZfileServerUrl() + "/user/login";
         URL url = URI.create(loginUrl).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
         
-        String jsonBody = "{\"username\":\"" + zfileUsername + "\",\"password\":\"" + zfilePassword + "\"}";
+        String jsonBody = "{\"username\":\"" + config.getZfileUsername() + "\",\"password\":\"" + config.getZfilePassword() + "\"}";
         
         try (OutputStream os = conn.getOutputStream()) {
             byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
@@ -84,16 +76,15 @@ public class ZFileTokenManager {
         
         String responseBody = response.toString();
         System.out.println("zfile 登录响应: " + responseBody);
-        zfileToken = extractToken(responseBody);
+        String token = extractToken(responseBody);
         
-        if (zfileToken == null) {
+        if (token == null) {
             throw new Exception("从 zfile 响应中提取 token 失败");
         }
         
-        zfileTokenExpireTime = System.currentTimeMillis() + 3600000;
         System.out.println("zfile token 获取成功");
         
-        return zfileToken;
+        return token;
     }
     
     private String extractToken(String responseBody) {
@@ -161,7 +152,7 @@ public class ZFileTokenManager {
     }
     
     public String getZfileServerUrl() {
-        return zfileServerUrl;
+        return config.getZfileServerUrl();
     }
     
     public void cleanupExpiredTokens() {

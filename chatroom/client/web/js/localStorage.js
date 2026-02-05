@@ -8,7 +8,7 @@ const MessageStorage = {
     },
     // IndexedDB数据库名称和版本
     DB_NAME: 'ChatMessageDB',
-    DB_VERSION: 1,
+    DB_VERSION: 3,
     STORE_NAME: 'messages',
     LAST_SYNC_STORE: 'lastSync',
     
@@ -44,7 +44,19 @@ const MessageStorage = {
             // 检查消息是否已存在
             const exists = allMessages[roomName].some(m => m.id === message.id);
             if (!exists) {
-                allMessages[roomName].push(message);
+                allMessages[roomName].push({
+                    id: message.id,
+                    roomName: message.roomName,
+                    from: message.from,
+                    to: message.to,
+                    content: message.content,
+                    createTime: message.createTime,
+                    type: message.type,
+                    messageType: message.messageType,
+                    isSystem: message.isSystem || false,
+                    isNSFW: message.isNSFW || false,
+                    iv: message.iv || null
+                });
                 
                 // 限制每个房间最多保存200条消息
                 if (allMessages[roomName].length > 200) {
@@ -91,16 +103,21 @@ const MessageStorage = {
             console.log('IndexedDB open request created:', request);
             
             request.onupgradeneeded = (event) => {
-                console.log('onupgradeneeded event triggered');
+                console.log('onupgradeneeded event triggered, old version:', event.oldVersion, 'new version:', event.newVersion);
                 const db = event.target.result;
                 console.log('Database object:', db);
+                
+                // 如果旧版本小于3，需要重建消息存储对象（因为keyPath配置改变了）
+                if (event.oldVersion < 3 && db.objectStoreNames.contains(self.STORE_NAME)) {
+                    console.log('Deleting old message store to rebuild with new keyPath configuration');
+                    db.deleteObjectStore(self.STORE_NAME);
+                }
                 
                 // 创建消息存储对象
                 if (!db.objectStoreNames.contains(self.STORE_NAME)) {
                     console.log('Creating message store:', self.STORE_NAME);
                     const messageStore = db.createObjectStore(self.STORE_NAME, {
-                        keyPath: 'id',
-                        autoIncrement: true
+                        keyPath: 'id'
                     });
                     
                     // 创建索引
@@ -109,7 +126,15 @@ const MessageStorage = {
                     messageStore.createIndex('bySender', 'from', { unique: false });
                     messageStore.createIndex('byTime', 'createTime', { unique: false });
                     messageStore.createIndex('byType', 'messageType', { unique: false });
+                    messageStore.createIndex('byNSFW', 'isNSFW', { unique: false });
                     console.log('Message store and indexes created successfully');
+                } else {
+                    // 如果存储对象已存在，添加新的索引（用于数据库升级）
+                    const messageStore = event.target.transaction.objectStore(self.STORE_NAME);
+                    if (!messageStore.indexNames.contains('byNSFW')) {
+                        messageStore.createIndex('byNSFW', 'isNSFW', { unique: false });
+                        console.log('Added byNSFW index to existing message store');
+                    }
                 }
                 
                 // 创建最后同步时间存储对象
@@ -157,7 +182,9 @@ const MessageStorage = {
                     createTime: message.createTime,
                     type: message.type,
                     messageType: message.messageType,
-                    isSystem: message.isSystem || false
+                    isSystem: message.isSystem || false,
+                    isNSFW: message.isNSFW || false,
+                    iv: message.iv || null
                 });
                 
                 request.onsuccess = () => resolve(request.result);
@@ -184,7 +211,9 @@ const MessageStorage = {
                         createTime: message.createTime,
                         type: message.type,
                         messageType: message.messageType,
-                        isSystem: message.isSystem || false
+                        isSystem: message.isSystem || false,
+                        isNSFW: message.isNSFW || false,
+                        iv: message.iv || null
                     });
                     
                     request.onsuccess = () => {

@@ -1,3 +1,4 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ChatRoom - Main</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
     <div class="container">
@@ -47,8 +50,10 @@
                     </div>
                     <div class="message-input">
                         <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        <input type="file" id="file-input" style="display: none;">
                         <div class="message-input-buttons">
                             <button id="image-btn" title="Send Image">Image</button>
+                            <button id="file-btn" title="Send File">File</button>
                         </div>
                         <div class="message-input-main">
                             <input type="text" id="message-input" placeholder="Type your message...">
@@ -105,7 +110,10 @@
         <div id="image-modal" class="modal">
             <div class="modal-content image-modal-content">
                 <span class="close">&times;</span>
-                <img id="modal-image" src="" alt="图片预览">
+                <div class="nsfw-modal-wrapper">
+                    <img id="modal-image" src="" alt="图片预览">
+                    <button id="modal-nsfw-toggle-btn" class="nsfw-toggle-btn" style="display: none;">显示NSFW内容</button>
+                </div>
             </div>
         </div>
         
@@ -144,8 +152,20 @@
                 </div>
             </div>
         </div>
+        
+        <!-- File View Modal -->
+        <div id="file-modal" class="modal">
+            <div class="modal-content file-modal-content">
+                <span class="close" onclick="document.getElementById('file-modal').style.display='none'">&times;</span>
+                <h3 id="file-title"></h3>
+                <div id="file-loading" style="text-align: center; padding: 20px;">加载中...</div>
+                <pre id="file-content" class="file-content-display"></pre>
+            </div>
+        </div>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="js/localStorage.js"></script>
     <script src="js/chat.js"></script>
     <script>
