@@ -11,6 +11,8 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import server.config.ServiceConfig;
+
 public class ZFileTokenManager {
     private static ZFileTokenManager instance;
     private ZFileConfig config;
@@ -34,7 +36,12 @@ public class ZFileTokenManager {
     }
     
     private ZFileTokenManager() {
-        config = new ZFileConfig("http://ip:port", "username", "password");
+        ServiceConfig serviceConfig = ServiceConfig.getInstance();
+        config = new ZFileConfig(
+            serviceConfig.getZfileServerUrl(),
+            serviceConfig.getZfileUsername(),
+            serviceConfig.getZfilePassword()
+        );
         uploadTokens = new ConcurrentHashMap<>();
         System.out.println("zfile 配置初始化完成: " + config.getZfileServerUrl());
     }

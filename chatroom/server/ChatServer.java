@@ -9,6 +9,7 @@ import server.room.PublicRoom;
 import server.room.Room;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
+import server.config.ServiceConfig;
 
 public class ChatServer {
     private ServerListener serverListener;
@@ -29,6 +30,10 @@ public class ChatServer {
     public void initialize(int port) throws Exception {
         System.out.println("正在初始化聊天服务器...");
         
+        // 初始化服务配置
+        ServiceConfig serviceConfig = ServiceConfig.getInstance();
+        System.out.println("ZFile服务器地址: " + serviceConfig.getZfileServerUrl());
+        
         // 初始化数据库管理器
         this.databaseManager = new DatabaseManager();
         System.out.println("数据库管理器已初始化");
@@ -40,7 +45,8 @@ public class ChatServer {
         this.serverListener = new ServerListener(port, messageRouter);
         
         // 初始化WebSocket服务器（使用比TCP端口大1的端口）
-        this.webSocketServer = new WebSocketServer(port + 1, messageRouter);
+        boolean enableSsl = serviceConfig.isWebSocketSslEnabled();
+        this.webSocketServer = new WebSocketServer(port + 1, messageRouter, enableSsl);
         
         // 检查并创建system房间
         setupSystemRoom();

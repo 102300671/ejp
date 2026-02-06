@@ -24,6 +24,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import server.config.ServiceConfig;
+
 public class WebSocketConnection {
     private final WebSocket conn;
     private final String clientAddress;
@@ -620,6 +622,9 @@ public class WebSocketConnection {
             // 发送认证成功消息
             send(messageCodec.encode(authSuccessMessage));
             
+            // 发送服务配置
+            sendServiceConfig();
+            
             // 标记用户已认证
             isAuthenticated = true;
             currentUser = userDAO.getUserByUsername(username, connection);
@@ -704,6 +709,9 @@ public class WebSocketConnection {
             
             // 发送认证成功消息
             send(messageCodec.encode(authSuccessMessage));
+            
+            // 发送服务配置
+            sendServiceConfig();
             
             // 标记用户已认证
             isAuthenticated = true;
@@ -813,6 +821,9 @@ public class WebSocketConnection {
             // 发送认证成功消息
             send(messageCodec.encode(authSuccessMessage));
             
+            // 发送服务配置
+            sendServiceConfig();
+            
             // 标记用户已认证
             isAuthenticated = true;
             currentUser = user;
@@ -858,7 +869,9 @@ public class WebSocketConnection {
         try {
             server.zfile.ZFileTokenManager tokenManager = server.zfile.ZFileTokenManager.getInstance();
             String uploadToken = tokenManager.generateUploadToken(username);
-            String zfileServerUrl = tokenManager.getZfileServerUrl();
+            
+            ServiceConfig serviceConfig = ServiceConfig.getInstance();
+            String zfileServerUrl = serviceConfig.getZfileServerUrl();
             
             String tokenInfo = uploadToken + "|" + zfileServerUrl;
             
@@ -871,7 +884,7 @@ public class WebSocketConnection {
             );
             
             send(messageCodec.encode(tokenResponse));
-            System.out.println("发送上传 token 响应: " + uploadToken);
+            System.out.println("发送上传 token 响应: " + uploadToken + ", ZFile URL: " + zfileServerUrl);
         } catch (Exception e) {
             System.err.println("生成上传 token 失败: " + e.getMessage());
             e.printStackTrace();
@@ -1034,6 +1047,34 @@ public class WebSocketConnection {
             null
         );
         send(messageCodec.encode(authFailureMessage));
+    }
+    
+    /**
+     * 发送服务配置到客户端
+     */
+    private void sendServiceConfig() {
+        try {
+            ServiceConfig serviceConfig = ServiceConfig.getInstance();
+            
+            StringBuilder configJson = new StringBuilder();
+            configJson.append("{");
+            configJson.append("\"zfileServerUrl\":\"").append(serviceConfig.getZfileServerUrl()).append("\"");
+            configJson.append("}");
+            
+            Message configMessage = new Message(
+                MessageType.SERVICE_CONFIG,
+                "server",
+                "client",
+                configJson.toString(),
+                null
+            );
+            
+            send(messageCodec.encode(configMessage));
+            System.out.println("服务配置已发送到客户端");
+        } catch (Exception e) {
+            System.err.println("发送服务配置失败: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     public synchronized void send(String message) {

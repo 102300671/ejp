@@ -24,7 +24,8 @@ const MessageType = {
     IMAGE: 'IMAGE',
     FILE: 'FILE',
     REQUEST_PRIVATE_USERS: 'REQUEST_PRIVATE_USERS',
-    PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE'
+    PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE',
+    SERVICE_CONFIG: 'SERVICE_CONFIG'
 };
 
 const AES_KEY = 'ChatRoomNSFWKey2024!@#';
@@ -127,7 +128,6 @@ let chatClient = {
     ws: null,
     username: null,
     serverIp: null,
-    serverPort: null,
     wsPort: null,
     currentRoom: 'system',
     currentRoomType: 'PUBLIC',
@@ -163,6 +163,11 @@ let chatClient = {
     pendingFileUpload: null, // 待上传的文件
     pendingFileType: null, // 待上传文件的类型
     uploadToken: null, // 上传token
+    
+    // ========== 新增：服务配置相关属性 ==========
+    serviceConfig: {
+        zfileServerUrl: null
+    }, // 服务配置，从服务器动态获取
     
     // 日志记录方法
     log: function(level, message) {
@@ -693,6 +698,30 @@ let chatClient = {
         }
     },
     
+    // 处理服务配置
+    handleServiceConfig: function(message) {
+        this.log('info', '收到服务器服务配置');
+        
+        try {
+            const config = message.content ? JSON.parse(message.content) : {};
+            
+            if (config.zfileServerUrl) {
+                this.serviceConfig.zfileServerUrl = config.zfileServerUrl;
+                this.log('info', `ZFile服务器URL: ${config.zfileServerUrl}`);
+            }
+            
+            this.log('info', '服务配置已更新');
+            
+            // 配置更新后，重新渲染当前房间的消息
+            if (this.currentRoom) {
+                this.log('debug', '配置已更新，重新渲染当前房间的消息');
+                this.updateMessagesArea(this.currentRoom);
+            }
+        } catch (error) {
+            this.log('error', `处理服务配置失败: ${error.message}`);
+        }
+    },
+    
     // 处理服务器返回的历史消息
     handleHistoryMessages: function(messages, roomName) {
         if (!messages || messages.length === 0) {
@@ -1097,7 +1126,7 @@ let chatClient = {
     },
     
     // Connect to server with specified address and port (only for main window)
-    connectToServer: function(ip, port, wsPort, wsProtocol) {
+    connectToServer: function(ip, wsPort, wsProtocol) {
         if (window.opener) {
             // This is a child window, don't connect directly to server
             this.log('debug', 'Child window detected, not connecting to server directly');
@@ -1105,7 +1134,6 @@ let chatClient = {
         }
         
         this.serverIp = ip;
-        this.serverPort = port;
         this.wsPort = wsPort;
         this.wsProtocol = wsProtocol;
         
@@ -1118,7 +1146,6 @@ let chatClient = {
         
         // Save server info to sessionStorage instead of localStorage
         sessionStorage.setItem('serverIp', ip);
-        sessionStorage.setItem('serverPort', port);
         sessionStorage.setItem('wsPort', wsPort);
         sessionStorage.setItem('wsProtocol', wsProtocol);
         
@@ -1136,7 +1163,7 @@ let chatClient = {
                 }
                 
                 setTimeout(() => {
-                    window.location.href = `login.jsp?serverIp=${encodeURIComponent(ip)}&serverPort=${encodeURIComponent(port)}&wsPort=${encodeURIComponent(wsPort)}`;
+                    window.location.href = `login.jsp?serverIp=${encodeURIComponent(ip)}&wsPort=${encodeURIComponent(wsPort)}`;
                 }, 1500);
             }
         }, 100);
@@ -1160,51 +1187,27 @@ let chatClient = {
         }
         
         // Check if server info is saved
-        if (!this.serverIp || !this.serverPort) {
+        if (!this.serverIp || !this.wsPort) {
             // Try to get from sessionStorage first, then localStorage
             this.serverIp = sessionStorage.getItem('serverIp') || localStorage.getItem('serverIp');
-            this.serverPort = sessionStorage.getItem('serverPort') || localStorage.getItem('serverPort');
             this.wsPort = sessionStorage.getItem('wsPort') || localStorage.getItem('wsPort');
-            this.wsProtocol = sessionStorage.getItem('wsProtocol') || localStorage.getItem('wsProtocol') || 'ws';
+            
+            // 自动检测WebSocket协议：HTTPS页面使用wss://，HTTP页面使用ws://
+            this.wsProtocol = sessionStorage.getItem('wsProtocol') || localStorage.getItem('wsProtocol') || (window.location.protocol === 'https:' ? 'wss' : 'ws');
             
             // If no server info, redirect to connect page
-            if (!this.serverIp || !this.serverPort) {
+            if (!this.serverIp || !this.wsPort) {
                 window.location.href = 'connect.jsp';
                 return;
             }
+        } else {
+            // 如果有服务器信息，也自动检测协议
+            this.wsProtocol = (window.location.protocol === 'https:' ? 'wss' : 'ws');
         }
         
         // Connect to WebSocket server
-        let wsPort;
-        
-        // Use saved WebSocket port if available
-        if (this.wsPort) {
-            wsPort = parseInt(this.wsPort);
-            this.log('info', `Using saved WebSocket port: ${wsPort}`);
-        } else {
-            // Fallback to calculating WebSocket port (TCP port + 1)
-            wsPort = parseInt(this.serverPort);
-            
-            // Ensure port is valid and not NaN
-            if (isNaN(wsPort) || wsPort < 1 || wsPort > 65534) {
-                wsPort = 8080; // Default port if invalid
-                this.log('warn', `Invalid port '${this.serverPort}', using default port ${wsPort}`);
-            }
-            
-            // WebSocket port is TCP port + 1
-            wsPort += 1;
-            
-            // Ensure WebSocket port is within valid range
-            if (wsPort > 65535) {
-                wsPort = 8081; // Fallback to default WebSocket port if calculated port exceeds maximum
-                this.log('warn', `Calculated WebSocket port exceeds maximum (65535), using default port ${wsPort}`);
-            }
-            
-            // Save the calculated WebSocket port for future use
-            this.wsPort = wsPort;
-            sessionStorage.setItem('wsPort', wsPort);
-            localStorage.setItem('wsPort', wsPort);
-        }
+        const wsPort = parseInt(this.wsPort);
+        this.log('info', `Using saved WebSocket port: ${wsPort}`);
         
         // Ensure WebSocket port is valid
         if (isNaN(wsPort) || wsPort < 1 || wsPort > 65535) {
@@ -1513,6 +1516,9 @@ let chatClient = {
             case MessageType.PRIVATE_USERS_RESPONSE:
                 this.handlePrivateUsersResponse(message);
                 break;
+            case MessageType.SERVICE_CONFIG:
+                this.handleServiceConfig(message);
+                break;
             default:
                 console.log('Unknown message type:', message.type);
         }
@@ -1595,17 +1601,36 @@ let chatClient = {
                             const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                             const isSender = msg.from === username;
                             
+                            // 动态拼接ZFile地址
+                            let imageUrl = msg.content;
+                            const zfileBaseUrl = this.serviceConfig.zfileServerUrl || 'http://localhost:8081';
+                            this.log('debug', `原始图片URL: ${imageUrl}, ZFile地址: ${zfileBaseUrl}`);
+                            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                                // 相对路径，直接拼接
+                                imageUrl = zfileBaseUrl + imageUrl;
+                            } else {
+                                // 完整URL，提取路径部分并重新拼接
+                                try {
+                                    const urlObj = new URL(imageUrl);
+                                    const path = urlObj.pathname + urlObj.search;
+                                    imageUrl = zfileBaseUrl + path;
+                                    this.log('debug', `替换后图片URL: ${imageUrl}`);
+                                } catch (error) {
+                                    this.log('warn', '替换图片URL失败:', error.message);
+                                }
+                            }
+                            
                             if (msg.isNSFW) {
                                 const messageId = `nsfw-${msg.id || Date.now()}`;
                                 const ivAttr = msg.iv ? `data-iv='${msg.iv.replace(/'/g, "\\'")}'` : '';
                                 contentHtml = `
                                     <div class="nsfw-image-wrapper" id="${messageId}">
-                                        <img src="${msg.content}" alt="图片" ${ivAttr} data-encrypted-url="${msg.content}" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;">
+                                        <img src="${imageUrl}" alt="图片" ${ivAttr} data-encrypted-url="${imageUrl}" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;">
                                         <button class="nsfw-toggle-btn" onclick="toggleNSFWImage('${messageId}')">显示NSFW内容</button>
                                     </div>
                                 `;
                             } else {
-                                contentHtml = `<img src="${msg.content}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${msg.content}')">`;
+                                contentHtml = `<img src="${imageUrl}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${imageUrl}')">`;
                             }
                         } else if (msg.type === MessageType.FILE) {
                             try {
@@ -1613,8 +1638,26 @@ let chatClient = {
                                 const icon = fileInfo.type === 'code' ? '📄' : (fileInfo.type === 'text' ? '📝' : '📎');
                                 const fileClass = fileInfo.type === 'code' ? 'code-file' : (fileInfo.type === 'text' ? 'text-file' : 'binary-file');
                                 const isNSFW = msg.isNSFW || false;
+                                
+                                // 动态拼接ZFile地址
+                                let fileUrl = fileInfo.url;
+                                const zfileBaseUrl = this.serviceConfig.zfileServerUrl || 'http://localhost:8081';
+                                if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+                                    // 相对路径，直接拼接
+                                    fileUrl = zfileBaseUrl + fileUrl;
+                                } else {
+                                    // 完整URL，提取路径部分并重新拼接
+                                    try {
+                                        const urlObj = new URL(fileUrl);
+                                        const path = urlObj.pathname + urlObj.search;
+                                        fileUrl = zfileBaseUrl + path;
+                                    } catch (error) {
+                                        this.log('warn', '替换文件URL失败:', error.message);
+                                    }
+                                }
+                                
                                 contentHtml = `
-                                    <div class="file-message ${fileClass}" onclick="openFileModal('${fileInfo.url}', '${fileInfo.name}', '${fileInfo.type}', ${isNSFW})" style="cursor: pointer;">
+                                    <div class="file-message ${fileClass}" onclick="openFileModal('${fileUrl}', '${fileInfo.name}', '${fileInfo.type}', ${isNSFW})" style="cursor: pointer;">
                                         <div class="file-header">
                                             <span class="file-icon">${icon}</span>
                                             <div class="file-info">
@@ -1823,7 +1866,13 @@ let chatClient = {
             }
             
             this.uploadToken = parts[0];
+            
             this.zfileServerUrl = parts[1];
+            
+            if (this.serviceConfig.zfileServerUrl) {
+                this.zfileServerUrl = this.serviceConfig.zfileServerUrl;
+                this.log('info', '使用服务配置中的ZFile URL:', this.zfileServerUrl);
+            }
             
             this.log('info', '上传 token 获取成功');
             
@@ -2058,11 +2107,21 @@ let chatClient = {
             
             if (data && data.code === '0' && data.data) {
                 let uploadUrl = data.data;
-                // 检查上传URL是否使用了正确的端口（8081）
-                if (uploadUrl.includes('localhost:8080')) {
-                    uploadUrl = uploadUrl.replace('localhost:8080', 'localhost:8081');
-                    this.log('info', '修正上传URL端口:', uploadUrl);
+                
+                const configuredZfileUrl = this.serviceConfig.zfileServerUrl || this.zfileServerUrl;
+                if (configuredZfileUrl) {
+                    try {
+                        const urlObj = new URL(uploadUrl);
+                        const configUrlObj = new URL(configuredZfileUrl);
+                        urlObj.protocol = configUrlObj.protocol;
+                        urlObj.host = configUrlObj.host;
+                        uploadUrl = urlObj.toString();
+                        this.log('info', '使用配置的ZFile URL修正上传URL:', uploadUrl);
+                    } catch (error) {
+                        this.log('warn', '修正上传URL失败，使用原始URL:', error.message);
+                    }
                 }
+                
                 this.log('info', '上传URL获取成功:', uploadUrl);
                 
                 // 第二步：实际上传文件
@@ -2088,10 +2147,10 @@ let chatClient = {
             
             if (data && data.code === '0') {
                 this.log('info', '图片上传成功');
-                // 构建完整的图片URL
-                const imageUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                // 只存储相对路径，渲染时动态拼接ZFile地址
+                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
                 const iv = uploadFile.iv || null;
-                this.sendImageMessage(imageUrl, iv, originalImageDataUrl);
+                this.sendImageMessage(relativePath, iv, originalImageDataUrl);
             } else {
                 throw new Error('文件上传失败');
             }
@@ -2230,11 +2289,21 @@ let chatClient = {
             
             if (data && data.code === '0' && data.data) {
                 let uploadUrl = data.data;
-                // 检查上传URL是否使用了正确的端口（8081）
-                if (uploadUrl.includes('localhost:8080')) {
-                    uploadUrl = uploadUrl.replace('localhost:8080', 'localhost:8081');
-                    this.log('info', '修正上传URL端口:', uploadUrl);
+                
+                const configuredZfileUrl = this.serviceConfig.zfileServerUrl || this.zfileServerUrl;
+                if (configuredZfileUrl) {
+                    try {
+                        const urlObj = new URL(uploadUrl);
+                        const configUrlObj = new URL(configuredZfileUrl);
+                        urlObj.protocol = configUrlObj.protocol;
+                        urlObj.host = configUrlObj.host;
+                        uploadUrl = urlObj.toString();
+                        this.log('info', '使用配置的ZFile URL修正上传URL:', uploadUrl);
+                    } catch (error) {
+                        this.log('warn', '修正上传URL失败，使用原始URL:', error.message);
+                    }
                 }
+                
                 this.log('info', '上传URL获取成功:', uploadUrl);
                 
                 // 第二步：实际上传文件
@@ -2260,8 +2329,8 @@ let chatClient = {
             
             if (data && data.code === '0') {
                 this.log('info', '文件上传成功');
-                // 构建完整的文件URL
-                const fileUrl = `${this.zfileServerUrl}/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                // 只存储相对路径，渲染时动态拼接ZFile地址
+                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
                 let fileName = file.name;
                 let fileSize = this.formatFileSize(file.size);
                 let fileTypeDisplay = fileType === 'code' ? '代码' : (fileType === 'text' ? '文本' : '文件');
@@ -2270,7 +2339,7 @@ let chatClient = {
                     type: fileType,
                     name: fileName,
                     size: fileSize,
-                    url: fileUrl
+                    url: relativePath
                 });
                 
                 const message = {
@@ -3804,7 +3873,8 @@ function initChat() {
                     document.getElementById('file-loading').textContent = '加载中...';
                     
                     console.log('开始请求OnlyOffice配置');
-                    const configResponse = await fetch('http://localhost:8081/onlyOffice/config/token', {
+                    const onlyOfficeConfigUrl = `${chatClient.serviceConfig.zfileServerUrl || 'http://localhost:8081'}/onlyOffice/config/token`;
+                    const configResponse = await fetch(onlyOfficeConfigUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -3851,11 +3921,12 @@ function initChat() {
                     
                     if (typeof DocsAPI === 'undefined') {
                         console.log('OnlyOffice API未加载，开始加载...');
+                        const onlyOfficeApiUrl = chatClient.serviceConfig.onlyOfficeApiUrl || 'http://localhost:8082/web-apps/apps/api/documents/api.js';
                         await new Promise((resolve, reject) => {
                             const script = document.createElement('script');
                             script.type = 'text/javascript';
                             script.charset = 'UTF-8';
-                            script.src = 'http://localhost:8082/web-apps/apps/api/documents/api.js';
+                            script.src = onlyOfficeApiUrl;
                             
                             script.addEventListener('load', () => {
                                 console.log('OnlyOffice API加载成功');

@@ -6,25 +6,88 @@ import org.java_websocket.handshake.HandshakeBuilder;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.HandshakeState;
+import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import server.network.router.MessageRouter;
+import server.config.ServiceConfig;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
+import java.security.KeyStore;
 
 public class WebSocketServer extends org.java_websocket.server.WebSocketServer {
     private final MessageRouter messageRouter;
     private final ConcurrentHashMap<WebSocket, WebSocketConnection> connections;
     
     public WebSocketServer(int port, MessageRouter messageRouter) {
-        // 使用自定义的Draft类来处理CORS
+        this(port, messageRouter, false);
+    }
+    
+    public WebSocketServer(int port, MessageRouter messageRouter, boolean enableSsl) {
         super(new InetSocketAddress(port), new ArrayList<Draft>() {{ add(new DraftWithCORS()); }});
         this.messageRouter = messageRouter;
         this.connections = new ConcurrentHashMap<>();
-        // 允许跨域连接
         setReuseAddr(true);
-        System.out.println("WebSocket服务器已创建，将监听端口: " + port);
+        
+        if (enableSsl) {
+            configureSsl();
+            System.out.println("WebSocket服务器已创建（SSL模式），将监听端口: " + port);
+        } else {
+            System.out.println("WebSocket服务器已创建（普通模式），将监听端口: " + port);
+        }
+    }
+    
+    /**
+     * 配置SSL/TLS
+     */
+    private void configureSsl() {
+        try {
+            ServiceConfig config = ServiceConfig.getInstance();
+            
+            String keystorePath = config.getWebSocketSslKeystorePath();
+            String keystorePassword = config.getWebSocketSslKeystorePassword();
+            String keystoreType = config.getWebSocketSslKeystoreType();
+            String keyPassword = config.getWebSocketSslKeyPassword();
+            
+            if (keystorePath == null || keystorePath.isEmpty()) {
+                throw new IllegalArgumentException("SSL已启用但未配置keystore路径");
+            }
+            
+            if (keystorePassword == null || keystorePassword.isEmpty()) {
+                throw new IllegalArgumentException("SSL已启用但未配置keystore密码");
+            }
+            
+            System.out.println("正在加载SSL证书...");
+            System.out.println("Keystore路径: " + keystorePath);
+            System.out.println("Keystore类型: " + keystoreType);
+            
+            KeyStore keyStore = KeyStore.getInstance(keystoreType);
+            try (FileInputStream fis = new FileInputStream(keystorePath)) {
+                keyStore.load(fis, keystorePassword.toCharArray());
+            }
+            
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(keyStore, keyPassword != null && !keyPassword.isEmpty() ? keyPassword.toCharArray() : keystorePassword.toCharArray());
+            
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init(keyStore);
+            
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+            
+            setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+            
+            System.out.println("SSL配置成功");
+        } catch (Exception e) {
+            System.err.println("配置SSL失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("无法配置SSL: " + e.getMessage(), e);
+        }
     }
     
     /**

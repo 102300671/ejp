@@ -80,28 +80,24 @@
             
             // Get server info from sessionStorage first
             let serverIp = sessionStorage.getItem('serverIp');
-            let serverPort = sessionStorage.getItem('serverPort');
             let wsPort = sessionStorage.getItem('wsPort');
             
             // If sessionStorage doesn't have the info, try to get from URL parameters
-            if (!serverIp || !serverPort || !wsPort) {
+            if (!serverIp || !wsPort) {
                 console.log('Trying to get server info from URL parameters...');
                 const urlParams = new URLSearchParams(window.location.search);
                 serverIp = serverIp || urlParams.get('serverIp');
-                serverPort = serverPort || urlParams.get('serverPort');
                 wsPort = wsPort || urlParams.get('wsPort');
             }
             
             console.log('Retrieved serverIp:', serverIp);
-            console.log('Retrieved serverPort:', serverPort);
             console.log('Retrieved wsPort:', wsPort);
             
             // Ensure values are not null or empty strings
             serverIp = (serverIp || '').trim();
-            serverPort = (serverPort || '').trim();
             wsPort = (wsPort || '').trim();
             
-            if (!serverIp || !serverPort || !wsPort) {
+            if (!serverIp || !wsPort) {
                 // No valid server info, redirect to connect page
                 window.location.href = 'connect.jsp';
                 return;
@@ -109,12 +105,11 @@
             
             // Save to sessionStorage
             sessionStorage.setItem('serverIp', serverIp);
-            sessionStorage.setItem('serverPort', serverPort);
             sessionStorage.setItem('wsPort', wsPort);
             
             // Display current connection info
             const serverIpPortElement = document.getElementById('server-ip-port');
-            serverIpPortElement.textContent = `Connected to: ${serverIp}:${serverPort}`;
+            serverIpPortElement.textContent = `Connected to: ${serverIp}`;
             
             // Establish WebSocket connection first
             chatClient.connect();

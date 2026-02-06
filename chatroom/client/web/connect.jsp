@@ -76,20 +76,16 @@
                     <input type="text" id="server-ip" name="serverIp" value="localhost" required>
                 </div>
                 <div class="form-group">
-                    <label for="server-port">TCP Port:</label>
-                    <input type="number" id="server-port" name="serverPort" value="8080" min="1" max="65535" required>
-                </div>
-                <div class="form-group">
                     <label for="ws-port">WebSocket Port:</label>
-                    <input type="number" id="ws-port" name="wsPort" value="8081" min="1" max="65535" required>
-                    <small style="display: block; margin-top: 5px; color: #666;">Default: TCP Port + 1</small>
+                    <input type="number" id="ws-port" name="wsPort" value="8889" min="1" max="65535" required>
                 </div>
                 <div class="form-group">
                     <label for="ws-protocol">WebSocket Protocol:</label>
                     <select id="ws-protocol" name="wsProtocol" required>
-                        <option value="ws">ws:// (Default)</option>
+                        <option value="ws">ws:// (For HTTP pages)</option>
                         <option value="wss">wss:// (For HTTPS pages)</option>
                     </select>
+                    <small style="display: block; margin-top: 5px; color: #666;">Auto-detected based on current page protocol</small>
                 </div>
                 <div class="form-group">
                     <button type="submit" id="connect-btn">Connect</button>
@@ -109,23 +105,30 @@
             const connectForm = document.querySelector('.connect-form');
             const connectBtn = document.getElementById('connect-btn');
             const statusDiv = document.getElementById('status');
+            const wsProtocolSelect = document.getElementById('ws-protocol');
+            
+            // 自动检测WebSocket协议：HTTPS页面使用wss://，HTTP页面使用ws://
+            const currentProtocol = window.location.protocol;
+            const autoDetectedProtocol = currentProtocol === 'https:' ? 'wss' : 'ws';
+            wsProtocolSelect.value = autoDetectedProtocol;
+            
+            console.log('当前页面协议:', currentProtocol);
+            console.log('自动检测的WebSocket协议:', autoDetectedProtocol);
             
             connectForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
                 const serverIp = document.getElementById('server-ip').value.trim();
-                const serverPort = document.getElementById('server-port').value.trim();
                 const wsPort = document.getElementById('ws-port').value.trim();
                 const wsProtocol = document.getElementById('ws-protocol').value;
                 
                 // Debug: Log form values
                 console.log('Form submitted with serverIp:', serverIp);
-                console.log('Form submitted with serverPort:', serverPort);
                 console.log('Form submitted with wsPort:', wsPort);
                 console.log('Form submitted with wsProtocol:', wsProtocol);
                 
                 // Validate inputs
-                if (!serverIp || !serverPort || !wsPort || !wsProtocol) {
+                if (!serverIp || !wsPort || !wsProtocol) {
                     showStatus('Please enter all required fields', 'error');
                     return;
                 }
@@ -134,16 +137,15 @@
                 connectBtn.disabled = true;
                 connectBtn.textContent = 'Connecting...';
                 
-                showStatus('Connecting to ' + serverIp + ':' + serverPort + ' (WebSocket: ' + wsProtocol + '://' + serverIp + ':' + wsPort + ')...', 'info');
+                showStatus('Connecting to ' + serverIp + ' (WebSocket: ' + wsProtocol + '://' + serverIp + ':' + wsPort + ')...', 'info');
                 
                 // Save to sessionStorage explicitly
                 sessionStorage.setItem('serverIp', serverIp);
-                sessionStorage.setItem('serverPort', serverPort);
                 sessionStorage.setItem('wsPort', wsPort);
                 sessionStorage.setItem('wsProtocol', wsProtocol);
                 
                 // Connect to server
-                chatClient.connectToServer(serverIp, serverPort, wsPort, wsProtocol);
+                chatClient.connectToServer(serverIp, wsPort, wsProtocol);
             });
             
             function showStatus(message, type) {
