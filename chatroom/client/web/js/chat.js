@@ -3785,13 +3785,13 @@ let chatClient = {
         // Ensure we have valid room name to display the notification
         const roomName = message.to && message.to.trim() !== '' ? message.to : this.currentRoom;
         if (roomName) {
-            this.showMessage(`[System] ${message.from} joined ${roomName}`, true, roomName);
+            // this.showMessage(`[System] ${message.from} joined ${roomName}`, true, roomName);
         }
     },
     
     handleLeaveMessage: function(message) {
         // Leave message is room-specific
-        this.showMessage(`[System] ${message.from} left ${message.to}`, true, message.to);
+        // this.showMessage(`[System] ${message.from} left ${message.to}`, true, message.to);
     },
     
     handleListRooms: function(message) {
