@@ -317,40 +317,58 @@ public class WebSocketConnection {
                     
                     System.out.println("处理私聊消息: 从" + privateFrom + "到" + privateTo + "的消息: " + privateContent);
                     
-                    // 查找接收者用户ID
-                    String recipientId = null;
-                    for (Session session : messageRouter.getSessions().values()) {
-                        if (session.getUsername().equals(privateTo)) {
-                            recipientId = session.getUserId();
-                            break;
-                        }
-                    }
-                    
-                    // 保存私聊消息到数据库
-                    Message privateChatMsg = new Message(MessageType.PRIVATE_CHAT, privateFrom, privateTo, privateContent);
+                    // 检查是否为临时聊天（非好友关系）
                     try (Connection connection = dbManager.getConnection()) {
+                        server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
+                        boolean isFriend = friendshipDAO.areFriends(privateFrom, privateTo, connection);
+                        
+                        if (!isFriend) {
+                            // 临时聊天，需要检查权限
+                            boolean allowTemporaryChat = checkTemporaryChatPermission(privateTo, connection);
+                            
+                            if (!allowTemporaryChat) {
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "无法发送临时聊天消息：对方不接受临时聊天");
+                                send(messageCodec.encode(errorMsg));
+                                System.out.println("临时聊天被拒绝: " + privateTo + " 不接受临时聊天");
+                                break;
+                            }
+                        }
+                        
+                        // 查找接收者用户ID
+                        String recipientId = null;
+                        for (Session session : messageRouter.getSessions().values()) {
+                            if (session.getUsername().equals(privateTo)) {
+                                recipientId = session.getUserId();
+                                break;
+                            }
+                        }
+                        
+                        // 保存私聊消息到数据库
+                        Message privateChatMsg = new Message(MessageType.PRIVATE_CHAT, privateFrom, privateTo, privateContent);
                         MessageDAO messageDAO = new MessageDAO();
                         messageDAO.saveMessage(privateChatMsg, "PRIVATE", connection);
                         System.out.println("私聊消息已保存到数据库: 从" + privateFrom + "到" + privateTo + "的消息: " + privateContent);
-                    } catch (SQLException e) {
-                        System.err.println("保存私聊消息到数据库失败: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    
-                    // 发送私聊消息
-                    if (recipientId != null) {
-                        // 接收者在线，发送消息
-                        if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateChatMsg))) {
-                            System.out.println("私聊消息发送成功: 从" + privateFrom + "到" + privateTo + "的消息: " + privateContent);
+                        
+                        // 发送私聊消息
+                        if (recipientId != null) {
+                            // 接收者在线，发送消息
+                            if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateChatMsg))) {
+                                System.out.println("私聊消息发送成功: 从" + privateFrom + "到" + privateTo + "的消息: " + privateContent);
+                            } else {
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "发送私聊消息失败: 用户" + privateTo + "可能不在线");
+                                send(messageCodec.encode(errorMsg));
+                            }
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "发送私聊消息失败: 用户" + privateTo + "可能不在线");
-                            send(messageCodec.encode(errorMsg));
+                            // 接收者不在线，通知发送者
+                            Message infoMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "消息已发送，但用户" + privateTo + "当前不在线，上线后将收到消息");
+                            send(messageCodec.encode(infoMsg));
+                            System.out.println("私聊接收者不在线: " + privateTo);
                         }
-                    } else {
-                        // 接收者不在线，通知发送者
-                        Message infoMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "消息已发送，但用户" + privateTo + "当前不在线，上线后将收到消息");
-                        send(messageCodec.encode(infoMsg));
-                        System.out.println("私聊接收者不在线: " + privateTo);
+                    } catch (SQLException e) {
+                        System.err.println("处理私聊消息失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", privateFrom, "发送私聊消息失败: 服务器内部错误");
+                        send(messageCodec.encode(errorMsg));
                     }
                     break;
                     
@@ -453,6 +471,33 @@ public class WebSocketConnection {
                     handleRemoveRoomAdmin(message);
                     break;
                     
+                case UPDATE_USER_SETTINGS:
+                    // 已认证，处理用户设置更新
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleUpdateUserSettings(message);
+                    break;
+                    
+                case UPDATE_ROOM_SETTINGS:
+                    // 已认证，处理房间设置更新
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleUpdateRoomSettings(message);
+                    break;
+                    
+                case RECALL_MESSAGE:
+                    // 已认证，处理撤回消息
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    handleRecallMessage(message);
+                    break;
+                    
                 case JOIN:
                     // 已认证，处理加入房间消息
                     if (!isAuthenticated) {
@@ -495,6 +540,12 @@ public class WebSocketConnection {
                             roomDAO.joinRoom(roomId, userId, connection);
                         }
                         
+                        // 更新会话的当前房间
+                        Session session = messageRouter.getSessions().get(userId);
+                        if (session != null) {
+                            session.setCurrentRoom(roomName);
+                        }
+                        
                         // 不再发送多余的成功消息，因为MessageRouter已经广播了JOIN消息
                         
                         System.out.println("用户加入房间成功: " + currentUser.getUsername() + " 加入 " + roomName + " (ID: " + roomId + ")");
@@ -519,6 +570,13 @@ public class WebSocketConnection {
                             // 离开房间
                             String userId = String.valueOf(currentUser.getId());
                             messageRouter.leaveRoom(userId, roomId);
+                            
+                            // 更新会话的当前房间
+                            Session session = messageRouter.getSessions().get(userId);
+                            if (session != null) {
+                                session.setCurrentRoom(null);
+                            }
+                            
                             // 创建正确的离开消息
                             Message leaveMessage = new Message(
                                 MessageType.LEAVE,
@@ -752,8 +810,8 @@ public class WebSocketConnection {
                         }
                         response.append("]}");
                         
-                        // 发送响应，to字段设置为请求用户的用户名，确保只发送给请求者
-                        Message usersMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), response.toString());
+                        // 发送响应，使用LIST_ROOM_USERS消息类型
+                        Message usersMessage = new Message(MessageType.LIST_ROOM_USERS, "server", currentUser.getUsername(), response.toString());
                         send(messageCodec.encode(usersMessage));
                     } catch (Exception e) {
                         System.err.println("获取房间用户列表失败: " + e.getMessage());
@@ -2246,6 +2304,200 @@ public class WebSocketConnection {
         }
     }
     
+    private void handleUpdateUserSettings(Message message) {
+        String username = currentUser.getUsername();
+        String settingsJson = message.getContent();
+        
+        System.out.println("处理用户设置更新请求: 用户 " + username + " 更新设置");
+        
+        try {
+            // 解析JSON设置
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> settings = gson.fromJson(settingsJson, java.util.Map.class);
+            
+            // 获取acceptTemporaryChat设置
+            Boolean acceptTemporaryChat = (Boolean) settings.get("acceptTemporaryChat");
+            if (acceptTemporaryChat == null) {
+                acceptTemporaryChat = true; // 默认值
+            }
+            
+            // 更新数据库中的用户设置
+            try (Connection connection = dbManager.getConnection()) {
+                UserDAO userDAO = new UserDAO();
+                boolean success = userDAO.updateAcceptTemporaryChat(currentUser.getId(), acceptTemporaryChat, connection);
+                
+                if (success) {
+                    Message successMsg = new Message(MessageType.SYSTEM, "server", username, "用户设置更新成功");
+                    send(messageCodec.encode(successMsg));
+                    System.out.println("用户设置更新成功: " + username + " acceptTemporaryChat=" + acceptTemporaryChat);
+                } else {
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "用户设置更新失败");
+                    send(messageCodec.encode(errorMsg));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("更新用户设置失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "更新用户设置失败: " + e.getMessage());
+            send(messageCodec.encode(errorMsg));
+        }
+    }
+    
+    private void handleUpdateRoomSettings(Message message) {
+        String username = currentUser.getUsername();
+        String roomName = message.getTo();
+        String settingsJson = message.getContent();
+        
+        System.out.println("处理房间设置更新请求: 用户 " + username + " 更新房间 " + roomName + " 的设置");
+        
+        try {
+            // 解析JSON设置
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> settings = gson.fromJson(settingsJson, java.util.Map.class);
+            
+            // 获取房间ID
+            Room room = roomDAO.getRoomByName(roomName, dbManager.getConnection());
+            if (room == null) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "房间 " + roomName + " 不存在");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 检查当前用户是否为房主
+            String currentUserRole = roomDAO.getUserRole(room.getId(), String.valueOf(currentUser.getId()), dbManager.getConnection());
+            if (!"OWNER".equals(currentUserRole)) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "只有房主可以修改房间设置");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 更新房间设置
+            try (Connection connection = dbManager.getConnection()) {
+                // 更新acceptTemporaryChat设置
+                Boolean acceptTemporaryChat = (Boolean) settings.get("acceptTemporaryChat");
+                if (acceptTemporaryChat != null) {
+                    roomDAO.updateRoomAcceptTemporaryChat(room.getId(), String.valueOf(currentUser.getId()), acceptTemporaryChat, connection);
+                }
+                
+                // 更新房间类型
+                String roomType = (String) settings.get("roomType");
+                if (roomType != null && ("PUBLIC".equals(roomType) || "PRIVATE".equals(roomType))) {
+                    roomDAO.updateRoomType(room.getId(), roomType, connection);
+                }
+                
+                Message successMsg = new Message(MessageType.SYSTEM, "server", username, "房间设置更新成功");
+                send(messageCodec.encode(successMsg));
+                System.out.println("房间设置更新成功: " + roomName);
+            }
+        } catch (Exception e) {
+            System.err.println("更新房间设置失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "更新房间设置失败: " + e.getMessage());
+            send(messageCodec.encode(errorMsg));
+        }
+    }
+    
+    private void handleRecallMessage(Message message) {
+        String username = currentUser.getUsername();
+        String content = message.getContent();
+        
+        System.out.println("处理撤回消息请求: 用户 " + username + " 请求撤回消息");
+        
+        try {
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> data = gson.fromJson(content, java.util.Map.class);
+            
+            String messageId = (String) data.get("messageId");
+            String roomName = (String) data.get("roomName");
+            
+            if (messageId == null || roomName == null) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "消息ID或房间名不能为空");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 检查消息是否属于当前用户
+            if (!isMessageOwner(messageId, username)) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "只能撤回自己发送的消息");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 检查消息是否在可撤回时间内（2分钟）
+            if (!isMessageWithinRecallTime(messageId)) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "消息已超过撤回时间限制（2分钟）");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 从数据库中删除消息
+            server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
+            boolean deleted = messageDAO.deleteMessage(messageId, dbManager.getConnection());
+            if (deleted) {
+                // 查找房间ID
+                String roomId = null;
+                for (String rId : messageRouter.getRooms().keySet()) {
+                    if (roomName.equals(messageRouter.getRooms().get(rId).getName())) {
+                        roomId = rId;
+                        break;
+                    }
+                }
+                
+                if (roomId != null) {
+                    Message successMsg = new Message(MessageType.RECALL_MESSAGE, "server", roomName, content);
+                    messageRouter.broadcastToRoom(roomId, messageCodec.encode(successMsg));
+                    System.out.println("消息撤回成功: " + messageId);
+                } else {
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "房间不存在");
+                    send(messageCodec.encode(errorMsg));
+                }
+            } else {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "撤回消息失败");
+                send(messageCodec.encode(errorMsg));
+            }
+        } catch (Exception e) {
+            System.err.println("撤回消息失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", username, "撤回消息失败: " + e.getMessage());
+            send(messageCodec.encode(errorMsg));
+        }
+    }
+    
+    private boolean isMessageOwner(String messageId, String username) {
+        try {
+            server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
+            Message message = messageDAO.getMessageById(messageId, dbManager.getConnection());
+            return message != null && message.getFrom().equals(username);
+        } catch (Exception e) {
+            System.err.println("检查消息所有者失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    private boolean isMessageWithinRecallTime(String messageId) {
+        try {
+            server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
+            Message message = messageDAO.getMessageById(messageId, dbManager.getConnection());
+            if (message == null || message.getTime() == null) {
+                return false;
+            }
+            
+            // 解析消息时间
+            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(message.getTime(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            long messageTimeMillis = messageTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long currentTime = System.currentTimeMillis();
+            long timeDiff = (currentTime - messageTimeMillis) / 1000 / 60; // 转换为分钟
+            
+            return timeDiff <= 2;
+        } catch (Exception e) {
+            System.err.println("检查消息撤回时间失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
     private void broadcastRoomUpdate(String roomId) {
         // 通知房间中的所有用户刷新成员列表
         Room room = messageRouter.getRooms().get(roomId);
@@ -2254,5 +2506,59 @@ public class WebSocketConnection {
             // 暂时不实现，因为前端会定期刷新
             System.out.println("房间更新通知: 房间 " + room.getName() + " 的成员列表已更新");
         }
+    }
+    
+    /**
+     * 检查是否允许临时聊天
+     * @param toUsername 接收者用户名
+     * @param connection 数据库连接
+     * @return true表示允许，false表示不允许
+     * @throws SQLException SQL异常
+     */
+    private boolean checkTemporaryChatPermission(String toUsername, Connection connection) throws SQLException {
+        // 1. 检查接收者是否全局接受临时聊天
+        UserDAO userDAO = new UserDAO();
+        User toUser = userDAO.getUserByUsername(toUsername, connection);
+        if (toUser == null) {
+            return false;
+        }
+        
+        if (!toUser.isAcceptTemporaryChat()) {
+            return false;
+        }
+        
+        // 2. 如果发送者和接收者在同一个房间，检查房间设置
+        String currentRoom = getCurrentRoom();
+        if (currentRoom != null && !currentRoom.equals("system")) {
+            Room room = messageRouter.getRooms().get(currentRoom);
+            if (room != null) {
+                // 只有PUBLIC房间才允许临时聊天
+                if (!"PUBLIC".equals(room.getType())) {
+                    return false;
+                }
+                
+                // 检查接收者在当前房间是否接受临时聊天
+                String toUserId = String.valueOf(toUser.getId());
+                boolean acceptInRoom = roomDAO.isAcceptTemporaryChatInRoom(room.getId(), toUserId, connection);
+                if (!acceptInRoom) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * 获取当前房间
+     * @return 当前房间名称，如果没有则返回null
+     */
+    private String getCurrentRoom() {
+        // 从当前用户的会话中获取当前房间
+        Session session = messageRouter.getSessions().get(String.valueOf(currentUser.getId()));
+        if (session != null) {
+            return session.getCurrentRoom();
+        }
+        return null;
     }
 }

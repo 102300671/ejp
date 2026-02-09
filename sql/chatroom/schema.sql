@@ -43,6 +43,7 @@ CREATE TABLE `room_member` (
   `user_id` int NOT NULL,
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `role` ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '用户在房间中的角色：OWNER-房主，ADMIN-管理员，MEMBER-普通成员',
+  `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '在该房间是否接受临时聊天',
   PRIMARY KEY (`room_id`,`user_id`) USING BTREE,
   KEY `user_id` (`user_id`) USING BTREE,
   KEY `idx_role` (`role`) USING BTREE,
@@ -62,6 +63,7 @@ CREATE TABLE `user` (
   `id` int NOT NULL AUTO_INCREMENT,
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否接受临时聊天',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `username` (`username`) USING BTREE

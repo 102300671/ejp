@@ -43,7 +43,11 @@ const MessageType = {
     REMOVE_ROOM_ADMIN: 'REMOVE_ROOM_ADMIN',
     SERVICE_CONFIG: 'SERVICE_CONFIG',
     REQUEST_USER_STATS: 'REQUEST_USER_STATS',
-    USER_STATS_RESPONSE: 'USER_STATS_RESPONSE'
+    USER_STATS_RESPONSE: 'USER_STATS_RESPONSE',
+    UPDATE_USER_SETTINGS: 'UPDATE_USER_SETTINGS',
+    UPDATE_ROOM_SETTINGS: 'UPDATE_ROOM_SETTINGS',
+    DELETE_MESSAGE: 'DELETE_MESSAGE',
+    RECALL_MESSAGE: 'RECALL_MESSAGE'
 };
 
 const AES_KEY = 'ChatRoomNSFWKey2024!@#';
@@ -161,6 +165,7 @@ let chatClient = {
     broadcastChannel: null, // 主窗口间的BroadcastChannel
     seenMessageIds: new Set(), // 消息去重集合
     syncLog: [], // 同步日志，用于调试
+    deletedMessageIds: new Set(), // 本地删除的消息ID集合
     
     // ========== 新增：消息持久化相关属性 ==========
     messageStorage: null, // 消息存储实例，将在initMessagePersistence中初始化
@@ -385,6 +390,9 @@ let chatClient = {
         
         this.log('info', '初始化消息持久化系统');
         
+        // 加载已删除消息ID
+        this.loadDeletedMessageIds();
+        
         // 加载本地缓存的消息
         this.loadAllLocalMessages();
         
@@ -455,6 +463,12 @@ let chatClient = {
                         iv: msg.iv || null
                     };
                     
+                    // 检查消息是否已被本地删除
+                    if (this.deletedMessageIds.has(internalMsg.id)) {
+                        this.log('debug', `跳过已删除的消息: ${internalMsg.id}`);
+                        return;
+                    }
+                    
                     if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
                         this.messages[roomName].push(internalMsg);
                     }
@@ -494,6 +508,12 @@ let chatClient = {
                                     isNSFW: msg.isNSFW || false,
                                     iv: msg.iv || null
                                 };
+                                
+                                // 检查消息是否已被本地删除
+                                if (this.deletedMessageIds.has(internalMsg.id)) {
+                                    this.log('debug', `跳过已删除的消息: ${internalMsg.id}`);
+                                    return;
+                                }
                                 
                                 if (!this.messages[roomName].some(m => m.id === internalMsg.id)) {
                                     this.messages[roomName].push(internalMsg);
@@ -806,6 +826,12 @@ let chatClient = {
                 isNSFW: msg.isNSFW || false,
                 iv: msg.iv || null
             };
+            
+            // 检查消息是否已被本地删除
+            if (this.deletedMessageIds.has(internalMsg.id)) {
+                this.log('debug', `跳过已删除的消息: ${internalMsg.id}`);
+                return;
+            }
             
             // 检查消息是否已存在
             if (!this.messages[roomName] || !this.messages[roomName].some(m => m.id === internalMsg.id)) {
@@ -1626,6 +1652,9 @@ let chatClient = {
             case MessageType.SERVICE_CONFIG:
                 this.handleServiceConfig(message);
                 break;
+            case MessageType.RECALL_MESSAGE:
+                this.handleRecallMessage(message);
+                break;
             default:
                 console.log('Unknown message type:', message.type);
         }
@@ -1652,17 +1681,14 @@ let chatClient = {
             content: message,
             isSystem: isSystem,
             time: getLocalTime(),
-            from: isSystem ? 'System' : username
+            from: isSystem ? 'System' : username,
+            id: this.generateMessageId(isSystem ? 'SYSTEM' : 'TEXT', targetRoom)
         };
         
         this.messages[targetRoom].push(messageObj);
         
         // 保存系统消息到本地存储（但排除连接状态消息）
         if (this.messageStorage && messageObj.isSystem && !message.includes('Connected to chat server via WebSocket')) {
-            // 确保消息有唯一ID
-            if (!messageObj.id) {
-                messageObj.id = this.generateMessageId('SYSTEM', targetRoom);
-            }
             this.saveMessageToLocal(targetRoom, messageObj);
         }
         
@@ -1689,10 +1715,11 @@ let chatClient = {
                 const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                 
                 this.messages[roomName].forEach(msg => {
-                    const messageDiv = document.createElement('div');
                     if (msg.isSystem) {
-                        messageDiv.className = 'system-message';
-                        messageDiv.innerHTML = msg.content;
+                        const systemMessageDiv = document.createElement('div');
+                        systemMessageDiv.className = 'system-message';
+                        systemMessageDiv.innerHTML = msg.content;
+                        messagesArea.appendChild(systemMessageDiv);
                     } else {
                         const displayedUsername = msg.from;
                         const isSent = displayedUsername === currentUsername;
@@ -1806,6 +1833,19 @@ let chatClient = {
                         messageDiv.innerHTML = `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${msg.time}</small></div>`;
                         messageWrapper.appendChild(messageDiv);
                         
+                        // 添加右键菜单功能（对所有有ID的消息）
+                        if (msg.id) {
+                            console.log('为消息添加右键菜单:', msg.id, msg.from);
+                            messageWrapper.addEventListener('contextmenu', (e) => {
+                                console.log('右键菜单被触发:', msg.id);
+                                e.preventDefault();
+                                e.stopPropagation();
+                                this.showMessageContextMenu(e, msg, roomName);
+                            });
+                        } else {
+                            console.log('消息没有ID，不添加右键菜单:', msg);
+                        }
+                        
                         messagesArea.appendChild(messageWrapper);
                     }
                 });
@@ -1842,6 +1882,182 @@ let chatClient = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+    
+    // 显示消息右键菜单
+    showMessageContextMenu: function(event, message, roomName) {
+        console.log('显示右键菜单:', message, roomName);
+        
+        const existingMenu = document.getElementById('message-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        const menu = document.createElement('div');
+        menu.id = 'message-context-menu';
+        menu.className = 'message-context-menu';
+        
+        const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+        const isSent = message.from === currentUsername;
+        
+        console.log('当前用户:', currentUsername, '消息发送者:', message.from, '是否自己发送:', isSent);
+        
+        // 检查消息是否在可撤回时间内（2分钟）
+        const messageTime = new Date(message.time);
+        const currentTime = new Date();
+        const timeDiff = (currentTime - messageTime) / 1000 / 60; // 转换为分钟
+        const canRecall = isSent && timeDiff <= 2;
+        
+        console.log('消息时间:', message.time, '当前时间:', currentTime, '时间差(分钟):', timeDiff, '可撤回:', canRecall);
+        
+        // 删除选项（对所有消息都显示）
+        const deleteOption = document.createElement('div');
+        deleteOption.className = 'context-menu-item';
+        deleteOption.textContent = '删除';
+        deleteOption.addEventListener('click', () => {
+            this.deleteMessage(message.id, roomName);
+            menu.remove();
+        });
+        menu.appendChild(deleteOption);
+        
+        // 撤回选项（只对自己发送的消息且在2分钟内显示）
+        if (canRecall) {
+            const recallOption = document.createElement('div');
+            recallOption.className = 'context-menu-item';
+            recallOption.textContent = '撤回';
+            recallOption.addEventListener('click', () => {
+                this.recallMessage(message.id, roomName);
+                menu.remove();
+            });
+            menu.appendChild(recallOption);
+        }
+        
+        document.body.appendChild(menu);
+        console.log('菜单已添加到DOM，菜单内容:', menu.innerHTML);
+        
+        // 定位菜单
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        let left = event.clientX;
+        let top = event.clientY;
+        
+        if (left + menuWidth > windowWidth) {
+            left = windowWidth - menuWidth - 10;
+        }
+        
+        if (top + menuHeight > windowHeight) {
+            top = windowHeight - menuHeight - 10;
+        }
+        
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+        console.log('菜单位置:', left, top);
+        
+        // 点击其他地方关闭菜单
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                console.log('关闭菜单');
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 0);
+    },
+    
+    // 删除消息（仅本地删除，不影响服务器和其他客户端）
+    deleteMessage: function(messageId, roomName) {
+        if (!confirm('确定要删除这条消息吗？')) {
+            return;
+        }
+        
+        // 添加到已删除消息ID集合
+        this.deletedMessageIds.add(messageId);
+        this.saveDeletedMessageIds();
+        
+        // 只从本地消息列表中删除
+        if (this.messages[roomName]) {
+            this.messages[roomName] = this.messages[roomName].filter(msg => msg.id !== messageId);
+            this.updateMessagesArea(roomName);
+        }
+        
+        // 从本地存储中删除
+        if (this.messageStorage) {
+            this.messageStorage.deleteMessage(roomName, messageId);
+        }
+    },
+    
+    // 撤回消息
+    recallMessage: function(messageId, roomName) {
+        if (!confirm('确定要撤回这条消息吗？')) {
+            return;
+        }
+        
+        const recallData = {
+            messageId: messageId,
+            roomName: roomName
+        };
+        
+        this.sendMessage(MessageType.RECALL_MESSAGE, roomName, JSON.stringify(recallData));
+        
+        // 从本地消息列表中删除
+        if (this.messages[roomName]) {
+            this.messages[roomName] = this.messages[roomName].filter(msg => msg.id !== messageId);
+            this.updateMessagesArea(roomName);
+        }
+        
+        // 从本地存储中删除
+        if (this.messageStorage) {
+            this.messageStorage.deleteMessage(roomName, messageId);
+        }
+    },
+    
+    // 保存已删除消息ID到localStorage
+    saveDeletedMessageIds: function() {
+        const deletedIdsArray = Array.from(this.deletedMessageIds);
+        localStorage.setItem('deletedMessageIds', JSON.stringify(deletedIdsArray));
+    },
+    
+    // 从localStorage加载已删除消息ID
+    loadDeletedMessageIds: function() {
+        const deletedIdsStr = localStorage.getItem('deletedMessageIds');
+        if (deletedIdsStr) {
+            try {
+                const deletedIdsArray = JSON.parse(deletedIdsStr);
+                this.deletedMessageIds = new Set(deletedIdsArray);
+            } catch (error) {
+                this.log('error', `加载已删除消息ID失败: ${error.message}`);
+                this.deletedMessageIds = new Set();
+            }
+        }
+    },
+    
+    // 处理消息撤回响应
+    handleRecallMessage: function(message) {
+        try {
+            const data = JSON.parse(message.content);
+            const messageId = data.messageId;
+            const roomName = data.roomName;
+            
+            if (this.messages[roomName]) {
+                this.messages[roomName] = this.messages[roomName].filter(msg => msg.id !== messageId);
+                this.updateMessagesArea(roomName);
+            }
+            
+            if (this.messageStorage) {
+                this.messageStorage.deleteMessage(roomName, messageId);
+            }
+            
+            // 显示撤回提示
+            this.showMessage('消息已撤回', true, roomName);
+        } catch (error) {
+            this.log('error', `处理消息撤回响应失败: ${error.message}`);
+        }
     },
     
     // ========== 消息历史和同步处理 ==========
@@ -2107,6 +2323,12 @@ let chatClient = {
                 this.messages[targetRoom] = [];
             }
             
+            // 检查消息是否已被本地删除
+            if (this.deletedMessageIds.has(messageObj.id)) {
+                this.log('debug', `跳过已删除的消息: ${messageObj.id}`);
+                return;
+            }
+            
             this.messages[targetRoom].push(messageObj);
             
             if (this.messageStorage) {
@@ -2164,6 +2386,12 @@ let chatClient = {
             
             if (!this.messages[targetRoom]) {
                 this.messages[targetRoom] = [];
+            }
+            
+            // 检查消息是否已被本地删除
+            if (this.deletedMessageIds.has(messageObj.id)) {
+                this.log('debug', `跳过已删除的消息: ${messageObj.id}`);
+                return;
             }
             
             this.messages[targetRoom].push(messageObj);
@@ -3029,6 +3257,12 @@ let chatClient = {
             id: message.id || this.generateMessageId('TEXT', roomName)
         };
         
+        // 检查消息是否已被本地删除
+        if (this.deletedMessageIds.has(localMessage.id)) {
+            this.log('debug', `跳过已删除的消息: ${localMessage.id}`);
+            return;
+        }
+        
         // 去重检查 - 使用消息ID优先，然后使用内容+时间+发送者
         const isDuplicate = this.messages[roomName].some(m => 
             (localMessage.id && m.id === localMessage.id) || 
@@ -3092,6 +3326,12 @@ let chatClient = {
             id: message.id || this.generateMessageId('PRIVATE_CHAT', privateRoomName),
             type: MessageType.PRIVATE_CHAT
         };
+        
+        // 检查消息是否已被本地删除
+        if (this.deletedMessageIds.has(localMessage.id)) {
+            this.log('debug', `跳过已删除的消息: ${localMessage.id}`);
+            return;
+        }
         
         // 去重检查
         const isDuplicate = this.messages[privateRoomName].some(m => 
@@ -3206,6 +3446,17 @@ let chatClient = {
             const panelHeader = document.createElement('div');
             panelHeader.className = 'panel-header';
             panelHeader.innerHTML = `<h3>${roomName} - Members</h3>`;
+            
+            // Add room settings button
+            const roomSettingsBtn = document.createElement('button');
+            roomSettingsBtn.className = 'room-settings-btn';
+            roomSettingsBtn.innerHTML = '⚙️';
+            roomSettingsBtn.title = 'Room Settings';
+            roomSettingsBtn.addEventListener('click', () => {
+                this.showRoomSettings(roomName);
+            });
+            panelHeader.appendChild(roomSettingsBtn);
+            
             usersPanel.appendChild(panelHeader);
             
             const usersList = document.createElement('div');
@@ -3223,6 +3474,19 @@ let chatClient = {
             const panelHeader = usersPanel.querySelector('.panel-header');
             if (panelHeader) {
                 panelHeader.innerHTML = `<h3>${roomName} - Members</h3>`;
+                
+                // Add room settings button if it doesn't exist
+                let roomSettingsBtn = panelHeader.querySelector('.room-settings-btn');
+                if (!roomSettingsBtn) {
+                    roomSettingsBtn = document.createElement('button');
+                    roomSettingsBtn.className = 'room-settings-btn';
+                    roomSettingsBtn.innerHTML = '⚙️';
+                    roomSettingsBtn.title = 'Room Settings';
+                    roomSettingsBtn.addEventListener('click', () => {
+                        this.showRoomSettings(roomName);
+                    });
+                    panelHeader.appendChild(roomSettingsBtn);
+                }
             }
         }
         
@@ -3262,33 +3526,258 @@ let chatClient = {
                 userItem.appendChild(statusIndicator);
                 userItem.appendChild(usernameDiv);
                 
-                // Only add click event if not the current user
+                // Only add role badge for OWNER and ADMIN
+                if (user.role === 'OWNER' || user.role === 'ADMIN') {
+                    const roleBadge = document.createElement('div');
+                    roleBadge.className = 'user-role-badge';
+                    roleBadge.textContent = this.getRoleText(user.role);
+                    roleBadge.style.color = this.getRoleColor(user.role);
+                    userItem.appendChild(roleBadge);
+                }
+                
+                // Add click event to switch to private chat
                 if (!isCurrentUser) {
-                    // Check if this user is already a friend
-                    const isFriend = this.friends.some(friend => friend.username === user.username);
-                    
-                    // Add friend request button (+) if not already friends
-                    if (!isFriend) {
-                        const addFriendBtn = document.createElement('button');
-                        addFriendBtn.className = 'add-friend-btn';
-                        addFriendBtn.textContent = '+';
-                        addFriendBtn.title = 'Send friend request';
-                        addFriendBtn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            this.sendFriendRequest(user.username);
-                        });
-                        userItem.appendChild(addFriendBtn);
-                    }
-                    
                     userItem.addEventListener('click', () => {
-                        // Switch to private chat with this user
                         this.switchToPrivateChat(user.username);
+                    });
+                    
+                    // Add right-click context menu
+                    userItem.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.showUserContextMenu(e, user);
                     });
                 }
                 
                 usersList.appendChild(userItem);
             });
         }
+    },
+    
+    // Show user context menu on right-click
+    showUserContextMenu: function(event, user) {
+        // Remove existing context menu
+        const existingMenu = document.getElementById('user-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        // Create context menu
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'user-context-menu';
+        contextMenu.className = 'user-context-menu';
+        
+        // Check if this user is already a friend
+        const isFriend = this.friends.some(friend => friend.username === user.username);
+        
+        // Add friend operation
+        if (!isFriend) {
+            const addFriendOption = document.createElement('div');
+            addFriendOption.className = 'context-menu-item';
+            addFriendOption.textContent = 'Add Friend';
+            addFriendOption.addEventListener('click', () => {
+                this.sendFriendRequest(user.username);
+                contextMenu.remove();
+            });
+            contextMenu.appendChild(addFriendOption);
+        }
+        
+        // Add admin operations (only for room owner)
+        if (this.currentUserRole === 'OWNER') {
+            if (user.role === 'MEMBER') {
+                const setAdminOption = document.createElement('div');
+                setAdminOption.className = 'context-menu-item';
+                setAdminOption.textContent = 'Set Admin';
+                setAdminOption.addEventListener('click', () => {
+                    this.setRoomAdmin(user.userId, user.username);
+                    contextMenu.remove();
+                });
+                contextMenu.appendChild(setAdminOption);
+            } else if (user.role === 'ADMIN') {
+                const removeAdminOption = document.createElement('div');
+                removeAdminOption.className = 'context-menu-item';
+                removeAdminOption.textContent = 'Remove Admin';
+                removeAdminOption.addEventListener('click', () => {
+                    this.removeRoomAdmin(user.userId, user.username);
+                    contextMenu.remove();
+                });
+                contextMenu.appendChild(removeAdminOption);
+            }
+        }
+        
+        // Position menu
+        contextMenu.style.left = event.pageX + 'px';
+        contextMenu.style.top = event.pageY + 'px';
+        
+        // Add to document
+        document.body.appendChild(contextMenu);
+        
+        // Close menu when clicking elsewhere
+        const closeMenu = (e) => {
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        document.addEventListener('click', closeMenu);
+    },
+    
+    // Show room settings modal
+    showRoomSettings: function(roomName) {
+        // Remove existing modal
+        const existingModal = document.getElementById('room-settings-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Get current room info
+        const currentRoom = this.currentRoomUsers ? this.currentRoomUsers.find(u => u.username === this.username) : null;
+        const currentUserRole = this.currentUserRole || 'MEMBER';
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'room-settings-modal';
+        modal.className = 'modal';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        
+        // Modal header
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'modal-header';
+        modalHeader.innerHTML = `
+            <h3>Room Settings - ${roomName}</h3>
+            <button class="modal-close">&times;</button>
+        `;
+        modalContent.appendChild(modalHeader);
+        
+        // Modal body
+        const modalBody = document.createElement('div');
+        modalBody.className = 'modal-body';
+        
+        // Room info section
+        const roomInfoSection = document.createElement('div');
+        roomInfoSection.className = 'settings-section';
+        roomInfoSection.innerHTML = `
+            <h4>Room Information</h4>
+            <div class="settings-item">
+                <div class="settings-item-info">
+                    <h5>Room Name</h5>
+                    <p>${roomName}</p>
+                </div>
+            </div>
+            <div class="settings-item">
+                <div class="settings-item-info">
+                    <h5>Your Role</h5>
+                    <p>${this.getRoleText(currentUserRole)}</p>
+                </div>
+            </div>
+        `;
+        modalBody.appendChild(roomInfoSection);
+        
+        // Temporary chat settings section
+        const tempChatSection = document.createElement('div');
+        tempChatSection.className = 'settings-section';
+        tempChatSection.innerHTML = `
+            <h4>Temporary Chat Settings</h4>
+            <div class="settings-item">
+                <div class="settings-item-info">
+                    <h5>Accept Temporary Chat in This Room</h5>
+                    <p>Allow non-friends to send you temporary chat messages while in this room</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="room-accept-temporary-chat" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        `;
+        modalBody.appendChild(tempChatSection);
+        
+        // Only show admin settings for OWNER
+        if (currentUserRole === 'OWNER') {
+            const adminSection = document.createElement('div');
+            adminSection.className = 'settings-section';
+            adminSection.innerHTML = `
+                <h4>Admin Settings</h4>
+                <div class="settings-item">
+                    <div class="settings-item-info">
+                        <h5>Room Type</h5>
+                        <p>Change room type (PUBLIC allows temporary chat, PRIVATE does not)</p>
+                    </div>
+                    <select id="room-type-select" class="settings-select">
+                        <option value="PUBLIC">Public</option>
+                        <option value="PRIVATE">Private</option>
+                    </select>
+                </div>
+            `;
+            modalBody.appendChild(adminSection);
+        }
+        
+        modalContent.appendChild(modalBody);
+        
+        // Modal footer
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'modal-footer';
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'action-btn primary';
+        saveBtn.textContent = 'Save Settings';
+        saveBtn.addEventListener('click', () => {
+            this.saveRoomSettings(roomName);
+        });
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'action-btn secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        modalFooter.appendChild(saveBtn);
+        modalFooter.appendChild(cancelBtn);
+        modalContent.appendChild(modalFooter);
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Close button event
+        modalHeader.querySelector('.modal-close').addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // Close when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    },
+    
+    // Save room settings
+    saveRoomSettings: function(roomName) {
+        const acceptTemporaryChat = document.getElementById('room-accept-temporary-chat').checked;
+        const roomTypeSelect = document.getElementById('room-type-select');
+        const roomType = roomTypeSelect ? roomTypeSelect.value : null;
+        
+        const settings = {
+            roomName: roomName,
+            acceptTemporaryChat: acceptTemporaryChat
+        };
+        
+        if (roomType) {
+            settings.roomType = roomType;
+        }
+        
+        // Send settings to server
+        this.sendMessage(MessageType.UPDATE_ROOM_SETTINGS, roomName, JSON.stringify(settings));
+        
+        // Close modal
+        const modal = document.getElementById('room-settings-modal');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // Show success message
+        this.showMessage('[System] Room settings updated successfully', true, roomName);
     },
     
     handleJoinMessage: function(message) {
@@ -3319,8 +3808,11 @@ let chatClient = {
             this.currentRoomOwnerId = ownerId;
             this.currentRoomAdminIds = adminIds;
             
-            // 显示用户列表
-            this.displayRoomUsers(users, currentUserRole, ownerId, adminIds);
+            // 获取当前房间名称
+            const currentRoomName = document.getElementById('current-room-name')?.textContent || 'system';
+            
+            // 显示用户列表（使用第一个displayRoomUsers函数来创建面板）
+            this.displayRoomUsers(users, currentRoomName);
             
             this.log('info', `Received room users list: ${users.length} users, current role: ${currentUserRole}`);
         } catch (error) {
@@ -3343,82 +3835,6 @@ let chatClient = {
             
             this.updateRoomsList();
         }
-    },
-    
-    // Display room users with role information
-    displayRoomUsers: function(users, currentUserRole, ownerId, adminIds) {
-        const usersList = document.getElementById('room-users-list');
-        if (!usersList) return;
-        
-        usersList.innerHTML = '';
-        
-        if (users.length === 0) {
-            usersList.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No users in this room</div>';
-            return;
-        }
-        
-        users.forEach(user => {
-            const userItem = document.createElement('div');
-            userItem.className = 'user-item';
-            
-            const avatarImg = document.createElement('img');
-            avatarImg.className = 'user-avatar';
-            avatarImg.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(user.username);
-            avatarImg.alt = user.username;
-            
-            const userInfo = document.createElement('div');
-            userInfo.className = 'user-info';
-            
-            const usernameDiv = document.createElement('div');
-            usernameDiv.className = 'user-username';
-            usernameDiv.textContent = user.username;
-            
-            // 添加角色标签
-            const roleDiv = document.createElement('div');
-            roleDiv.className = 'user-role';
-            roleDiv.textContent = this.getRoleText(user.role);
-            roleDiv.style.color = this.getRoleColor(user.role);
-            
-            const statusDiv = document.createElement('div');
-            statusDiv.className = 'user-status';
-            statusDiv.textContent = user.isOnline ? 'Online' : 'Offline';
-            statusDiv.style.color = user.isOnline ? '#28a745' : '#6c757d';
-            
-            userInfo.appendChild(usernameDiv);
-            userInfo.appendChild(roleDiv);
-            userInfo.appendChild(statusDiv);
-            
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'user-actions';
-            
-            // 房主可以指定管理员
-            if (currentUserRole === 'OWNER' && user.role === 'MEMBER') {
-                const setAdminBtn = document.createElement('button');
-                setAdminBtn.className = 'set-admin-btn';
-                setAdminBtn.textContent = 'Set Admin';
-                setAdminBtn.addEventListener('click', () => {
-                    this.setRoomAdmin(user.userId, user.username);
-                });
-                actionsDiv.appendChild(setAdminBtn);
-            }
-            
-            // 房主可以移除管理员
-            if (currentUserRole === 'OWNER' && user.role === 'ADMIN') {
-                const removeAdminBtn = document.createElement('button');
-                removeAdminBtn.className = 'remove-admin-btn';
-                removeAdminBtn.textContent = 'Remove Admin';
-                removeAdminBtn.addEventListener('click', () => {
-                    this.removeRoomAdmin(user.userId, user.username);
-                });
-                actionsDiv.appendChild(removeAdminBtn);
-            }
-            
-            userItem.appendChild(avatarImg);
-            userItem.appendChild(userInfo);
-            userItem.appendChild(actionsDiv);
-            
-            usersList.appendChild(userItem);
-        });
     },
     
     // Get role text
@@ -6679,6 +7095,7 @@ function loadSettings() {
     document.getElementById('sound-notifications').checked = settings.soundNotifications !== false;
     document.getElementById('message-preview').checked = settings.messagePreview !== false;
     document.getElementById('mute-all').checked = settings.muteAll || false;
+    document.getElementById('accept-temporary-chat').checked = settings.acceptTemporaryChat !== false;
     document.getElementById('show-online-status').checked = settings.showOnlineStatus !== false;
     document.getElementById('read-receipts').checked = settings.readReceipts !== false;
     document.getElementById('profile-visibility').value = settings.profileVisibility || 'everyone';
@@ -6702,6 +7119,7 @@ function saveSettings() {
         soundNotifications: document.getElementById('sound-notifications').checked,
         messagePreview: document.getElementById('message-preview').checked,
         muteAll: document.getElementById('mute-all').checked,
+        acceptTemporaryChat: document.getElementById('accept-temporary-chat').checked,
         showOnlineStatus: document.getElementById('show-online-status').checked,
         readReceipts: document.getElementById('read-receipts').checked,
         profileVisibility: document.getElementById('profile-visibility').value,
@@ -6716,6 +7134,66 @@ function saveSettings() {
     
     applyTheme(settings.theme);
     applyFontSize(settings.fontSize);
+    
+    // 发送acceptTemporaryChat设置到服务器
+    const serverSettings = {
+        acceptTemporaryChat: settings.acceptTemporaryChat
+    };
+    
+    // 尝试使用WebSocket发送设置更新
+    if (window.chatClient && window.chatClient.ws && window.chatClient.ws.readyState === WebSocket.OPEN) {
+        window.chatClient.sendMessage(MessageType.UPDATE_USER_SETTINGS, 'server', JSON.stringify(serverSettings));
+    } else {
+        // 如果WebSocket未连接，创建临时连接发送设置
+        const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+        const uuid = localStorage.getItem('uuid') || sessionStorage.getItem('uuid');
+        
+        if (username && uuid) {
+            // 创建临时WebSocket连接
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/chatroom/server`;
+            
+            const tempWs = new WebSocket(wsUrl);
+            
+            tempWs.onopen = function() {
+                // 发送认证
+                const authMessage = {
+                    type: 'UUID_AUTH',
+                    from: username,
+                    to: 'server',
+                    content: uuid
+                };
+                tempWs.send(JSON.stringify(authMessage));
+            };
+            
+            tempWs.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                
+                // 认证成功后发送设置更新
+                if (message.type === 'UUID_AUTH_SUCCESS') {
+                    const settingsMessage = {
+                        type: 'UPDATE_USER_SETTINGS',
+                        from: username,
+                        to: 'server',
+                        content: JSON.stringify(serverSettings)
+                    };
+                    tempWs.send(JSON.stringify(settingsMessage));
+                }
+                
+                // 收到设置更新成功消息后关闭连接
+                if (message.type === 'SYSTEM' && message.content === '用户设置更新成功') {
+                    tempWs.close();
+                }
+            };
+            
+            tempWs.onerror = function(error) {
+                console.error('临时WebSocket连接错误:', error);
+                tempWs.close();
+            };
+        } else {
+            console.warn('未找到用户信息，无法更新服务器设置');
+        }
+    }
     
     alert('Settings saved successfully!');
 }

@@ -410,6 +410,44 @@ const MessageStorage = {
                 request.onerror = () => reject(new Error('Failed to get latest message timestamp: ' + request.error));
             });
         });
+    },
+    
+    // 删除指定消息
+    deleteMessage: function(roomName, messageId) {
+        // 先从IndexedDB删除
+        return this.openDB().then(db => {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(this.STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(this.STORE_NAME);
+                
+                const request = store.delete(messageId);
+                
+                request.onsuccess = () => {
+                    console.log('Message deleted from IndexedDB:', messageId);
+                    resolve();
+                };
+                
+                request.onerror = () => {
+                    console.error('Failed to delete message from IndexedDB:', request.error);
+                    reject(new Error('Failed to delete message: ' + request.error));
+                };
+            });
+        }).then(() => {
+            // 同时从备用存储删除
+            try {
+                const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
+                if (allMessages[roomName]) {
+                    allMessages[roomName] = allMessages[roomName].filter(m => m.id !== messageId);
+                    localStorage.setItem('chat_messages_backup', JSON.stringify(allMessages));
+                    console.log('Message deleted from backup storage:', messageId);
+                }
+            } catch (e) {
+                console.error('Error deleting message from backup storage:', e);
+            }
+        }).catch(error => {
+            console.error('Error deleting message:', error);
+            throw error;
+        });
     }
 };
 

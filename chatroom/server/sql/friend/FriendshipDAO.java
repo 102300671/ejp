@@ -58,6 +58,25 @@ public class FriendshipDAO {
         return false;
     }
     
+    public boolean areFriends(String username1, String username2, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM friendships f " +
+                     "JOIN user u1 ON f.user1_id = u1.id " +
+                     "JOIN user u2 ON f.user2_id = u2.id " +
+                     "WHERE (u1.username = ? AND u2.username = ?) OR (u1.username = ? AND u2.username = ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username1);
+            stmt.setString(2, username2);
+            stmt.setString(3, username2);
+            stmt.setString(4, username1);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        return false;
+    }
+    
     public List<Friendship> getUserFriends(int userId, Connection connection) throws SQLException {
         String sql = "SELECT f.*, u1.username as user1_username, u2.username as user2_username " +
                      "FROM friendships f " +

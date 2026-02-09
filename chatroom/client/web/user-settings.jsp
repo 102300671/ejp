@@ -169,6 +169,17 @@
                             <h3>Privacy Settings</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
+                                    <h4>Accept Temporary Chat</h4>
+                                    <p>Allow non-friends to send you temporary chat messages</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="accept-temporary-chat" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="settings-item">
+                                <div class="settings-item-info">
                                     <h4>Online Status</h4>
                                     <p>Show when you're online to other users</p>
                                 </div>

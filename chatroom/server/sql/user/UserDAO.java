@@ -69,7 +69,7 @@ public class UserDAO {
      * @throws SQLException 如果查询过程中发生数据库错误
      */
     public User getUserByUsername(String username, Connection connection) throws SQLException {
-        String sql = "SELECT u.id, u.username, u.password, u.created_at, uu.uuid " +
+        String sql = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, uu.uuid " +
                      "FROM user u " +
                      "LEFT JOIN user_uuid uu ON u.id = uu.user_id " +
                      "WHERE u.username = ?";
@@ -83,9 +83,12 @@ public class UserDAO {
                     String dbUsername = resultSet.getString("username");
                     String hashedPassword = resultSet.getString("password");
                     String createdAt = resultSet.getString("created_at");
+                    boolean acceptTemporaryChat = resultSet.getBoolean("accept_temporary_chat");
                     String uuid = resultSet.getString("uuid");
                     
-                    return new User(id, dbUsername, hashedPassword, createdAt, uuid);
+                    User user = new User(id, dbUsername, hashedPassword, createdAt, uuid);
+                    user.setAcceptTemporaryChat(acceptTemporaryChat);
+                    return user;
                 }
             }
             
@@ -218,5 +221,32 @@ public class UserDAO {
         }
         
         return users;
+    }
+    
+    /**
+     * 更新用户的临时聊天接受设置
+     * @param userId 用户ID
+     * @param acceptTemporaryChat 是否接受临时聊天
+     * @param connection 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException 如果更新过程中发生数据库错误
+     */
+    public boolean updateAcceptTemporaryChat(int userId, boolean acceptTemporaryChat, Connection connection) throws SQLException {
+        String sql = "UPDATE user SET accept_temporary_chat = ? WHERE id = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setBoolean(1, acceptTemporaryChat);
+            preparedStatement.setInt(2, userId);
+            
+            int rowsAffected = preparedStatement.executeUpdate();
+            System.out.println("更新用户临时聊天设置: 用户ID=" + userId + ", acceptTemporaryChat=" + acceptTemporaryChat + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("更新用户临时聊天设置失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

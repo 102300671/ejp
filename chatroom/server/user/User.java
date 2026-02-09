@@ -6,6 +6,7 @@ public class User {
     private final String password;
     private final String createdAt;
     private String uuid;
+    private boolean acceptTemporaryChat;
     
     /**
      * 构造用户对象
@@ -21,6 +22,7 @@ public class User {
         this.password = password;
         this.createdAt = createdAt;
         this.uuid = uuid;
+        this.acceptTemporaryChat = true;
     }
     
     public int getId() {
@@ -45,5 +47,13 @@ public class User {
     
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+    
+    public boolean isAcceptTemporaryChat() {
+        return acceptTemporaryChat;
+    }
+    
+    public void setAcceptTemporaryChat(boolean acceptTemporaryChat) {
+        this.acceptTemporaryChat = acceptTemporaryChat;
     }
 }

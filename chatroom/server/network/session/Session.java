@@ -6,12 +6,14 @@ public class Session {
     private final String username;
     private volatile ClientConnection clientConnection;
     private volatile boolean isActive;
+    private String currentRoom;
 
     public Session(String userId, String username, ClientConnection clientConnection) {
         this.userId = userId;
         this.username = username;
         this.clientConnection = clientConnection;
         this.isActive = true;
+        this.currentRoom = null;
         System.out.println("创建新会话: 用户ID=" + userId + ", 用户名=" + username);
     }
 
@@ -44,6 +46,14 @@ public class Session {
             System.out.println("会话已禁用: 用户ID=" + userId);
         }
     }
+    
+    public String getCurrentRoom() {
+        return currentRoom;
+    }
+    
+    public void setCurrentRoom(String currentRoom) {
+        this.currentRoom = currentRoom;
+    }
 
     @Override
     public String toString() {
@@ -51,6 +61,7 @@ public class Session {
                 "userId='" + userId + '\'' +
                 ", username='" + username + '\'' +
                 ", isActive=" + isActive +
+                ", currentRoom='" + currentRoom + '\'' +
                 '}';
     }
 }

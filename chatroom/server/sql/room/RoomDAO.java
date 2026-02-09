@@ -375,4 +375,71 @@ public class RoomDAO {
             }
         }
     }
+    
+    /**
+     * 检查用户在房间中是否接受临时聊天
+     * @param roomId 房间ID
+     * @param userId 用户ID
+     * @param conn 数据库连接
+     * @return true表示接受临时聊天，false表示不接受
+     * @throws SQLException SQL异常
+     */
+    public boolean isAcceptTemporaryChatInRoom(String roomId, String userId, Connection conn) throws SQLException {
+        String sql = "select accept_temporary_chat from room_member where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            pstmt.setInt(2, Integer.parseInt(userId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("accept_temporary_chat");
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * 更新用户在房间中的临时聊天接受设置
+     * @param roomId 房间ID
+     * @param userId 用户ID
+     * @param acceptTemporaryChat 是否接受临时聊天
+     * @param conn 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException SQL异常
+     */
+    public boolean updateRoomAcceptTemporaryChat(String roomId, String userId, boolean acceptTemporaryChat, Connection conn) throws SQLException {
+        String sql = "update room_member set accept_temporary_chat = ? where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setBoolean(1, acceptTemporaryChat);
+            pstmt.setInt(2, Integer.parseInt(roomId));
+            pstmt.setInt(3, Integer.parseInt(userId));
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("更新房间临时聊天设置: 房间ID=" + roomId + ", 用户ID=" + userId + ", acceptTemporaryChat=" + acceptTemporaryChat + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+        }
+    }
+    
+    /**
+     * 更新房间类型
+     * @param roomId 房间ID
+     * @param roomType 房间类型（PUBLIC或PRIVATE）
+     * @param conn 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException SQL异常
+     */
+    public boolean updateRoomType(String roomId, String roomType, Connection conn) throws SQLException {
+        String sql = "update room set room_type = ? where id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, roomType);
+            pstmt.setInt(2, Integer.parseInt(roomId));
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("更新房间类型: 房间ID=" + roomId + ", roomType=" + roomType + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+        }
+    }
 }

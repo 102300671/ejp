@@ -412,4 +412,113 @@ public class MessageDAO {
         
         return 0;
     }
+    
+    /**
+     * 根据消息ID删除消息
+     * @param messageId 消息ID
+     * @param connection 数据库连接
+     * @return 删除成功返回true，否则返回false
+     * @throws SQLException SQL异常
+     */
+    public boolean deleteMessage(String messageId, Connection connection) throws SQLException {
+        // 解析消息ID：格式为 TYPE_target_timestamp_random
+        String[] parts = messageId.split("_");
+        if (parts.length < 4) {
+            System.err.println("无效的消息ID格式: " + messageId);
+            return false;
+        }
+        
+        String messageType = parts[0];
+        String target = parts[1];
+        String timestampStr = parts[2];
+        
+        // 将时间戳转换为MySQL datetime格式
+        long timestamp = Long.parseLong(timestampStr);
+        java.time.Instant instant = java.time.Instant.ofEpochMilli(timestamp);
+        java.time.LocalDateTime messageTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+        
+        // 使用消息类型、目标和时间来查找并删除消息
+        String sql = "DELETE FROM messages " +
+                     "WHERE type = ? AND (to_username = ? OR from_username = ?) " +
+                     "AND create_time >= DATE_SUB(?, INTERVAL 1 SECOND) " +
+                     "AND create_time <= DATE_ADD(?, INTERVAL 1 SECOND) " +
+                     "ORDER BY create_time DESC LIMIT 1";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, messageType);
+            stmt.setString(2, target);
+            stmt.setString(3, target);
+            stmt.setString(4, messageTime.toString().replace('T', ' ').substring(0, 19));
+            stmt.setString(5, messageTime.toString().replace('T', ' ').substring(0, 19));
+            
+            int rowsAffected = stmt.executeUpdate();
+            System.out.println("删除消息: messageId=" + messageId + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+        }
+    }
+    
+    /**
+     * 根据消息ID获取消息
+     * @param messageId 消息ID
+     * @param connection 数据库连接
+     * @return 消息对象，如果不存在则返回null
+     * @throws SQLException SQL异常
+     */
+    public Message getMessageById(String messageId, Connection connection) throws SQLException {
+        // 解析消息ID：格式为 TYPE_target_timestamp_random
+        String[] parts = messageId.split("_");
+        if (parts.length < 4) {
+            System.err.println("无效的消息ID格式: " + messageId);
+            return null;
+        }
+        
+        String messageType = parts[0];
+        String target = parts[1];
+        String timestampStr = parts[2];
+        
+        // 将时间戳转换为MySQL datetime格式
+        long timestamp = Long.parseLong(timestampStr);
+        java.time.Instant instant = java.time.Instant.ofEpochMilli(timestamp);
+        java.time.LocalDateTime messageTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+        
+        // 使用消息类型、目标和时间来查找消息
+        String sql = "SELECT id, type, from_username, to_username, content, create_time, is_nsfw, iv FROM messages " +
+                     "WHERE type = ? AND (to_username = ? OR from_username = ?) " +
+                     "AND create_time >= DATE_SUB(?, INTERVAL 1 SECOND) " +
+                     "AND create_time <= DATE_ADD(?, INTERVAL 1 SECOND) " +
+                     "ORDER BY create_time DESC LIMIT 1";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, messageType);
+            stmt.setString(2, target);
+            stmt.setString(3, target);
+            stmt.setString(4, messageTime.toString().replace('T', ' ').substring(0, 19));
+            stmt.setString(5, messageTime.toString().replace('T', ' ').substring(0, 19));
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                int dbId = rs.getInt("id");
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr);
+                    return null;
+                }
+                
+                String from = rs.getString("from_username");
+                String to = rs.getString("to_username");
+                String content = rs.getString("content");
+                String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
+                
+                return new Message(type, from, to, content, time, isNSFW, iv, messageId);
+            }
+        }
+        
+        return null;
+    }
 }
