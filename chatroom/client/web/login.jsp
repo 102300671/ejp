@@ -48,6 +48,19 @@
                 <!-- Register Form -->
                 <div id="register-tab" class="tab-content">
                     <form id="register-form">
+                        <div class="form-group avatar-upload-group">
+                            <label>Avatar (Optional):</label>
+                            <div class="avatar-upload-container">
+                                <div class="avatar-preview-wrapper">
+                                    <img id="register-avatar-preview" src="" alt="Avatar Preview" class="avatar-preview">
+                                    <div class="avatar-placeholder">+</div>
+                                </div>
+                                <button type="button" id="upload-avatar-btn" class="upload-avatar-btn">Upload Avatar</button>
+                                <button type="button" id="remove-avatar-btn" class="remove-avatar-btn" style="display: none;">Remove</button>
+                                <input type="file" id="register-avatar-input" accept="image/*" style="display: none;">
+                            </div>
+                            <p class="avatar-hint">Click to upload an avatar image (optional)</p>
+                        </div>
                         <div class="form-group">
                             <label for="register-username">Username:</label>
                             <input type="text" id="register-username" name="username" required>

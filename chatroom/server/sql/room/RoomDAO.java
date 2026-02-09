@@ -53,11 +53,17 @@ public class RoomDAO {
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
                     
+                    Room room;
                     if ("PUBLIC".equals(type)) {
-                        return new PublicRoom(name, id, messageRouter);
+                        room = new PublicRoom(name, id, messageRouter);
                     } else {
-                        return new PrivateRoom(name, id, messageRouter);
+                        room = new PrivateRoom(name, id, messageRouter);
                     }
+                    
+                    // 加载房主和管理员信息
+                    loadRoomOwnersAndAdmins(room, id, conn);
+                    
+                    return room;
                 }
             }
         }
@@ -109,13 +115,65 @@ public class RoomDAO {
     }
     
     public boolean joinRoom(String roomId, String userId, Connection conn) throws SQLException {
-        String sql = "insert into room_member (room_id, user_id) values (?, ?)";
+        return joinRoom(roomId, userId, "MEMBER", conn);
+    }
+    
+    public boolean joinRoom(String roomId, String userId, String role, Connection conn) throws SQLException {
+        String sql = "insert into room_member (room_id, user_id, role) values (?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, Integer.parseInt(roomId));
             pstmt.setInt(2, Integer.parseInt(userId));
+            pstmt.setString(3, role);
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
         }
+    }
+    
+    public boolean updateUserRole(String roomId, String userId, String role, Connection conn) throws SQLException {
+        String sql = "update room_member set role = ? where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, role);
+            pstmt.setInt(2, Integer.parseInt(roomId));
+            pstmt.setInt(3, Integer.parseInt(userId));
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
+    
+    public String getUserRole(String roomId, String userId, Connection conn) throws SQLException {
+        String sql = "select role from room_member where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            pstmt.setInt(2, Integer.parseInt(userId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("role");
+                }
+            }
+        }
+        return null;
+    }
+    
+    public List<java.util.Map<String, Object>> getRoomMembersWithRoles(String roomId, Connection conn) throws SQLException {
+        List<java.util.Map<String, Object>> members = new ArrayList<>();
+        String sql = "select rm.user_id, u.username, rm.role, rm.joined_at from room_member rm " +
+                     "join user u on rm.user_id = u.id where rm.room_id = ? order by rm.role, rm.joined_at";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    java.util.Map<String, Object> memberInfo = new java.util.HashMap<>();
+                    memberInfo.put("userId", rs.getInt("user_id"));
+                    memberInfo.put("username", rs.getString("username"));
+                    memberInfo.put("role", rs.getString("role"));
+                    memberInfo.put("joinedAt", rs.getTimestamp("joined_at") != null ? rs.getTimestamp("joined_at").toString() : null);
+                    members.add(memberInfo);
+                }
+            }
+        }
+        return members;
     }
     
     public boolean leaveRoom(String roomId, String userId, Connection conn) throws SQLException {
@@ -156,6 +214,27 @@ public class RoomDAO {
             }
         }
         return memberIds;
+    }
+    
+    /**
+     * 获取用户加入的房间数量
+     * @param userId 用户ID
+     * @param conn 数据库连接
+     * @return 房间数量
+     * @throws SQLException SQL异常
+     */
+    public int getUserRoomCount(String userId, Connection conn) throws SQLException {
+        String sql = "select count(*) from room_member where user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(userId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
     }
     
     /**
@@ -206,5 +285,94 @@ public class RoomDAO {
             }
         }
         return null;
+    }
+    
+    /**
+     * 搜索房间
+     * @param searchTerm 搜索词
+     * @param conn 数据库连接
+     * @return 房间列表
+     * @throws SQLException SQL异常
+     */
+    public List<Room> searchRooms(String searchTerm, Connection conn) throws SQLException {
+        List<Room> rooms = new ArrayList<>();
+        String sql = "select id, room_name, room_type, created_at from room where room_name like ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + searchTerm + "%");
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = String.valueOf(rs.getInt("id"));
+                    String name = rs.getString("room_name");
+                    String type = rs.getString("room_type");
+                    String createdAt = rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toString() : null;
+                    
+                    Room room;
+                    if ("PUBLIC".equals(type)) {
+                        room = new PublicRoom(name, id, messageRouter);
+                    } else {
+                        room = new PrivateRoom(name, id, messageRouter);
+                    }
+                    
+                    // 设置成员数量
+                    int memberCount = getMemberCount(id, conn);
+                    room.setMemberCount(memberCount);
+                    
+                    // 设置创建时间
+                    room.setCreatedAt(createdAt);
+                    
+                    rooms.add(room);
+                }
+            }
+        }
+        return rooms;
+    }
+    
+    /**
+     * 获取房间成员数量
+     * @param roomId 房间ID
+     * @param conn 数据库连接
+     * @return 成员数量
+     * @throws SQLException SQL异常
+     */
+    private int getMemberCount(String roomId, Connection conn) throws SQLException {
+        String sql = "select count(*) as count from room_member where room_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("count");
+                }
+            }
+        }
+        return 0;
+    }
+    
+    /**
+     * 加载房间的房主和管理员信息
+     * @param room 房间对象
+     * @param roomId 房间ID
+     * @param conn 数据库连接
+     * @throws SQLException SQL异常
+     */
+    private void loadRoomOwnersAndAdmins(Room room, String roomId, Connection conn) throws SQLException {
+        String sql = "select user_id, role from room_member where room_id = ? and role in ('OWNER', 'ADMIN')";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String userId = String.valueOf(rs.getInt("user_id"));
+                    String role = rs.getString("role");
+                    
+                    if ("OWNER".equals(role)) {
+                        room.setOwnerId(userId);
+                    } else if ("ADMIN".equals(role)) {
+                        room.addAdmin(userId);
+                    }
+                }
+            }
+        }
     }
 }

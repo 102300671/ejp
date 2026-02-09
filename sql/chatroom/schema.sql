@@ -42,8 +42,10 @@ CREATE TABLE `room_member` (
   `room_id` int NOT NULL,
   `user_id` int NOT NULL,
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `role` ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '用户在房间中的角色：OWNER-房主，ADMIN-管理员，MEMBER-普通成员',
   PRIMARY KEY (`room_id`,`user_id`) USING BTREE,
   KEY `user_id` (`user_id`) USING BTREE,
+  KEY `idx_role` (`role`) USING BTREE,
   CONSTRAINT `room_member_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `room` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `room_member_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
@@ -81,6 +83,49 @@ CREATE TABLE `user_uuid` (
   UNIQUE KEY `uuid` (`uuid`) USING BTREE,
   CONSTRAINT `user_uuid_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `friend_requests`
+--
+
+DROP TABLE IF EXISTS `friend_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `friend_requests` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `from_user_id` INT NOT NULL COMMENT '发送者用户ID',
+    `to_user_id` INT NOT NULL COMMENT '接收者用户ID',
+    `status` ENUM('PENDING', 'ACCEPTED', 'REJECTED') NOT NULL DEFAULT 'PENDING' COMMENT '请求状态',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY `unique_pending_request` (`from_user_id`, `to_user_id`, `status`) COMMENT '防止重复发送好友请求',
+    KEY `idx_from_user_id` (`from_user_id`),
+    KEY `idx_to_user_id` (`to_user_id`),
+    KEY `idx_status` (`status`),
+    CONSTRAINT `fk_friend_requests_from_user` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_friend_requests_to_user` FOREIGN KEY (`to_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='好友请求表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `friendships`
+--
+
+DROP TABLE IF EXISTS `friendships`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `friendships` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user1_id` INT NOT NULL COMMENT '用户1的ID',
+    `user2_id` INT NOT NULL COMMENT '用户2的ID',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立好友关系的时间',
+    UNIQUE KEY `unique_friendship` (`user1_id`, `user2_id`) COMMENT '确保同一对好友关系不重复',
+    KEY `idx_user1_id` (`user1_id`),
+    KEY `idx_user2_id` (`user2_id`),
+    CONSTRAINT `fk_friendships_user1` FOREIGN KEY (`user1_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_friendships_user2` FOREIGN KEY (`user2_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='好友关系表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

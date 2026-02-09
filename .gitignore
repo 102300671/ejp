@@ -34,3 +34,8 @@ Thumbs.db
 
 chatroom/server/sql/database.properties
 files
+chatroom/server/keystore.jks
+chatroom/server/keystore.p12
+chatroom/server/keystore.p12.backup
+chatroom/server/websocket_server_api.txt
+chatroom/server/config/service.properties

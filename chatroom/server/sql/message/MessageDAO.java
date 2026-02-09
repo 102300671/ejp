@@ -346,4 +346,70 @@ public class MessageDAO {
         
         return users;
     }
+    
+    /**
+     * 获取用户发送的消息总数
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 消息总数
+     * @throws SQLException SQL异常
+     */
+    public int getUserMessageCount(String username, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * 获取用户发送的图片数量
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 图片数量
+     * @throws SQLException SQL异常
+     */
+    public int getUserImageCount(String username, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ? AND type = 'IMAGE'";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * 获取用户发送的文件数量
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 文件数量
+     * @throws SQLException SQL异常
+     */
+    public int getUserFileCount(String username, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ? AND type = 'FILE'";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        
+        return 0;
+    }
 }

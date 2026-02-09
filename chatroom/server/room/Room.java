@@ -9,6 +9,10 @@ public abstract class Room {
     private final Map<String, String> users;
     
     private final MessageRouter messageRouter;
+    private int memberCount; // 房间成员数量
+    private String createdAt; // 房间创建时间
+    private String ownerId; // 房主ID
+    private Set<String> adminIds; // 管理员ID集合
     
     /**
      * 构造房间对象
@@ -21,6 +25,10 @@ public abstract class Room {
         this.id = id;
         this.messageRouter = messageRouter;
         this.users = new HashMap<>();
+        this.memberCount = 0;
+        this.createdAt = null;
+        this.ownerId = null;
+        this.adminIds = new HashSet<>();
         System.out.println("创建新房间: " + name + " (ID: " + id + ")");
     }
     
@@ -41,11 +49,125 @@ public abstract class Room {
     }
     
     /**
+     * 获取房间类型
+     * @return 房间类型（PUBLIC或PRIVATE）
+     */
+    public String getType() {
+        if (this instanceof PublicRoom) {
+            return "PUBLIC";
+        } else if (this instanceof PrivateRoom) {
+            return "PRIVATE";
+        }
+        return "UNKNOWN";
+    }
+    
+    /**
      * 获取房间ID
      * @return 房间ID
      */
     public String getId() {
         return id;
+    }
+    
+    /**
+     * 获取房间成员数量
+     * @return 房间成员数量
+     */
+    public int getMemberCount() {
+        return memberCount;
+    }
+    
+    /**
+     * 设置房间成员数量
+     * @param memberCount 房间成员数量
+     */
+    public void setMemberCount(int memberCount) {
+        this.memberCount = memberCount;
+    }
+    
+    /**
+     * 获取房间创建时间
+     * @return 房间创建时间
+     */
+    public String getCreatedAt() {
+        return createdAt;
+    }
+    
+    /**
+     * 设置房间创建时间
+     * @param createdAt 房间创建时间
+     */
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    /**
+     * 获取房主ID
+     * @return 房主ID
+     */
+    public String getOwnerId() {
+        return ownerId;
+    }
+    
+    /**
+     * 设置房主ID
+     * @param ownerId 房主ID
+     */
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
+    }
+    
+    /**
+     * 获取管理员ID集合
+     * @return 管理员ID集合
+     */
+    public Set<String> getAdminIds() {
+        return adminIds;
+    }
+    
+    /**
+     * 添加管理员
+     * @param adminId 管理员ID
+     */
+    public void addAdmin(String adminId) {
+        if (adminId != null && !adminId.isEmpty()) {
+            adminIds.add(adminId);
+        }
+    }
+    
+    /**
+     * 移除管理员
+     * @param adminId 管理员ID
+     */
+    public void removeAdmin(String adminId) {
+        adminIds.remove(adminId);
+    }
+    
+    /**
+     * 检查用户是否为房主
+     * @param userId 用户ID
+     * @return true表示是房主
+     */
+    public boolean isOwner(String userId) {
+        return ownerId != null && ownerId.equals(userId);
+    }
+    
+    /**
+     * 检查用户是否为管理员
+     * @param userId 用户ID
+     * @return true表示是管理员
+     */
+    public boolean isAdmin(String userId) {
+        return adminIds.contains(userId);
+    }
+    
+    /**
+     * 检查用户是否为房主或管理员
+     * @param userId 用户ID
+     * @return true表示是房主或管理员
+     */
+    public boolean isOwnerOrAdmin(String userId) {
+        return isOwner(userId) || isAdmin(userId);
     }
     
     /**
@@ -158,7 +280,7 @@ public abstract class Room {
         return "Room{" +
                 "name='" + name + '\'' +
                 ", id='" + id + '\'' +
-                ", userCount=" + users.size() +
+                ", userCount=" + (memberCount > 0 ? memberCount : users.size()) +
                 '}';
     }
     

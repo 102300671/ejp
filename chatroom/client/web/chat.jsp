@@ -16,7 +16,16 @@
                 <h2>ChatRoom</h2>
                 <div class="user-info">
                     <span id="current-user"></span>
-                    <button id="logout-btn">Logout</button>
+                    <div class="user-menu">
+                        <button id="user-menu-btn" class="user-menu-btn">
+                            <img id="user-avatar" src="" alt="User Avatar" class="user-avatar-small">
+                        </button>
+                        <div id="user-menu-dropdown" class="user-menu-dropdown">
+                            <button id="view-profile-btn">👤 Profile</button>
+                            <button id="view-settings-btn">⚙️ Settings</button>
+                            <button id="logout-btn">🚪 Logout</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -24,7 +33,7 @@
                 <!-- Rooms List -->
                 <div class="rooms-panel">
                     <div class="panel-header">
-                        <h3>Rooms</h3>
+                        <h3>Chat</h3>
                         <button id="create-room-btn">Create Room</button>
                     </div>
                     <div id="rooms-list" class="rooms-list">
@@ -43,6 +52,7 @@
                                 <button id="join-room-btn">Join</button>
                                 <button id="leave-room-btn">Leave</button>
                                 <button id="exit-room-btn">Exit</button>
+                                <button id="add-friend-btn">Add</button>
                             </div>
                     </div>
                     <div id="messages-area" class="messages-area">
@@ -160,6 +170,50 @@
                 <h3 id="file-title"></h3>
                 <div id="file-loading" style="text-align: center; padding: 20px;">加载中...</div>
                 <pre id="file-content" class="file-content-display"></pre>
+            </div>
+        </div>
+        
+        <!-- User Search Modal -->
+        <div id="user-search-modal" class="modal">
+            <div class="modal-content user-search-modal-content">
+                <span class="close" onclick="document.getElementById('user-search-modal').style.display='none'">&times;</span>
+                <h3>Search Users</h3>
+                <div class="search-input-container">
+                    <input type="text" id="user-search-input" placeholder="Enter username to search...">
+                    <button id="search-users-btn">Search</button>
+                </div>
+                <div class="modal-tabs">
+                    <button class="tab-btn active" data-tab="search">Search Results</button>
+                    <button class="tab-btn" data-tab="requests">Friend Requests</button>
+                </div>
+                <div id="search-results" class="user-search-results">
+                    <!-- Search results will be displayed here -->
+                </div>
+                <div id="friend-requests" class="friend-requests-list" style="display: none;">
+                    <!-- Friend requests will be displayed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Room Search Modal -->
+        <div id="room-search-modal" class="modal">
+            <div class="modal-content room-search-modal-content">
+                <span class="close" onclick="document.getElementById('room-search-modal').style.display='none'">&times;</span>
+                <h3>Search Rooms</h3>
+                <div class="search-input-container">
+                    <input type="text" id="room-search-input" placeholder="Enter room name to search...">
+                    <button id="search-rooms-btn">Search</button>
+                </div>
+                <div class="modal-tabs">
+                    <button class="tab-btn active" data-tab="search">Search Results</button>
+                    <button class="tab-btn" data-tab="requests">Room Requests</button>
+                </div>
+                <div id="room-search-results" class="room-search-results">
+                    <!-- Search results will be displayed here -->
+                </div>
+                <div id="room-requests" class="room-requests-list" style="display: none;">
+                    <!-- Room requests will be displayed here -->
+                </div>
             </div>
         </div>
     </div>

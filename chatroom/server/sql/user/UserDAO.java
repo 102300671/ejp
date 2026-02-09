@@ -150,4 +150,73 @@ public class UserDAO {
             throw e;
         }
     }
+    
+    /**
+     * 根据用户名获取用户加入时间
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 用户加入时间，如果用户不存在则返回null
+     * @throws SQLException 如果查询过程中发生数据库错误
+     */
+    public String getUserJoinTime(String username, Connection connection) throws SQLException {
+        String sql = "SELECT created_at FROM user WHERE username = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, username);
+            
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    java.sql.Timestamp createdAt = resultSet.getTimestamp("created_at");
+                    if (createdAt != null) {
+                        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy/MM/dd");
+                        return sdf.format(createdAt);
+                    }
+                }
+            }
+            
+            System.out.println("未找到用户: " + username);
+            return null;
+            
+        } catch (SQLException e) {
+            System.err.println("查询用户加入时间失败 (用户名: " + username + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    /**
+     * 搜索用户（支持模糊搜索）
+     * @param searchTerm 搜索关键词
+     * @param connection 数据库连接
+     * @return 用户列表
+     * @throws SQLException 如果查询过程中发生数据库错误
+     */
+    public java.util.List<User> searchUsers(String searchTerm, Connection connection) throws SQLException {
+        String sql = "SELECT id, username, created_at FROM user WHERE username LIKE ? ORDER BY username LIMIT 20";
+        
+        java.util.List<User> users = new java.util.ArrayList<>();
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, "%" + searchTerm + "%");
+            
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int id = resultSet.getInt("id");
+                    String username = resultSet.getString("username");
+                    String createdAt = resultSet.getString("created_at");
+                    
+                    users.add(new User(id, username, null, createdAt, null));
+                }
+            }
+            
+            System.out.println("搜索用户结果: 找到 " + users.size() + " 个用户");
+            
+        } catch (SQLException e) {
+            System.err.println("搜索用户失败 (搜索词: " + searchTerm + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+        
+        return users;
+    }
 }

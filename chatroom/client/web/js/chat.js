@@ -23,9 +23,27 @@ const MessageType = {
     TOKEN_RESPONSE: 'TOKEN_RESPONSE',
     IMAGE: 'IMAGE',
     FILE: 'FILE',
+    PRIVATE_CHAT: 'PRIVATE_CHAT',
     REQUEST_PRIVATE_USERS: 'REQUEST_PRIVATE_USERS',
     PRIVATE_USERS_RESPONSE: 'PRIVATE_USERS_RESPONSE',
-    SERVICE_CONFIG: 'SERVICE_CONFIG'
+    FRIEND_REQUEST: 'FRIEND_REQUEST',
+    FRIEND_REQUEST_RESPONSE: 'FRIEND_REQUEST_RESPONSE',
+    FRIEND_LIST: 'FRIEND_LIST',
+    REQUEST_FRIEND_LIST: 'REQUEST_FRIEND_LIST',
+    SEARCH_USERS: 'SEARCH_USERS',
+    USERS_SEARCH_RESULT: 'USERS_SEARCH_RESULT',
+    REQUEST_ALL_FRIEND_REQUESTS: 'REQUEST_ALL_FRIEND_REQUESTS',
+    ALL_FRIEND_REQUESTS: 'ALL_FRIEND_REQUESTS',
+    SEARCH_ROOMS: 'SEARCH_ROOMS',
+    ROOMS_SEARCH_RESULT: 'ROOMS_SEARCH_RESULT',
+    REQUEST_ROOM_JOIN: 'REQUEST_ROOM_JOIN',
+    ROOM_JOIN_REQUEST: 'ROOM_JOIN_REQUEST',
+    ROOM_JOIN_RESPONSE: 'ROOM_JOIN_RESPONSE',
+    SET_ROOM_ADMIN: 'SET_ROOM_ADMIN',
+    REMOVE_ROOM_ADMIN: 'REMOVE_ROOM_ADMIN',
+    SERVICE_CONFIG: 'SERVICE_CONFIG',
+    REQUEST_USER_STATS: 'REQUEST_USER_STATS',
+    USER_STATS_RESPONSE: 'USER_STATS_RESPONSE'
 };
 
 const AES_KEY = 'ChatRoomNSFWKey2024!@#';
@@ -158,6 +176,15 @@ let chatClient = {
     reconnectInterval: 3000, // 重连间隔（毫秒）
     reconnectTimer: null, // 重连定时器
     isReconnecting: false, // 是否正在重连
+    isInPrivateChat: false, // 是否在私聊模式
+    privateChatRecipient: null, // 私聊接收者
+    isTemporaryChat: true, // 是否为临时聊天（默认true，后续好友聊天设为false）
+    isFriendChat: false, // 是否为好友聊天（默认false）
+    friends: [], // 好友列表
+    receivedFriendRequests: [], // 收到的好友请求
+    sentFriendRequests: [], // 发送的好友请求
+    receivedRoomRequests: [], // 收到的房间加入请求
+    sentRoomRequests: [], // 发送的房间加入请求
     pendingImageUpload: null, // 待上传的图片文件
     pendingImageNSFW: false, // 待上传图片是否为NSFW
     pendingFileUpload: null, // 待上传的文件
@@ -673,6 +700,23 @@ let chatClient = {
         this.sendMessage(requestMsg);
     },
     
+    // 请求用户统计数据
+    requestUserStats: function() {
+        if (!this.isConnected) return;
+        
+        this.log('info', '向服务器请求用户统计数据');
+        
+        const requestMsg = {
+            type: MessageType.REQUEST_USER_STATS,
+            from: this.username,
+            to: 'server',
+            content: '',
+            time: getLocalTimeISO()
+        };
+        
+        this.sendMessage(requestMsg);
+    },
+    
     // 处理私聊用户列表响应
     handlePrivateUsersResponse: function(message) {
         this.log('info', '收到服务器返回的私聊用户列表');
@@ -695,6 +739,22 @@ let chatClient = {
             });
         } catch (error) {
             this.log('error', `处理私聊用户列表响应失败: ${error.message}`);
+        }
+    },
+    
+    // 处理用户统计数据响应
+    handleUserStatsResponse: function(message) {
+        this.log('info', '收到服务器返回的用户统计数据');
+        
+        try {
+            const stats = message.content ? JSON.parse(message.content) : {};
+            
+            this.log('info', `用户统计数据: 消息数=${stats.messageCount}, 房间数=${stats.roomCount}, 加入时间=${stats.joinTime}`);
+            
+            // 更新UI显示统计数据
+            this.updateUserStats(stats);
+        } catch (error) {
+            this.log('error', `处理用户统计数据响应失败: ${error.message}`);
         }
     },
     
@@ -1241,12 +1301,14 @@ let chatClient = {
                 // Ensure username is set correctly from storage
                 this.username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                 
-                // Mark connection message as system message
-                chatClient.showMessage('Connected to chat server via WebSocket', true);
-                
-                // Only send UUID authentication on chat.jsp page
+                // Mark connection message as system message (only on chat.jsp page)
                 if (window.location.pathname.includes('chat.jsp')) {
-                    // Try to authenticate with UUID if available (for chat.jsp)
+                    chatClient.showMessage('Connected to chat server via WebSocket', true);
+                }
+                
+                // Send UUID authentication on chat.jsp or user-profile.jsp page
+                if (window.location.pathname.includes('chat.jsp') || window.location.pathname.includes('user-profile.jsp')) {
+                    // Try to authenticate with UUID if available
                     const uuid = sessionStorage.getItem('uuid') || localStorage.getItem('uuid');
                     const username = sessionStorage.getItem('username') || localStorage.getItem('username');
                     
@@ -1507,6 +1569,9 @@ let chatClient = {
             case MessageType.FILE:
                 this.handleFileMessage(message);
                 break;
+            case MessageType.PRIVATE_CHAT:
+                this.handlePrivateChatMessage(message);
+                break;
             case MessageType.UUID_AUTH_SUCCESS:
                 this.handleUUIDAuthSuccess(message);
                 break;
@@ -1515,6 +1580,48 @@ let chatClient = {
                 break;
             case MessageType.PRIVATE_USERS_RESPONSE:
                 this.handlePrivateUsersResponse(message);
+                break;
+            case MessageType.FRIEND_REQUEST:
+                this.handleFriendRequest(message);
+                break;
+            case MessageType.FRIEND_REQUEST_RESPONSE:
+                this.handleFriendRequestResponse(message);
+                break;
+            case MessageType.FRIEND_LIST:
+                this.handleFriendList(message);
+                break;
+            case MessageType.SEARCH_USERS:
+                this.handleSearchUsersRequest(message);
+                break;
+            case MessageType.USERS_SEARCH_RESULT:
+                this.handleUsersSearchResult(message);
+                break;
+            case MessageType.REQUEST_ALL_FRIEND_REQUESTS:
+                this.handleRequestAllFriendRequests(message);
+                break;
+            case MessageType.ALL_FRIEND_REQUESTS:
+                this.handleAllFriendRequests(message);
+                break;
+            case MessageType.SEARCH_ROOMS:
+                this.handleRoomsSearchResult(message);
+                break;
+            case MessageType.REQUEST_ROOM_JOIN:
+                this.handleRoomJoinRequest(message);
+                break;
+            case MessageType.ROOM_JOIN_REQUEST:
+                this.handleRoomJoinRequest(message);
+                break;
+            case MessageType.ROOM_JOIN_RESPONSE:
+                this.handleRoomJoinResponse(message);
+                break;
+            case MessageType.SET_ROOM_ADMIN:
+                this.handleSetRoomAdminResponse(message);
+                break;
+            case MessageType.REMOVE_ROOM_ADMIN:
+                this.handleRemoveRoomAdminResponse(message);
+                break;
+            case MessageType.USER_STATS_RESPONSE:
+                this.handleUserStatsResponse(message);
                 break;
             case MessageType.SERVICE_CONFIG:
                 this.handleServiceConfig(message);
@@ -1528,6 +1635,11 @@ let chatClient = {
 
     // Show message in the UI
     showMessage: function(message, isSystem = false, roomName = null) {
+        // 如果在user-profile页面，不显示消息
+        if (window.location.pathname.includes('user-profile.jsp')) {
+            return;
+        }
+        
         const targetRoom = roomName || this.currentRoom;
         
         if (!this.messages[targetRoom]) {
@@ -1588,49 +1700,65 @@ let chatClient = {
                         const messageWrapper = document.createElement('div');
                         messageWrapper.className = isSent ? 'sent-message-wrapper' : 'received-message-wrapper';
                         
+                        const messageHeader = document.createElement('div');
+                        messageHeader.className = 'message-header';
+                        
+                        const avatarImg = document.createElement('img');
+                        avatarImg.className = 'message-avatar';
+                        avatarImg.alt = displayedUsername;
+                        loadUserAvatar(avatarImg, displayedUsername);
+                        messageHeader.appendChild(avatarImg);
+                        
                         const usernameDiv = document.createElement('div');
                         usernameDiv.className = 'message-username';
                         usernameDiv.textContent = displayedUsername;
-                        messageWrapper.appendChild(usernameDiv);
+                        messageHeader.appendChild(usernameDiv);
+                        
+                        messageWrapper.appendChild(messageHeader);
                         
                         const messageDiv = document.createElement('div');
                         messageDiv.className = isSent ? 'sent-message' : 'received-message';
                         
                         let contentHtml = '';
-                        if (msg.type === MessageType.IMAGE) {
+                        if (msg.type === MessageType.IMAGE || msg.type === MessageType.PRIVATE_CHAT) {
                             const username = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                             const isSender = msg.from === username;
                             
-                            // 动态拼接ZFile地址
-                            let imageUrl = msg.content;
-                            const zfileBaseUrl = this.serviceConfig.zfileServerUrl || 'http://localhost:8081';
-                            this.log('debug', `原始图片URL: ${imageUrl}, ZFile地址: ${zfileBaseUrl}`);
-                            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-                                // 相对路径，直接拼接
-                                imageUrl = zfileBaseUrl + imageUrl;
-                            } else {
-                                // 完整URL，提取路径部分并重新拼接
-                                try {
-                                    const urlObj = new URL(imageUrl);
-                                    const path = urlObj.pathname + urlObj.search;
-                                    imageUrl = zfileBaseUrl + path;
-                                    this.log('debug', `替换后图片URL: ${imageUrl}`);
-                                } catch (error) {
-                                    this.log('warn', '替换图片URL失败:', error.message);
+                            if (msg.type === MessageType.IMAGE) {
+                                // 动态拼接ZFile地址
+                                let imageUrl = msg.content;
+                                const zfileBaseUrl = this.serviceConfig.zfileServerUrl || 'http://localhost:8081';
+                                this.log('debug', `原始图片URL: ${imageUrl}, ZFile地址: ${zfileBaseUrl}`);
+                                if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                                    // 相对路径，直接拼接
+                                    imageUrl = zfileBaseUrl + imageUrl;
+                                } else {
+                                    // 完整URL，提取路径部分并重新拼接
+                                    try {
+                                        const urlObj = new URL(imageUrl);
+                                        const path = urlObj.pathname + urlObj.search;
+                                        imageUrl = zfileBaseUrl + path;
+                                        this.log('debug', `替换后图片URL: ${imageUrl}`);
+                                    } catch (error) {
+                                        this.log('warn', '替换图片URL失败:', error.message);
+                                    }
                                 }
-                            }
-                            
-                            if (msg.isNSFW) {
-                                const messageId = `nsfw-${msg.id || Date.now()}`;
-                                const ivAttr = msg.iv ? `data-iv='${msg.iv.replace(/'/g, "\\'")}'` : '';
-                                contentHtml = `
-                                    <div class="nsfw-image-wrapper" id="${messageId}">
-                                        <img src="${imageUrl}" alt="图片" ${ivAttr} data-encrypted-url="${imageUrl}" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;">
-                                        <button class="nsfw-toggle-btn" onclick="toggleNSFWImage('${messageId}')">显示NSFW内容</button>
-                                    </div>
-                                `;
-                            } else {
-                                contentHtml = `<img src="${imageUrl}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${imageUrl}')">`;
+                                
+                                if (msg.isNSFW) {
+                                    const messageId = `nsfw-${msg.id || Date.now()}`;
+                                    const ivAttr = msg.iv ? `data-iv='${msg.iv.replace(/'/g, "\\'")}'` : '';
+                                    contentHtml = `
+                                        <div class="nsfw-image-wrapper" id="${messageId}">
+                                            <img src="${imageUrl}" alt="图片" ${ivAttr} data-encrypted-url="${imageUrl}" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;">
+                                            <button class="nsfw-toggle-btn" onclick="toggleNSFWImage('${messageId}')">显示NSFW内容</button>
+                                        </div>
+                                    `;
+                                } else {
+                                    contentHtml = `<img src="${imageUrl}" alt="图片" style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;" onclick="openImageModal('${imageUrl}')">`;
+                                }
+                            } else if (msg.type === MessageType.PRIVATE_CHAT) {
+                                // 私聊消息直接显示文本内容
+                                contentHtml = this.escapeHtml(msg.content);
                             }
                         } else if (msg.type === MessageType.FILE) {
                             try {
@@ -1805,6 +1933,43 @@ let chatClient = {
         sessionStorage.setItem('username', this.username);
         sessionStorage.setItem('uuid', message.content);
         
+        // Upload avatar to server if selected during registration
+        const tempAvatarFile = localStorage.getItem('tempAvatarFile');
+        const tempAvatarData = localStorage.getItem('tempAvatarData');
+        
+        if (tempAvatarFile && tempAvatarData) {
+            // Convert base64 data back to File object
+            const fileData = JSON.parse(tempAvatarFile);
+            const byteCharacters = atob(tempAvatarData.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: fileData.type });
+            const file = new File([blob], fileData.name, { type: fileData.type });
+            
+            // Upload to server
+            uploadAvatarToServer(username, file, function(success, result) {
+                if (success) {
+                    console.log('Avatar uploaded successfully:', result);
+                } else {
+                    console.error('Avatar upload failed:', result);
+                }
+                
+                // Clean up temporary data
+                localStorage.removeItem('tempAvatarFile');
+                localStorage.removeItem('tempAvatarData');
+            });
+        }
+        
+        // Set join date for new users
+        if (!localStorage.getItem('joinedDate')) {
+            localStorage.setItem('joinedDate', new Date().toLocaleDateString());
+        }
+        
         window.location.href = 'chat.jsp';
     },
     
@@ -1839,7 +2004,16 @@ let chatClient = {
         // 请求私聊用户列表
         this.requestPrivateUsers();
         
+        // 请求好友列表
+        this.requestFriendList();
+        
         this.updateMessagesArea(currentRoomName);
+        
+        // 如果在user-profile页面，请求用户统计数据
+        if (window.location.pathname.includes('user-profile.jsp')) {
+            this.log('info', '检测到user-profile页面，请求用户统计数据');
+            this.requestUserStats();
+        }
     },
     
     handleUUIDAuthFailure: function(message) {
@@ -2035,6 +2209,14 @@ let chatClient = {
     },
     
     uploadImageToZfile: async function(file) {
+        // 检查是否在临时聊天模式下
+        if (this.isTemporaryChat) {
+            this.showMessage('Temporary chat only supports text messages', true);
+            this.pendingImageUpload = null;
+            this.pendingImageNSFW = false;
+            return;
+        }
+        
         this.log('info', '开始上传图片到 zfile');
         
         let uploadFile = file;
@@ -2181,6 +2363,12 @@ let chatClient = {
     },
     
     handleImageUpload: function(file) {
+        // 检查是否在临时聊天模式下
+        if (this.isTemporaryChat) {
+            this.showMessage('Temporary chat only supports text messages', true);
+            return;
+        }
+        
         if (!file || !file.type.startsWith('image/')) {
             this.log('error', '请选择有效的图片文件');
             return;
@@ -2218,6 +2406,12 @@ let chatClient = {
     },
     
     handleFileUpload: function(file) {
+        // 检查是否在临时聊天模式下
+        if (this.isTemporaryChat) {
+            this.showMessage('Temporary chat only supports text messages', true);
+            return;
+        }
+        
         if (!file) {
             this.log('error', '请选择有效的文件');
             return;
@@ -2238,6 +2432,14 @@ let chatClient = {
     },
     
     uploadFileToZfile: async function(file, fileType) {
+        // 检查是否在临时聊天模式下
+        if (this.isTemporaryChat) {
+            this.showMessage('Temporary chat only supports text messages', true);
+            this.pendingFileUpload = null;
+            this.pendingFileType = null;
+            return;
+        }
+        
         this.log('info', '开始上传文件到 zfile');
         
         const uploadFile = file;
@@ -2855,8 +3057,79 @@ let chatClient = {
             }, roomName);
         }
     },
+    
+    handlePrivateChatMessage: function(message) {
+        // 私聊消息处理
+        const from = message.from;
+        const to = message.to;
+        const content = message.content;
+        const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
+        
+        // 判断是发送者还是接收者
+        const isSender = from === currentUsername;
+        const otherParty = isSender ? to : from;
+        
+        // 使用对方用户名作为虚拟房间名
+        const privateRoomName = `好友${otherParty}`;
+        
+        // 如果消息是自己发送的，跳过添加，因为sendPrivateMessage函数已经添加了
+        if (isSender) {
+            console.log('跳过自己发送的私聊消息');
+            return;
+        }
+        
+        if (!this.messages[privateRoomName]) {
+            this.messages[privateRoomName] = [];
+        }
+        
+        const localMessage = {
+            content: content,
+            from: from,
+            to: to,
+            time: message.time,
+            isSystem: false,
+            isPrivate: true,
+            id: message.id || this.generateMessageId('PRIVATE_CHAT', privateRoomName),
+            type: MessageType.PRIVATE_CHAT
+        };
+        
+        // 去重检查
+        const isDuplicate = this.messages[privateRoomName].some(m => 
+            (localMessage.id && m.id === localMessage.id) || 
+            (!localMessage.id && m.content === content && 
+             m.from === from && 
+             m.time === message.time)
+        );
+        
+        if (!isDuplicate) {
+            this.messages[privateRoomName].push(localMessage);
+            
+            // 保存私聊消息到本地存储
+            if (this.messageStorage) {
+                this.saveMessageToLocal(privateRoomName, localMessage);
+            }
+            
+            // 更新当前窗口UI
+            if (this.currentRoom === privateRoomName) {
+                this.updateMessagesArea(privateRoomName);
+            }
+            
+            // 广播到其他窗口
+            this.broadcastToWindows('NEW_MESSAGE', {
+                roomName: privateRoomName,
+                message: localMessage
+            }, privateRoomName);
+        }
+    },
 
     handleSystemMessage: function(message) {
+        // Check if this is a friend request related system message
+        if (message.content.includes('好友请求')) {
+            // Show as toast notification instead of chat message
+            this.showToast(message.content, 'info');
+            return;
+        }
+        
         // Determine which room this message belongs to
         let roomName = 'system';
         
@@ -2969,13 +3242,44 @@ let chatClient = {
                 // Add visual indicator for current user
                 const usernameDisplay = isCurrentUser ? `${user.username} (我)` : user.username;
                 
-                userItem.innerHTML = `
-                    <div class="user-status-indicator"></div>
-                    <div class="user-name">${usernameDisplay}</div>
-                `;
+                // Create avatar image
+                const avatarImg = document.createElement('img');
+                avatarImg.className = 'user-avatar';
+                avatarImg.alt = user.username;
+                loadUserAvatar(avatarImg, user.username);
+                
+                // Create status indicator
+                const statusIndicator = document.createElement('div');
+                statusIndicator.className = 'user-status-indicator';
+                
+                // Create username display
+                const usernameDiv = document.createElement('div');
+                usernameDiv.className = 'user-name';
+                usernameDiv.textContent = usernameDisplay;
+                
+                // Append elements to user item
+                userItem.appendChild(avatarImg);
+                userItem.appendChild(statusIndicator);
+                userItem.appendChild(usernameDiv);
                 
                 // Only add click event if not the current user
                 if (!isCurrentUser) {
+                    // Check if this user is already a friend
+                    const isFriend = this.friends.some(friend => friend.username === user.username);
+                    
+                    // Add friend request button (+) if not already friends
+                    if (!isFriend) {
+                        const addFriendBtn = document.createElement('button');
+                        addFriendBtn.className = 'add-friend-btn';
+                        addFriendBtn.textContent = '+';
+                        addFriendBtn.title = 'Send friend request';
+                        addFriendBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.sendFriendRequest(user.username);
+                        });
+                        userItem.appendChild(addFriendBtn);
+                    }
+                    
                     userItem.addEventListener('click', () => {
                         // Switch to private chat with this user
                         this.switchToPrivateChat(user.username);
@@ -3002,31 +3306,189 @@ let chatClient = {
     },
     
     handleListRooms: function(message) {
-        // Parse room list from system message
-        // Format: "您所在的房间: room1, room2, ..."
-        const content = message.content;
-        const roomListStart = content.indexOf('您所在的房间: ') + 8;
-        const roomEntries = content.substring(roomListStart).split(', ');
+        try {
+            const data = JSON.parse(message.content);
+            const users = data.users || [];
+            const currentUserRole = data.currentUserRole || 'MEMBER';
+            const ownerId = data.ownerId;
+            const adminIds = data.adminIds || [];
+            
+            // 存储当前房间的用户信息和角色
+            this.currentRoomUsers = users;
+            this.currentUserRole = currentUserRole;
+            this.currentRoomOwnerId = ownerId;
+            this.currentRoomAdminIds = adminIds;
+            
+            // 显示用户列表
+            this.displayRoomUsers(users, currentUserRole, ownerId, adminIds);
+            
+            this.log('info', `Received room users list: ${users.length} users, current role: ${currentUserRole}`);
+        } catch (error) {
+            this.log('error', `Failed to parse room users list: ${error.message}`);
+            // Fallback to old format parsing
+            const content = message.content;
+            const roomListStart = content.indexOf('您所在的房间: ') + 8;
+            const roomEntries = content.substring(roomListStart).split(', ');
+            
+            this.rooms = [];
+            if (roomEntries[0] !== '无') {
+                roomEntries.forEach(roomEntry => {
+                    const [roomName, roomType] = roomEntry.split('#');
+                    this.rooms.push({ name: roomName, type: roomType || 'PUBLIC' });
+                });
+            } else {
+                // Add system room if no rooms listed
+                this.rooms.push({ name: 'system', type: 'PUBLIC' });
+            }
+            
+            this.updateRoomsList();
+        }
+    },
+    
+    // Display room users with role information
+    displayRoomUsers: function(users, currentUserRole, ownerId, adminIds) {
+        const usersList = document.getElementById('room-users-list');
+        if (!usersList) return;
         
-        this.rooms = [];
-        if (roomEntries[0] !== '无') {
-            roomEntries.forEach(roomEntry => {
-                const [roomName, roomType] = roomEntry.split('#');
-                this.rooms.push({ name: roomName, type: roomType || 'PUBLIC' });
-            });
-        } else {
-            // Add system room if no rooms listed
-            this.rooms.push({ name: 'system', type: 'PUBLIC' });
+        usersList.innerHTML = '';
+        
+        if (users.length === 0) {
+            usersList.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No users in this room</div>';
+            return;
         }
         
-        this.updateRoomsList();
+        users.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'user-item';
+            
+            const avatarImg = document.createElement('img');
+            avatarImg.className = 'user-avatar';
+            avatarImg.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(user.username);
+            avatarImg.alt = user.username;
+            
+            const userInfo = document.createElement('div');
+            userInfo.className = 'user-info';
+            
+            const usernameDiv = document.createElement('div');
+            usernameDiv.className = 'user-username';
+            usernameDiv.textContent = user.username;
+            
+            // 添加角色标签
+            const roleDiv = document.createElement('div');
+            roleDiv.className = 'user-role';
+            roleDiv.textContent = this.getRoleText(user.role);
+            roleDiv.style.color = this.getRoleColor(user.role);
+            
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'user-status';
+            statusDiv.textContent = user.isOnline ? 'Online' : 'Offline';
+            statusDiv.style.color = user.isOnline ? '#28a745' : '#6c757d';
+            
+            userInfo.appendChild(usernameDiv);
+            userInfo.appendChild(roleDiv);
+            userInfo.appendChild(statusDiv);
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'user-actions';
+            
+            // 房主可以指定管理员
+            if (currentUserRole === 'OWNER' && user.role === 'MEMBER') {
+                const setAdminBtn = document.createElement('button');
+                setAdminBtn.className = 'set-admin-btn';
+                setAdminBtn.textContent = 'Set Admin';
+                setAdminBtn.addEventListener('click', () => {
+                    this.setRoomAdmin(user.userId, user.username);
+                });
+                actionsDiv.appendChild(setAdminBtn);
+            }
+            
+            // 房主可以移除管理员
+            if (currentUserRole === 'OWNER' && user.role === 'ADMIN') {
+                const removeAdminBtn = document.createElement('button');
+                removeAdminBtn.className = 'remove-admin-btn';
+                removeAdminBtn.textContent = 'Remove Admin';
+                removeAdminBtn.addEventListener('click', () => {
+                    this.removeRoomAdmin(user.userId, user.username);
+                });
+                actionsDiv.appendChild(removeAdminBtn);
+            }
+            
+            userItem.appendChild(avatarImg);
+            userItem.appendChild(userInfo);
+            userItem.appendChild(actionsDiv);
+            
+            usersList.appendChild(userItem);
+        });
+    },
+    
+    // Get role text
+    getRoleText: function(role) {
+        switch (role) {
+            case 'OWNER': return 'Owner';
+            case 'ADMIN': return 'Admin';
+            case 'MEMBER': return 'Member';
+            default: return role;
+        }
+    },
+    
+    // Get role color
+    getRoleColor: function(role) {
+        switch (role) {
+            case 'OWNER': return '#dc3545';
+            case 'ADMIN': return '#ffc107';
+            case 'MEMBER': return '#6c757d';
+            default: return '#6c757d';
+        }
+    },
+    
+    // Set room admin
+    setRoomAdmin: function(userId, username) {
+        if (!confirm(`Set ${username} as admin?`)) {
+            return;
+        }
+        
+        const message = {
+            type: 'SET_ROOM_ADMIN',
+            from: this.username,
+            to: this.currentRoom,
+            content: userId,
+            time: getLocalTime(),
+            id: this.generateMessageId('SET_ROOM_ADMIN', userId)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Sent set admin request for ${username} in ${this.currentRoom}`);
+    },
+    
+    // Remove room admin
+    removeRoomAdmin: function(userId, username) {
+        if (!confirm(`Remove admin from ${username}?`)) {
+            return;
+        }
+        
+        const message = {
+            type: 'REMOVE_ROOM_ADMIN',
+            from: this.username,
+            to: this.currentRoom,
+            content: userId,
+            time: getLocalTime(),
+            id: this.generateMessageId('REMOVE_ROOM_ADMIN', userId)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Sent remove admin request for ${username} in ${this.currentRoom}`);
     },
     
     // UI updates
     updateRoomsList: function() {
         const roomsList = document.getElementById('rooms-list');
+        if (!roomsList) {
+            return;
+        }
+        
         roomsList.innerHTML = '';
         
+        // Display rooms
         this.rooms.forEach(room => {
             const roomDiv = document.createElement('div');
             roomDiv.className = `room-item ${room.name === this.currentRoom ? 'active' : ''}`;
@@ -3043,6 +3505,31 @@ let chatClient = {
             `;
             roomsList.appendChild(roomDiv);
         });
+        
+        // Display friends
+        if (this.friends.length > 0) {
+            const friendsDivider = document.createElement('div');
+            friendsDivider.className = 'rooms-divider';
+            friendsDivider.innerHTML = '<div class="divider-line"></div><span class="divider-text">Friends</span><div class="divider-line"></div>';
+            roomsList.appendChild(friendsDivider);
+            
+            this.friends.forEach(friend => {
+                const friendDiv = document.createElement('div');
+                friendDiv.className = `room-item friend-item ${this.currentRoom === '好友' + friend.username ? 'active' : ''}`;
+                friendDiv.innerHTML = `
+                    <div class="room-info" onclick="chatClient.switchToFriendChat('${friend.username}')">
+                        <strong>${friend.username}</strong> (FRIEND)
+                    </div>
+                    <button class="new-window-btn" onclick="event.stopPropagation(); chatClient.openFriendChatInNewWindow('${friend.username}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                            <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                        </svg>
+                    </button>
+                `;
+                roomsList.appendChild(friendDiv);
+            });
+        }
     },
     
     switchRoom: function(roomName, roomType) {
@@ -3115,9 +3602,30 @@ let chatClient = {
         }
     },
     
-    // Switch to private chat with a specific user
+    // 私聊架构说明：
+    // 1. 临时聊天（isTemporaryChat = true, isFriendChat = false）：
+    //    - 当前实现，只能发送文本消息
+    //    - 禁用图片和文件上传功能
+    //    - 用于临时性的私聊沟通
+    // 
+    // 2. 好友聊天（isTemporaryChat = false, isFriendChat = true）：
+    //    - 后续实现，可以发送文本、图片和文件
+    //    - 完整的私聊功能
+    //    - 用于好友间的正式聊天
+    //
+    // 两者都是私聊模式（isInPrivateChat = true），但功能限制不同
+    
+    // Switch to temporary private chat with a specific user
     switchToPrivateChat: function(username) {
         if (!username || username === this.username) {
+            return;
+        }
+        
+        // Check if this user is already a friend
+        const friend = this.friends.find(friend => friend.username === username);
+        if (friend) {
+            // Switch to friend chat mode
+            this.switchToFriendChat(username);
             return;
         }
         
@@ -3125,9 +3633,11 @@ let chatClient = {
         this.previousRoom = this.currentRoom;
         this.previousRoomType = this.currentRoomType;
         
-        // Switch to private chat mode
+        // Switch to private chat mode - temporary chat
         this.isInPrivateChat = true;
         this.privateChatRecipient = username;
+        this.isTemporaryChat = true; // 设置为临时聊天
+        this.isFriendChat = false; // 不是好友聊天
         
         // Update current room to a virtual room named after the recipient
         this.currentRoom = `好友${username}`;
@@ -3136,7 +3646,7 @@ let chatClient = {
         // Update h3 title to show private chat recipient
         const currentRoomNameElement = document.getElementById('current-room-name');
         if (currentRoomNameElement) {
-            currentRoomNameElement.textContent = `与${username}聊天`;
+            currentRoomNameElement.textContent = `与${username}临时聊天`;
         }
         
         // Update rooms list to reflect the new current room
@@ -3159,6 +3669,20 @@ let chatClient = {
         if (membersButton) {
             membersButton.disabled = true;
             membersButton.classList.add('disabled');
+        }
+        
+        // Disable image and file upload buttons in temporary chat mode
+        const imageBtn = document.getElementById('image-btn');
+        const fileBtn = document.getElementById('file-btn');
+        if (imageBtn) {
+            imageBtn.disabled = true;
+            imageBtn.classList.add('disabled');
+            imageBtn.title = 'Temporary chat only supports text messages';
+        }
+        if (fileBtn) {
+            fileBtn.disabled = true;
+            fileBtn.classList.add('disabled');
+            fileBtn.title = 'Temporary chat only supports text messages';
         }
         
         // Add return button to room controls if not already present
@@ -3194,6 +3718,101 @@ let chatClient = {
         this.updateMessagesArea(this.currentRoom);
     },
     
+    // Switch to friend chat with a specific user
+    switchToFriendChat: function(username) {
+        if (!username || username === this.username) {
+            return;
+        }
+        
+        // Save current room information for potential return
+        this.previousRoom = this.currentRoom;
+        this.previousRoomType = this.currentRoomType;
+        
+        // Switch to friend chat mode
+        this.isInPrivateChat = true;
+        this.privateChatRecipient = username;
+        this.isTemporaryChat = false; // 不是临时聊天
+        this.isFriendChat = true; // 是好友聊天
+        
+        // Update current room to a virtual room named after the recipient
+        this.currentRoom = `好友${username}`;
+        this.currentRoomType = 'PRIVATE';
+        
+        // Update h3 title to show private chat recipient
+        const currentRoomNameElement = document.getElementById('current-room-name');
+        if (currentRoomNameElement) {
+            currentRoomNameElement.textContent = `与${username}聊天`;
+        }
+        
+        // Update rooms list to reflect the new current room
+        this.updateRoomsList();
+        
+        // Hide users panel after selecting a user
+        const usersPanel = document.getElementById('room-users-panel');
+        if (usersPanel) {
+            usersPanel.style.display = 'none';
+        }
+        
+        // Update message input placeholder to indicate private chat
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.placeholder = `Type message to ${username}...`;
+        }
+        
+        // Update members button availability - disable in private chat
+        const membersButton = document.getElementById('private-msg-btn');
+        if (membersButton) {
+            membersButton.disabled = true;
+            membersButton.classList.add('disabled');
+        }
+        
+        // Enable image and file upload buttons for friend chat
+        const imageBtn = document.getElementById('image-btn');
+        const fileBtn = document.getElementById('file-btn');
+        if (imageBtn) {
+            imageBtn.disabled = false;
+            imageBtn.classList.remove('disabled');
+            imageBtn.title = 'Send Image';
+        }
+        if (fileBtn) {
+            fileBtn.disabled = false;
+            fileBtn.classList.remove('disabled');
+            fileBtn.title = 'Send File';
+        }
+        
+        // Add return button to room controls if not already present
+        const roomControls = document.querySelector('.room-controls');
+        if (roomControls) {
+            // Check if return button already exists
+            let returnButton = document.getElementById('return-to-room-btn');
+            if (!returnButton) {
+                returnButton = document.createElement('button');
+                returnButton.id = 'return-to-room-btn';
+                returnButton.textContent = 'Back to Room';
+                returnButton.className = 'return-button';
+                
+                // Add click event to return to previous room
+                returnButton.addEventListener('click', () => {
+                    this.returnToPreviousRoom();
+                });
+                
+                roomControls.appendChild(returnButton);
+            } else {
+                // Show the button if it already exists but is hidden
+                returnButton.style.display = 'inline-block';
+            }
+        }
+        
+        // 加载历史私聊消息
+        this.loadLocalMessages(this.currentRoom);
+        
+        // 请求服务器拉取私聊历史消息
+        this.requestMessageHistory(username);
+        
+        // Update messages area with stored private messages for this user
+        this.updateMessagesArea(this.currentRoom);
+    },
+    
     // Return to previous room from private chat
     returnToPreviousRoom: function() {
         if (this.isInPrivateChat && this.previousRoom) {
@@ -3218,6 +3837,24 @@ let chatClient = {
         if (returnButton) {
             returnButton.style.display = 'none';
         }
+        
+        // Re-enable image and file upload buttons when returning to room
+        const imageBtn = document.getElementById('image-btn');
+        const fileBtn = document.getElementById('file-btn');
+        if (imageBtn) {
+            imageBtn.disabled = false;
+            imageBtn.classList.remove('disabled');
+            imageBtn.title = 'Send Image';
+        }
+        if (fileBtn) {
+            fileBtn.disabled = false;
+            fileBtn.classList.remove('disabled');
+            fileBtn.title = 'Send File';
+        }
+        
+        // Reset temporary chat and friend chat flags
+        this.isTemporaryChat = true; // 重置为默认值
+        this.isFriendChat = false; // 重置为默认值
             
             // Update message input placeholder to indicate room chat
             const messageInput = document.getElementById('message-input');
@@ -3236,21 +3873,1180 @@ let chatClient = {
         }
     },
     
+    // 未来扩展：好友聊天功能
+    // 当实现好友关系系统后，添加以下功能：
+    // 
+    // switchToFriendChat: function(username) {
+    //     // 切换到好友聊天模式
+    //     this.isInPrivateChat = true;
+    //     this.privateChatRecipient = username;
+    //     this.isTemporaryChat = false; // 不是临时聊天
+    //     this.isFriendChat = true; // 是好友聊天
+    //     
+    //     // 启用图片和文件上传功能
+    //     const imageBtn = document.getElementById('image-btn');
+    //     const fileBtn = document.getElementById('file-btn');
+    //     if (imageBtn) {
+    //         imageBtn.disabled = false;
+    //         imageBtn.classList.remove('disabled');
+    //         imageBtn.title = 'Send Image';
+    //     }
+    //     if (fileBtn) {
+    //         fileBtn.disabled = false;
+    //         fileBtn.classList.remove('disabled');
+    //         fileBtn.title = 'Send File';
+    //     }
+    //     
+    //     // 其他UI更新...
+    // },
+    //
+    // 服务器端需要相应扩展：
+    // 1. 数据库添加好友关系表
+    // 2. 添加好友管理API（添加、删除、查询好友）
+    // 3. 扩展PRIVATE_CHAT消息处理，支持好友聊天标记
+    // 4. 添加好友聊天历史记录查询// },
+    
+    // Send friend request to a user
+    sendFriendRequest: function(toUsername) {
+        if (!toUsername || toUsername === this.username) {
+            this.showMessage('Invalid username', true);
+            return;
+        }
+        
+        // Check if already friends
+        const isFriend = this.friends.some(friend => friend.username === toUsername);
+        if (isFriend) {
+            this.showMessage(`${toUsername} is already your friend`, true);
+            return;
+        }
+        
+        // Check if there's already a sent request
+        const hasSentRequest = this.sentFriendRequests.some(req => req.to === toUsername && req.status === 'PENDING');
+        if (hasSentRequest) {
+            this.showMessage(`You already have a pending friend request to ${toUsername}`, true);
+            return;
+        }
+        
+        // Send friend request
+        const message = {
+            type: MessageType.FRIEND_REQUEST,
+            from: this.username,
+            to: toUsername,
+            content: `Would you like to be friends?`,
+            time: getLocalTime(),
+            id: this.generateMessageId('FRIEND_REQUEST', toUsername)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Sent friend request to ${toUsername}`);
+    },
+    
+    // Handle friend request
+    handleFriendRequest: function(message) {
+        const fromUsername = message.from;
+        const content = message.content;
+        
+        // Add to received requests
+        if (!this.receivedFriendRequests.some(req => req.from === fromUsername)) {
+            this.receivedFriendRequests.push({
+                from: fromUsername,
+                content: content,
+                time: message.time,
+                status: 'PENDING'
+            });
+            
+            // Save to localStorage for persistence
+            this.saveFriendRequests();
+        }
+        
+        // Don't show friend request as chat message
+        // Only show friend request notification in UI
+        this.showFriendRequestNotification(fromUsername, content);
+        
+        // Log the friend request
+        this.log('info', `Received friend request from ${fromUsername}`);
+    },
+    
+    // Show friend request notification
+    showFriendRequestNotification: function(fromUsername, content) {
+        // Don't add notification to chat area
+        // Friend requests are handled in the friend requests page
+        // Just update the friend requests UI if the modal is open
+        const friendRequestsDiv = document.getElementById('friend-requests');
+        if (friendRequestsDiv && friendRequestsDiv.style.display !== 'none') {
+            this.displayAllFriendRequests();
+        }
+        
+        // Show a toast notification to inform user about the friend request
+        this.showToast(`New friend request from ${fromUsername}`, 'info');
+    },
+    
+    // Show toast notification
+    showToast: function(message, type = 'info') {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: ${type === 'info' ? '#17a2b8' : '#28a745'};
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        `;
+        toast.textContent = message;
+        
+        // Add to body
+        document.body.appendChild(toast);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    },
+    
+    // Respond to friend request
+    respondToFriendRequest: function(fromUsername, response) {
+        const message = {
+            type: MessageType.FRIEND_REQUEST_RESPONSE,
+            from: this.username,
+            to: fromUsername,
+            content: `${response}:${this.username}`,
+            time: getLocalTime(),
+            id: this.generateMessageId('FRIEND_REQUEST_RESPONSE', fromUsername)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Responded to friend request from ${fromUsername}: ${response}`);
+        
+        // Don't remove from requests, just update status
+        // The UI will be updated when server responds
+    },
+    
+    // Handle friend request response
+    handleFriendRequestResponse: function(message) {
+        const content = message.content;
+        const fromUsername = message.from;
+        
+        if (content.startsWith('accept:')) {
+            // Friend request accepted
+            const friendUsername = content.substring(7);
+            
+            // Add to friends list
+            if (!this.friends.some(friend => friend.username === friendUsername)) {
+                this.friends.push({
+                    username: friendUsername,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            
+            this.showMessage(`[Friend] ${friendUsername} accepted your friend request!`, true);
+            this.log('info', `Friend request accepted by ${friendUsername}`);
+            
+            // Update UI to show friend status
+            this.updateFriendListUI();
+            
+            // Update rooms list to show new friend
+            this.updateRoomsList();
+            
+            // Update sent request status
+            const sentRequest = this.sentFriendRequests.find(req => req.to === friendUsername);
+            if (sentRequest) {
+                sentRequest.status = 'ACCEPTED';
+                this.saveFriendRequests();
+                this.displayAllFriendRequests();
+            }
+        } else if (content.startsWith('reject:')) {
+            // Friend request rejected
+            const friendUsername = content.substring(7);
+            this.showMessage(`[Friend] ${friendUsername} rejected your friend request.`, true);
+            this.log('info', `Friend request rejected by ${friendUsername}`);
+            
+            // Update sent request status
+            const sentRequest = this.sentFriendRequests.find(req => req.to === friendUsername);
+            if (sentRequest) {
+                sentRequest.status = 'REJECTED';
+                this.saveFriendRequests();
+                this.displayAllFriendRequests();
+            }
+        }
+    },
+    
+    // Handle friend list
+    handleFriendList: function(message) {
+        try {
+            const friendList = JSON.parse(message.content);
+            this.friends = friendList;
+            this.log('info', `Received friend list: ${friendList.length} friends`);
+            this.updateFriendListUI();
+        } catch (error) {
+            this.log('error', `Failed to parse friend list: ${error.message}`);
+        }
+    },
+    
+    // Update friend list UI
+    updateFriendListUI: function() {
+        // Update user list to show friend status
+        const usersList = document.getElementById('room-users-list');
+        if (usersList) {
+            // Refresh the user list to show/hide add friend buttons
+            const currentRoomName = document.getElementById('current-room-name')?.textContent;
+            if (currentRoomName && currentRoomName !== 'system') {
+                this.sendMessage(MessageType.LIST_ROOM_USERS, currentRoomName, '');
+            }
+        }
+    },
+    
+    // Request friend list from server
+    requestFriendList: function() {
+        const message = {
+            type: MessageType.REQUEST_FRIEND_LIST,
+            from: this.username,
+            to: 'server',
+            content: '',
+            time: getLocalTime(),
+            id: this.generateMessageId('REQUEST_FRIEND_LIST', 'server')
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', 'Requested friend list from server');
+    },
+    
+    // Request all friend requests from server
+    requestAllFriendRequests: function() {
+        const message = {
+            type: MessageType.REQUEST_ALL_FRIEND_REQUESTS,
+            from: this.username,
+            to: 'server',
+            content: '',
+            time: getLocalTime(),
+            id: this.generateMessageId('REQUEST_ALL_FRIEND_REQUESTS', 'server')
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', 'Requested all friend requests from server');
+    },
+    
+    // Handle request all friend requests
+    handleRequestAllFriendRequests: function(message) {
+        // This is handled by the server
+        this.log('debug', 'Request all friend requests sent');
+    },
+    
+    // Handle all friend requests
+    handleAllFriendRequests: function(message) {
+        try {
+            const allRequests = JSON.parse(message.content);
+            
+            // Separate into received and sent requests
+            this.receivedFriendRequests = [];
+            this.sentFriendRequests = [];
+            
+            allRequests.forEach(request => {
+                if (request.isReceived) {
+                    this.receivedFriendRequests.push({
+                        from: request.fromUsername,
+                        to: request.toUsername,
+                        content: 'Would you like to be friends?',
+                        time: request.createdAt,
+                        status: request.status,
+                        id: request.id
+                    });
+                } else {
+                    this.sentFriendRequests.push({
+                        from: request.fromUsername,
+                        to: request.toUsername,
+                        content: 'Would you like to be friends?',
+                        time: request.createdAt,
+                        status: request.status,
+                        id: request.id
+                    });
+                }
+            });
+            
+            // Save to localStorage
+            this.saveFriendRequests();
+            
+            // Update UI
+            this.displayAllFriendRequests();
+            
+            this.log('info', `Received all friend requests: ${allRequests.length} total`);
+        } catch (error) {
+            this.log('error', `Failed to parse all friend requests: ${error.message}`);
+        }
+    },
+    
+    // Save room requests to localStorage
+    saveRoomRequests: function() {
+        try {
+            const roomRequestsData = {
+                received: this.receivedRoomRequests,
+                sent: this.sentRoomRequests
+            };
+            localStorage.setItem('roomRequests', JSON.stringify(roomRequestsData));
+            this.log('info', 'Saved room requests to localStorage');
+        } catch (error) {
+            this.log('error', `Failed to save room requests: ${error.message}`);
+        }
+    },
+    
+    // Load room requests from localStorage
+    loadRoomRequests: function() {
+        try {
+            const storedRequests = localStorage.getItem('roomRequests');
+            if (storedRequests) {
+                const roomRequestsData = JSON.parse(storedRequests);
+                this.receivedRoomRequests = roomRequestsData.received || [];
+                this.sentRoomRequests = roomRequestsData.sent || [];
+            }
+            
+            // Display all room requests
+            this.displayAllRoomRequests();
+        } catch (error) {
+            this.log('error', `Failed to load room requests: ${error.message}`);
+        }
+    },
+    
+    // Save friend requests to localStorage
+    saveFriendRequests: function() {
+        try {
+            const friendRequestsData = {
+                received: this.receivedFriendRequests,
+                sent: this.sentFriendRequests
+            };
+            localStorage.setItem('friendRequests', JSON.stringify(friendRequestsData));
+            this.log('info', 'Saved friend requests to localStorage');
+        } catch (error) {
+            this.log('error', `Failed to save friend requests: ${error.message}`);
+        }
+    },
+    
+    // Load friend requests from localStorage
+    loadFriendRequests: function() {
+        try {
+            const storedRequests = localStorage.getItem('friendRequests');
+            if (storedRequests) {
+                const friendRequestsData = JSON.parse(storedRequests);
+                this.receivedFriendRequests = friendRequestsData.received || [];
+                this.sentFriendRequests = friendRequestsData.sent || [];
+            }
+            
+            // Display all friend requests
+            this.displayAllFriendRequests();
+        } catch (error) {
+            this.log('error', `Failed to load friend requests: ${error.message}`);
+        }
+    },
+    
+    // Display all friend requests
+    displayAllFriendRequests: function() {
+        const requestsDiv = document.getElementById('friend-requests');
+        if (!requestsDiv) return;
+        
+        requestsDiv.innerHTML = '';
+        
+        const hasRequests = this.receivedFriendRequests.length > 0 || this.sentFriendRequests.length > 0;
+        
+        if (!hasRequests) {
+            requestsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No friend requests</div>';
+            return;
+        }
+        
+        // Display received requests
+        if (this.receivedFriendRequests.length > 0) {
+            const receivedSection = document.createElement('div');
+            receivedSection.className = 'friend-requests-section';
+            receivedSection.innerHTML = '<h4 style="margin: 15px 0 10px 0; color: #4a6fa5; border-bottom: 2px solid #4a6fa5; padding-bottom: 5px;">Received Requests</h4>';
+            
+            this.receivedFriendRequests.forEach(request => {
+                const requestItem = this.createFriendRequestItem(request, true);
+                receivedSection.appendChild(requestItem);
+            });
+            
+            requestsDiv.appendChild(receivedSection);
+        }
+        
+        // Display sent requests
+        if (this.sentFriendRequests.length > 0) {
+            const sentSection = document.createElement('div');
+            sentSection.className = 'friend-requests-section';
+            sentSection.innerHTML = '<h4 style="margin: 15px 0 10px 0; color: #6c757d; border-bottom: 2px solid #6c757d; padding-bottom: 5px;">Sent Requests</h4>';
+            
+            this.sentFriendRequests.forEach(request => {
+                const requestItem = this.createFriendRequestItem(request, false);
+                sentSection.appendChild(requestItem);
+            });
+            
+            requestsDiv.appendChild(sentSection);
+        }
+    },
+    
+    // Create friend request item
+    createFriendRequestItem: function(request, isReceived) {
+        const requestItem = document.createElement('div');
+        requestItem.className = 'friend-request-item';
+        
+        // Create avatar
+        const avatarImg = document.createElement('img');
+        avatarImg.className = 'friend-request-avatar';
+        avatarImg.alt = isReceived ? request.from : request.to;
+        loadUserAvatar(avatarImg, isReceived ? request.from : request.to);
+        
+        // Create info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'friend-request-info';
+        
+        const usernameDiv = document.createElement('div');
+        usernameDiv.className = 'friend-request-username';
+        usernameDiv.textContent = isReceived ? request.from : request.to;
+        
+        const statusDiv = document.createElement('div');
+        statusDiv.style.fontSize = '12px';
+        statusDiv.style.marginTop = '4px';
+        statusDiv.textContent = this.getStatusText(request.status);
+        statusDiv.style.color = this.getStatusColor(request.status);
+        
+        const timeDiv = document.createElement('div');
+        timeDiv.style.fontSize = '11px';
+        timeDiv.style.color = '#6c757d';
+        timeDiv.style.marginTop = '2px';
+        timeDiv.textContent = request.time ? request.time.substring(0, 16) : '';
+        
+        infoDiv.appendChild(usernameDiv);
+        infoDiv.appendChild(statusDiv);
+        infoDiv.appendChild(timeDiv);
+        
+        // Create actions
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'friend-request-actions';
+        
+        if (isReceived) {
+            if (request.status === 'PENDING') {
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'accept-friend-btn';
+                acceptBtn.textContent = 'Accept';
+                acceptBtn.addEventListener('click', () => {
+                    this.respondToFriendRequest(request.from, 'accept');
+                    request.status = 'ACCEPTED';
+                    this.saveFriendRequests();
+                    this.displayAllFriendRequests();
+                });
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'reject-friend-btn';
+                rejectBtn.textContent = 'Reject';
+                rejectBtn.addEventListener('click', () => {
+                    this.respondToFriendRequest(request.from, 'reject');
+                    request.status = 'REJECTED';
+                    this.saveFriendRequests();
+                    this.displayAllFriendRequests();
+                });
+                
+                actionsDiv.appendChild(acceptBtn);
+                actionsDiv.appendChild(rejectBtn);
+            } else {
+                const statusLabel = document.createElement('span');
+                statusLabel.className = 'search-result-btn';
+                statusLabel.style.backgroundColor = this.getStatusColor(request.status);
+                statusLabel.style.color = 'white';
+                statusLabel.textContent = this.getStatusText(request.status);
+                actionsDiv.appendChild(statusLabel);
+            }
+        } else {
+            const statusLabel = document.createElement('span');
+            statusLabel.className = 'search-result-btn';
+            statusLabel.style.backgroundColor = this.getStatusColor(request.status);
+            statusLabel.style.color = 'white';
+            statusLabel.textContent = this.getStatusText(request.status);
+            actionsDiv.appendChild(statusLabel);
+        }
+        
+        requestItem.appendChild(avatarImg);
+        requestItem.appendChild(infoDiv);
+        requestItem.appendChild(actionsDiv);
+        
+        return requestItem;
+    },
+    
+    // Get status text
+    getStatusText: function(status) {
+        switch (status) {
+            case 'PENDING': return 'Pending';
+            case 'ACCEPTED': return 'Accepted';
+            case 'REJECTED': return 'Rejected';
+            default: return status;
+        }
+    },
+    
+    // Get status color
+    getStatusColor: function(status) {
+        switch (status) {
+            case 'PENDING': return '#ffc107';
+            case 'ACCEPTED': return '#28a745';
+            case 'REJECTED': return '#dc3545';
+            default: return '#6c757d';
+        }
+    },
+    
+    // Open user search modal
+    openUserSearchModal: function() {
+        const modal = document.getElementById('user-search-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            
+            // Request all friend requests from server
+            this.requestAllFriendRequests();
+            
+            // Setup tab switching
+            this.setupSearchModalTabs();
+        }
+    },
+    
+    // Setup search modal tabs
+    setupSearchModalTabs: function() {
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const searchResults = document.getElementById('search-results');
+        const friendRequests = document.getElementById('friend-requests');
+        
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabBtns.forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                btn.classList.add('active');
+                
+                // Show/hide corresponding content
+                const tab = btn.getAttribute('data-tab');
+                if (tab === 'search') {
+                    searchResults.style.display = 'block';
+                    friendRequests.style.display = 'none';
+                } else if (tab === 'requests') {
+                    searchResults.style.display = 'none';
+                    friendRequests.style.display = 'block';
+                }
+            });
+        });
+        
+        // Setup search button
+        const searchBtn = document.getElementById('search-users-btn');
+        const searchInput = document.getElementById('user-search-input');
+        
+        searchBtn.addEventListener('click', () => {
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                this.searchUsers(searchTerm);
+            }
+        });
+        
+        // Allow Enter key to trigger search
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const searchTerm = searchInput.value.trim();
+                if (searchTerm) {
+                    this.searchUsers(searchTerm);
+                }
+            }
+        });
+    },
+    
+    // Search users
+    searchUsers: function(searchTerm) {
+        if (!searchTerm || searchTerm.trim().length === 0) {
+            this.showMessage('Please enter a search term', true);
+            return;
+        }
+        
+        const message = {
+            type: MessageType.SEARCH_USERS,
+            from: this.username,
+            to: 'server',
+            content: searchTerm,
+            time: getLocalTime(),
+            id: this.generateMessageId('SEARCH_USERS', searchTerm)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Searching for users: ${searchTerm}`);
+    },
+    
+    // Handle search users request
+    handleSearchUsersRequest: function(message) {
+        // This is handled by the server
+        this.log('debug', 'Search users request sent');
+    },
+    
+    // Handle users search result
+    handleUsersSearchResult: function(message) {
+        try {
+            const users = JSON.parse(message.content);
+            this.displaySearchResults(users);
+            this.log('info', `Received search results: ${users.length} users`);
+        } catch (error) {
+            this.log('error', `Failed to parse search results: ${error.message}`);
+        }
+    },
+    
+    // Display search results
+    displaySearchResults: function(users) {
+        const searchResultsDiv = document.getElementById('search-results');
+        if (!searchResultsDiv) return;
+        
+        searchResultsDiv.innerHTML = '';
+        
+        if (users.length === 0) {
+            searchResultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No users found</div>';
+            return;
+        }
+        
+        users.forEach(user => {
+            const isFriend = this.friends.some(friend => friend.username === user.username);
+            const isSelf = user.username === this.username;
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item';
+            
+            // Create avatar
+            const avatarImg = document.createElement('img');
+            avatarImg.className = 'search-result-avatar';
+            avatarImg.alt = user.username;
+            loadUserAvatar(avatarImg, user.username);
+            
+            // Create info
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'search-result-info';
+            
+            const usernameDiv = document.createElement('div');
+            usernameDiv.className = 'search-result-username';
+            usernameDiv.textContent = user.username;
+            
+            infoDiv.appendChild(usernameDiv);
+            
+            // Create actions
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'search-result-actions';
+            
+            if (!isSelf && !isFriend) {
+                const addFriendBtn = document.createElement('button');
+                addFriendBtn.className = 'search-result-btn add-friend-from-search-btn';
+                addFriendBtn.textContent = 'Add Friend';
+                addFriendBtn.addEventListener('click', () => {
+                    this.sendFriendRequest(user.username);
+                });
+                actionsDiv.appendChild(addFriendBtn);
+            } else if (isFriend) {
+                const friendLabel = document.createElement('span');
+                friendLabel.className = 'search-result-btn';
+                friendLabel.style.backgroundColor = '#28a745';
+                friendLabel.style.color = 'white';
+                friendLabel.textContent = 'Already Friends';
+                actionsDiv.appendChild(friendLabel);
+            } else if (isSelf) {
+                const selfLabel = document.createElement('span');
+                selfLabel.className = 'search-result-btn';
+                selfLabel.style.backgroundColor = '#6c757d';
+                selfLabel.style.color = 'white';
+                selfLabel.textContent = 'You';
+                actionsDiv.appendChild(selfLabel);
+            }
+            
+            resultItem.appendChild(avatarImg);
+            resultItem.appendChild(infoDiv);
+            resultItem.appendChild(actionsDiv);
+            
+            searchResultsDiv.appendChild(resultItem);
+        });
+    },
+    
+    // Open room search modal
+    openRoomSearchModal: function() {
+        const modal = document.getElementById('room-search-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            
+            // Load room requests from localStorage
+            this.loadRoomRequests();
+            
+            // Setup room search modal tabs
+            this.setupRoomSearchModalTabs();
+        }
+    },
+    
+    // Setup room search modal tabs
+    setupRoomSearchModalTabs: function() {
+        const tabBtns = document.querySelectorAll('#room-search-modal .tab-btn');
+        const searchResults = document.getElementById('room-search-results');
+        const roomRequests = document.getElementById('room-requests');
+        
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabBtns.forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                btn.classList.add('active');
+                
+                // Show/hide corresponding content
+                const tab = btn.getAttribute('data-tab');
+                if (tab === 'search') {
+                    searchResults.style.display = 'block';
+                    roomRequests.style.display = 'none';
+                } else if (tab === 'requests') {
+                    searchResults.style.display = 'none';
+                    roomRequests.style.display = 'block';
+                }
+            });
+        });
+        
+        // Setup search button
+        const searchBtn = document.getElementById('search-rooms-btn');
+        const searchInput = document.getElementById('room-search-input');
+        
+        searchBtn.addEventListener('click', () => {
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                this.searchRooms(searchTerm);
+            }
+        });
+        
+        // Allow Enter key to trigger search
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const searchTerm = searchInput.value.trim();
+                if (searchTerm) {
+                    this.searchRooms(searchTerm);
+                }
+            }
+        });
+    },
+    
+    // Search rooms
+    searchRooms: function(searchTerm) {
+        if (!searchTerm || searchTerm.trim().length === 0) {
+            this.showMessage('Please enter a search term', true);
+            return;
+        }
+        
+        const message = {
+            type: MessageType.SEARCH_ROOMS,
+            from: this.username,
+            to: 'server',
+            content: searchTerm,
+            time: getLocalTime(),
+            id: this.generateMessageId('SEARCH_ROOMS', searchTerm)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('debug', 'Search rooms request sent');
+    },
+    
+    // Handle rooms search result
+    handleRoomsSearchResult: function(message) {
+        try {
+            const rooms = JSON.parse(message.content);
+            this.displayRoomSearchResults(rooms);
+            this.log('info', `Received room search results: ${rooms.length} rooms`);
+        } catch (error) {
+            this.log('error', `Failed to parse room search results: ${error.message}`);
+        }
+    },
+    
+    // Display room search results
+    displayRoomSearchResults: function(rooms) {
+        const searchResultsDiv = document.getElementById('room-search-results');
+        if (!searchResultsDiv) return;
+        
+        searchResultsDiv.innerHTML = '';
+        
+        if (rooms.length === 0) {
+            searchResultsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No rooms found</div>';
+            return;
+        }
+        
+        rooms.forEach(room => {
+            const isInRoom = this.rooms.some(r => r.name === room.name);
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item-room';
+            
+            const avatarImg = document.createElement('img');
+            avatarImg.className = 'search-result-avatar-room';
+            avatarImg.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(room.name);
+            avatarImg.alt = room.name;
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'search-result-info-room';
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'search-result-username-room';
+            nameDiv.textContent = room.name;
+            
+            const typeDiv = document.createElement('div');
+            typeDiv.style.fontSize = '12px';
+            typeDiv.style.color = '#6c757d';
+            typeDiv.textContent = `Type: ${room.type} | Members: ${room.memberCount || 0}`;
+            
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(typeDiv);
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'search-result-actions-room';
+            
+            if (isInRoom) {
+                const joinedLabel = document.createElement('span');
+                joinedLabel.className = 'search-result-btn-room';
+                joinedLabel.style.backgroundColor = '#28a745';
+                joinedLabel.style.color = 'white';
+                joinedLabel.textContent = 'Joined';
+                actionsDiv.appendChild(joinedLabel);
+            } else {
+                const requestBtn = document.createElement('button');
+                requestBtn.className = 'search-result-btn-room request-join-btn';
+                requestBtn.textContent = 'Request Join';
+                requestBtn.addEventListener('click', () => {
+                    this.requestRoomJoin(room.name);
+                });
+                actionsDiv.appendChild(requestBtn);
+            }
+            
+            resultItem.appendChild(avatarImg);
+            resultItem.appendChild(infoDiv);
+            resultItem.appendChild(actionsDiv);
+            
+            searchResultsDiv.appendChild(resultItem);
+        });
+    },
+    
+    // Request room join
+    requestRoomJoin: function(roomName) {
+        const message = {
+            type: MessageType.REQUEST_ROOM_JOIN,
+            from: this.username,
+            to: 'server',
+            content: roomName,
+            time: getLocalTime(),
+            id: this.generateMessageId('REQUEST_ROOM_JOIN', roomName)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Sent room join request for ${roomName}`);
+        
+        // Add to sent requests
+        this.sentRoomRequests.push({
+            roomName: roomName,
+            time: getLocalTime(),
+            status: 'PENDING'
+        });
+        
+        // Save to localStorage
+        this.saveRoomRequests();
+        
+        // Update UI
+        this.displayAllRoomRequests();
+        
+        this.showMessage(`Room join request sent to ${roomName}`, true);
+    },
+    
+    // Handle room join request
+    handleRoomJoinRequest: function(message) {
+        const fromUsername = message.from;
+        const roomName = message.content;
+        
+        // 检查当前用户是否为房主或管理员
+        const isOwnerOrAdmin = this.currentUserRole === 'OWNER' || this.currentUserRole === 'ADMIN';
+        
+        // 只有房主或管理员才处理房间加入请求
+        if (!isOwnerOrAdmin) {
+            this.log('debug', `Ignoring room join request from ${fromUsername} - not owner or admin`);
+            return;
+        }
+        
+        // Add to received requests
+        if (!this.receivedRoomRequests.some(req => req.from === fromUsername && req.roomName === roomName)) {
+            this.receivedRoomRequests.push({
+                from: fromUsername,
+                roomName: roomName,
+                time: message.time,
+                status: 'PENDING'
+            });
+            
+            // Save to localStorage for persistence
+            this.saveRoomRequests();
+            
+            // Update room requests UI if modal is open
+            const roomRequestsDiv = document.getElementById('room-requests');
+            if (roomRequestsDiv && roomRequestsDiv.style.display !== 'none') {
+                this.displayAllRoomRequests();
+            }
+        }
+        
+        // Show toast notification
+        this.showToast(`New room join request from ${fromUsername} for ${roomName}`, 'info');
+        
+        // Log the room join request
+        this.log('info', `Received room join request from ${fromUsername} for ${roomName}`);
+    },
+    
+    // Display all room requests
+    displayAllRoomRequests: function() {
+        const requestsDiv = document.getElementById('room-requests');
+        if (!requestsDiv) return;
+        
+        requestsDiv.innerHTML = '';
+        
+        const hasRequests = this.receivedRoomRequests.length > 0 || this.sentRoomRequests.length > 0;
+        
+        if (!hasRequests) {
+            requestsDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No room requests</div>';
+            return;
+        }
+        
+        // Display received requests
+        if (this.receivedRoomRequests.length > 0) {
+            const receivedSection = document.createElement('div');
+            receivedSection.className = 'room-requests-section';
+            receivedSection.innerHTML = '<h4 style="margin: 15px 0 10px 0; color: #4a6fa5; border-bottom: 2px solid #4a6fa5; padding-bottom: 5px;">Received Requests</h4>';
+            
+            this.receivedRoomRequests.forEach(request => {
+                const requestItem = this.createRoomRequestItem(request, true);
+                receivedSection.appendChild(requestItem);
+            });
+            
+            requestsDiv.appendChild(receivedSection);
+        }
+        
+        // Display sent requests
+        if (this.sentRoomRequests.length > 0) {
+            const sentSection = document.createElement('div');
+            sentSection.className = 'room-requests-section';
+            sentSection.innerHTML = '<h4 style="margin: 15px 0 10px 0; color: #6c757d; border-bottom: 2px solid #6c757d; padding-bottom: 5px;">Sent Requests</h4>';
+            
+            this.sentRoomRequests.forEach(request => {
+                const requestItem = this.createRoomRequestItem(request, false);
+                sentSection.appendChild(requestItem);
+            });
+            
+            requestsDiv.appendChild(sentSection);
+        }
+    },
+    
+    // Create room request item
+    createRoomRequestItem: function(request, isReceived) {
+        const requestItem = document.createElement('div');
+        requestItem.className = 'room-request-item-room';
+        
+        const avatarImg = document.createElement('img');
+        avatarImg.className = 'room-request-avatar-room';
+        avatarImg.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(isReceived ? request.from : request.roomName);
+        avatarImg.alt = isReceived ? request.from : request.roomName;
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'room-request-info-room';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'room-request-username-room';
+        nameDiv.textContent = isReceived ? request.from : request.roomName;
+        
+        const roomDiv = document.createElement('div');
+        roomDiv.style.fontSize = '12px';
+        roomDiv.style.color = '#6c757d';
+        roomDiv.textContent = isReceived ? `Room: ${request.roomName}` : `Request sent to room`;
+        
+        const timeDiv = document.createElement('div');
+        timeDiv.style.fontSize = '11px';
+        timeDiv.style.color = '#6c757d';
+        timeDiv.textContent = request.time;
+        
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(roomDiv);
+        infoDiv.appendChild(timeDiv);
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'room-request-actions-room';
+        
+        if (isReceived) {
+            if (request.status === 'PENDING') {
+                // 检查当前用户是否为房主或管理员
+                const isOwnerOrAdmin = this.currentUserRole === 'OWNER' || this.currentUserRole === 'ADMIN';
+                
+                if (isOwnerOrAdmin) {
+                    const acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'room-request-btn-room request-join-btn';
+                    acceptBtn.textContent = 'Accept';
+                    acceptBtn.addEventListener('click', () => {
+                        this.respondToRoomJoinRequest(request.from, request.roomName, 'accept');
+                        request.status = 'ACCEPTED';
+                        this.saveRoomRequests();
+                        this.displayAllRoomRequests();
+                    });
+                    
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.className = 'room-request-btn-room request-cancel-btn';
+                    rejectBtn.textContent = 'Reject';
+                    rejectBtn.addEventListener('click', () => {
+                        this.respondToRoomJoinRequest(request.from, request.roomName, 'reject');
+                        request.status = 'REJECTED';
+                        this.saveRoomRequests();
+                        this.displayAllRoomRequests();
+                    });
+                    
+                    actionsDiv.appendChild(acceptBtn);
+                    actionsDiv.appendChild(rejectBtn);
+                } else {
+                    const infoLabel = document.createElement('span');
+                    infoLabel.className = 'room-request-btn-room';
+                    infoLabel.style.backgroundColor = '#6c757d';
+                    infoLabel.style.color = 'white';
+                    infoLabel.textContent = 'Wait for owner/admin';
+                    actionsDiv.appendChild(infoLabel);
+                }
+            } else {
+                const statusLabel = document.createElement('span');
+                statusLabel.className = 'room-request-btn-room';
+                statusLabel.style.backgroundColor = this.getStatusColor(request.status);
+                statusLabel.style.color = 'white';
+                statusLabel.textContent = this.getStatusText(request.status);
+                actionsDiv.appendChild(statusLabel);
+            }
+        } else {
+            const statusLabel = document.createElement('span');
+            statusLabel.className = 'room-request-btn-room';
+            statusLabel.style.backgroundColor = this.getStatusColor(request.status);
+            statusLabel.style.color = 'white';
+            statusLabel.textContent = this.getStatusText(request.status);
+            actionsDiv.appendChild(statusLabel);
+        }
+        
+        requestItem.appendChild(avatarImg);
+        requestItem.appendChild(infoDiv);
+        requestItem.appendChild(actionsDiv);
+        
+        return requestItem;
+    },
+    
+    // Respond to room join request
+    respondToRoomJoinRequest: function(fromUsername, roomName, response) {
+        const message = {
+            type: MessageType.ROOM_JOIN_RESPONSE,
+            from: this.username,
+            to: fromUsername,
+            content: `${response}:${roomName}`,
+            time: getLocalTime(),
+            id: this.generateMessageId('ROOM_JOIN_RESPONSE', fromUsername)
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        this.log('info', `Responded to room join request from ${fromUsername} for ${roomName}: ${response}`);
+        
+        // Don't remove from requests, just update status
+        // The UI will be updated when server responds
+    },
+    
+    // Handle room join response
+    handleRoomJoinResponse: function(message) {
+        const content = message.content;
+        const fromUsername = message.from;
+        
+        if (content.startsWith('accept:')) {
+            const roomName = content.substring(7);
+            
+            this.showMessage(`[Room] Your request to join ${roomName} was accepted!`, true);
+            this.log('info', `Room join request accepted by ${fromUsername} for ${roomName}`);
+            
+            // Update sent request status
+            const sentRequest = this.sentRoomRequests.find(req => req.roomName === roomName);
+            if (sentRequest) {
+                sentRequest.status = 'ACCEPTED';
+                this.saveRoomRequests();
+                this.displayAllRoomRequests();
+            }
+        } else if (content.startsWith('reject:')) {
+            const roomName = content.substring(7);
+            this.showMessage(`[Room] Your request to join ${roomName} was rejected.`, true);
+            this.log('info', `Room join request rejected by ${fromUsername} for ${roomName}`);
+            
+            // Update sent request status
+            const sentRequest = this.sentRoomRequests.find(req => req.roomName === roomName);
+            if (sentRequest) {
+                sentRequest.status = 'REJECTED';
+                this.saveRoomRequests();
+                this.displayAllRoomRequests();
+            }
+        }
+    },
+    
+    // Handle set room admin response
+    handleSetRoomAdminResponse: function(message) {
+        const content = message.content;
+        
+        if (content.includes('已成功设置管理员')) {
+            this.showMessage('[Room] Successfully set admin!', true);
+            this.log('info', 'Set admin successful');
+            
+            // Refresh room users list
+            if (this.currentRoom && this.currentRoom !== 'system') {
+                this.sendMessage(MessageType.LIST_ROOM_USERS, this.currentRoom, '');
+            }
+        } else {
+            this.showMessage('[Room] Failed to set admin: ' + content, true);
+            this.log('error', 'Set admin failed: ' + content);
+        }
+    },
+    
+    // Handle remove room admin response
+    handleRemoveRoomAdminResponse: function(message) {
+        const content = message.content;
+        
+        if (content.includes('已成功移除管理员')) {
+            this.showMessage('[Room] Successfully removed admin!', true);
+            this.log('info', 'Remove admin successful');
+            
+            // Refresh room users list
+            if (this.currentRoom && this.currentRoom !== 'system') {
+                this.sendMessage(MessageType.LIST_ROOM_USERS, this.currentRoom, '');
+            }
+        } else {
+            this.showMessage('[Room] Failed to remove admin: ' + content, true);
+            this.log('error', 'Remove admin failed: ' + content);
+        }
+    },
+    
     // Send private message to a specific user
+    // 支持临时聊天和好友聊天两种模式
     sendPrivateMessage: function(to, content) {
         if (!to || !content) {
             this.showMessage('Please enter a username and message', true);
             return;
         }
         
-        // For private messages, always include room info in the format [room:房间名]消息内容
-        const roomName = this.previousRoom || 'unknown';
-        const contentWithRoom = `[room:${roomName}]${content}`;
+        // 根据聊天类型确定消息类型
+        // 临时聊天：只能发送文本消息
+        // 好友聊天：可以发送文本、图片和文件（后续实现）
+        let messageType = MessageType.PRIVATE_CHAT;
+        
+        // 使用新的PRIVATE_CHAT消息类型，直接发送私聊消息
+        const message = {
+            type: messageType,
+            from: this.username,
+            to: to,
+            content: content,
+            time: getLocalTime(),
+            id: this.generateMessageId('PRIVATE_CHAT', to),
+            isTemporaryChat: this.isTemporaryChat, // 标记是否为临时聊天
+            isFriendChat: this.isFriendChat // 标记是否为好友聊天
+        };
         
         // Send private message through WebSocket
-        this.sendMessage(MessageType.TEXT, to, contentWithRoom);
+        this.ws.send(JSON.stringify(message));
         
-        // Store private message in a virtual room named after the recipient
+        // Store private message using recipient username as key
         const privateRoomName = `好友${to}`;
         if (!this.messages[privateRoomName]) {
             this.messages[privateRoomName] = [];
@@ -3262,17 +5058,15 @@ let chatClient = {
             to: to,
             time: getLocalTime(),
             isSystem: false,
-            isPrivate: true
+            isPrivate: true,
+            id: message.id,
+            type: MessageType.PRIVATE_CHAT
         };
         
         this.messages[privateRoomName].push(privateMessage);
         
         // 保存私聊消息到本地存储
         if (this.messageStorage) {
-            // 确保消息有唯一ID
-            if (!privateMessage.id) {
-                privateMessage.id = this.generateMessageId('PRIVATE', privateRoomName);
-            }
             this.saveMessageToLocal(privateRoomName, privateMessage);
         }
         
@@ -3284,7 +5078,7 @@ let chatClient = {
         
         // Update UI if current room is this private conversation
         const currentRoomName = document.getElementById('current-room-name')?.textContent;
-        if (currentRoomName === privateRoomName) {
+        if (currentRoomName === `与${to}聊天`) {
             this.updateMessagesArea(privateRoomName);
         }
     },
@@ -3427,6 +5221,40 @@ let chatClient = {
             this.log('warn', `打开房间 ${roomName} 新窗口失败: 弹窗被阻止`);
         }
     },
+    
+    // Open friend chat in new window
+    openFriendChatInNewWindow: function(friendUsername) {
+        this.log('info', `在新窗口打开好友聊天: ${friendUsername}`);
+        
+        const windowName = 'friend_' + friendUsername;
+        
+        if (this.childWindows[windowName] && !this.childWindows[windowName].closed) {
+            this.childWindows[windowName].focus();
+            this.log('debug', `好友聊天 ${friendUsername} 的窗口已存在，聚焦窗口`);
+            return;
+        }
+        
+        const newWindow = window.open(
+            'friend-chat.jsp?friend=' + encodeURIComponent(friendUsername),
+            windowName,
+            'width=800,height=600'
+        );
+        
+        if (newWindow) {
+            this.childWindows[windowName] = newWindow;
+            
+            newWindow.addEventListener('beforeunload', () => {
+                delete this.childWindows[windowName];
+                this.log('debug', `好友聊天窗口关闭: ${friendUsername}`);
+            });
+            
+            this.showMessage(`已打开好友 "${friendUsername}" 的新窗口`, true);
+            this.log('info', `成功打开好友 ${friendUsername} 的新窗口`);
+        } else {
+            this.showMessage('无法打开新窗口，请检查浏览器弹窗设置', true);
+            this.log('warn', `打开好友聊天 ${friendUsername} 新窗口失败: 弹窗被阻止`);
+        }
+    },
 
     // Function to close all child windows - can be called when parent window closes
     closeAllChildWindows: function() {
@@ -3443,11 +5271,59 @@ let chatClient = {
         
         // Clear childWindows object
         this.childWindows = {};
+    },
+
+    // 更新用户统计数据
+    updateUserStats: function(stats) {
+        // 更新消息数
+        const messagesElement = document.getElementById('stat-messages');
+        if (messagesElement) {
+            messagesElement.textContent = stats.messageCount || 0;
+        }
+        
+        const totalMessagesElement = document.getElementById('detail-total-messages');
+        if (totalMessagesElement) {
+            totalMessagesElement.textContent = stats.messageCount || 0;
+        }
+        
+        // 更新房间数
+        const roomsElement = document.getElementById('stat-rooms');
+        if (roomsElement) {
+            roomsElement.textContent = stats.roomCount || 0;
+        }
+        
+        const roomsJoinedElement = document.getElementById('detail-rooms-joined');
+        if (roomsJoinedElement) {
+            roomsJoinedElement.textContent = stats.roomCount || 0;
+        }
+        
+        // 更新加入时间
+        const joinedElement = document.getElementById('detail-joined');
+        if (joinedElement && stats.joinTime) {
+            joinedElement.textContent = stats.joinTime;
+        }
+        
+        // 更新图片数
+        const imagesSentElement = document.getElementById('detail-images-sent');
+        if (imagesSentElement) {
+            imagesSentElement.textContent = stats.imageCount || 0;
+        }
+        
+        // 更新文件数
+        const filesSharedElement = document.getElementById('detail-files-shared');
+        if (filesSharedElement) {
+            filesSharedElement.textContent = stats.fileCount || 0;
+        }
+        
+        this.log('info', '用户统计数据已更新');
     }
 };
 
 // Login functionality
 function initLogin() {
+    // Avatar upload functionality
+    initAvatarUpload();
+    
     // Tab switching
     document.getElementById('login-form').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -3487,6 +5363,24 @@ function initLogin() {
             return;
         }
         
+        // Check if avatar is selected
+        const avatarInput = document.getElementById('register-avatar-input');
+        const avatarPreview = document.getElementById('register-avatar-preview');
+        const hasAvatar = avatarPreview.src && avatarPreview.classList.contains('show');
+        
+        // Save avatar file reference for upload after registration
+        if (hasAvatar && avatarInput.files && avatarInput.files.length > 0) {
+            localStorage.setItem('tempAvatarFile', JSON.stringify({
+                name: avatarInput.files[0].name,
+                size: avatarInput.files[0].size,
+                type: avatarInput.files[0].type
+            }));
+            localStorage.setItem('tempAvatarData', avatarPreview.src);
+        } else {
+            localStorage.removeItem('tempAvatarFile');
+            localStorage.removeItem('tempAvatarData');
+        }
+        
         // Check if already connected
         if (!chatClient.isConnected) {
             chatClient.connect();
@@ -3510,6 +5404,215 @@ function initLogin() {
     });
 }
 
+// Avatar upload functionality
+function initAvatarUpload() {
+    const avatarInput = document.getElementById('register-avatar-input');
+    const avatarPreview = document.getElementById('register-avatar-preview');
+    const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
+    const removeAvatarBtn = document.getElementById('remove-avatar-btn');
+    const avatarPreviewWrapper = document.querySelector('.avatar-preview-wrapper');
+    
+    if (!avatarInput || !avatarPreview) return;
+    
+    // Click on placeholder or upload button to open file dialog
+    if (avatarPreviewWrapper) {
+        avatarPreviewWrapper.addEventListener('click', function() {
+            avatarInput.click();
+        });
+    }
+    
+    if (uploadAvatarBtn) {
+        uploadAvatarBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            avatarInput.click();
+        });
+    }
+    
+    // Handle file selection
+    avatarInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Image size must be less than 2MB');
+                return;
+            }
+            
+            // Read and preview the image
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                avatarPreview.src = event.target.result;
+                avatarPreview.classList.add('show');
+                
+                if (removeAvatarBtn) {
+                    removeAvatarBtn.style.display = 'inline-block';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Remove avatar
+    if (removeAvatarBtn) {
+        removeAvatarBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            avatarPreview.src = '';
+            avatarPreview.classList.remove('show');
+            avatarInput.value = '';
+            removeAvatarBtn.style.display = 'none';
+        });
+    }
+}
+
+// Upload avatar to server
+function uploadAvatarToServer(username, file, callback) {
+    const zfileServerUrl = chatClient.serviceConfig.zfileServerUrl || chatClient.zfileServerUrl || 'http://localhost:8081';
+    
+    // 生成文件扩展名
+    const fileName = file.name;
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+    
+    // 构建上传路径
+    const uploadPath = `/avatars/users/${username}`;
+    const uploadFileName = `avatar${fileExtension}`;
+    
+    // 第一步：请求上传token
+    const timeout = setTimeout(() => {
+        callback(false, '获取token超时');
+    }, 10000);
+    
+    const originalHandleTokenResponse = chatClient.handleTokenResponse;
+    chatClient.handleTokenResponse = function(message) {
+        clearTimeout(timeout);
+        chatClient.handleTokenResponse = originalHandleTokenResponse;
+        originalHandleTokenResponse.call(chatClient, message);
+        
+        // 第二步：创建上传任务（使用获取的token）
+        const createUploadUrl = `${zfileServerUrl}/api/file/operator/upload/file`;
+        
+        fetch(createUploadUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Zfile-Token': chatClient.uploadToken,
+                'Axios-Request': 'true',
+                'Axios-From': zfileServerUrl
+            },
+            body: JSON.stringify({
+                storageKey: 'chatroom-files',
+                path: uploadPath,
+                name: uploadFileName,
+                size: file.size,
+                password: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.code === '0' && data.data) {
+                let uploadUrl = data.data;
+                
+                // 修正URL以匹配配置的zfile服务器
+                try {
+                    const urlObj = new URL(uploadUrl);
+                    const configUrlObj = new URL(zfileServerUrl);
+                    urlObj.protocol = configUrlObj.protocol;
+                    urlObj.host = configUrlObj.host;
+                    uploadUrl = urlObj.toString();
+                } catch (error) {
+                    console.warn('修正上传URL失败:', error.message);
+                }
+                
+                // 第三步：实际上传文件
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                return fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Zfile-Token': chatClient.uploadToken,
+                        'Axios-Request': 'true',
+                        'Axios-From': zfileServerUrl
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.code === '0') {
+                        // 返回相对路径
+                        const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFileName)}`;
+                        callback(true, relativePath);
+                    } else {
+                        callback(false, '上传失败');
+                    }
+                });
+            } else {
+                callback(false, '创建上传任务失败');
+            }
+        })
+        .catch(error => {
+            console.error('上传头像失败:', error);
+            callback(false, '网络错误');
+        });
+    };
+    
+    // 发送token请求
+    chatClient.sendMessage(MessageType.REQUEST_TOKEN, 'server', '');
+}
+
+// Get avatar URL from zfile server
+function getAvatarUrl(username) {
+    const zfileServerUrl = chatClient.serviceConfig.zfileServerUrl || 'http://localhost:8081';
+    const avatarPath = `/pd/chatroom-files/chatroom/avatars/users/${username}/avatar`;
+    
+    // 尝试常见的图片扩展名
+    const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    
+    // 返回第一个可能的URL（实际加载时会尝试所有扩展名）
+    return `${zfileServerUrl}${avatarPath}${extensions[0]}`;
+}
+
+// Load user avatar with fallback
+function loadUserAvatar(imgElement, username) {
+    const zfileServerUrl = chatClient.serviceConfig.zfileServerUrl || 'http://localhost:8081';
+    const avatarPath = `/pd/chatroom-files/chatroom/avatars/users/${username}/avatar`;
+    const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    
+    let currentExtensionIndex = 0;
+    
+    const tryLoadAvatar = (index) => {
+        if (index >= extensions.length) {
+            // 所有扩展名都尝试失败，显示默认头像
+            const firstLetter = username.charAt(0).toUpperCase();
+            const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="45" fill="%234a6fa5"/%3E%3Ctext x="50" y="60" font-size="40" text-anchor="middle" fill="white"%3E' + firstLetter + '%3C/text%3E%3C/svg%3E';
+            imgElement.src = defaultAvatar;
+            imgElement.style.opacity = '1';
+            return;
+        }
+        
+        const avatarUrl = `${zfileServerUrl}${avatarPath}${extensions[index]}`;
+        imgElement.style.opacity = '0.5';
+        imgElement.src = avatarUrl;
+        
+        imgElement.onload = function() {
+            imgElement.style.opacity = '1';
+        };
+        
+        imgElement.onerror = function() {
+            // 尝试下一个扩展名
+            tryLoadAvatar(index + 1);
+        };
+    };
+    
+    tryLoadAvatar(0);
+}
+
 // Chat functionality
 function initChat() {
     // Check if user is logged in, prioritize sessionStorage
@@ -3525,6 +5628,9 @@ function initChat() {
     if (currentUserSpan) {
         currentUserSpan.textContent = username;
     }
+    
+    // Initialize user menu
+    initUserMenu();
     
     // Update Members button availability based on initial room
     chatClient.updateMembersButtonAvailability(chatClient.currentRoom, chatClient.currentRoomType);
@@ -3555,6 +5661,10 @@ function initChat() {
     
     // Image upload button functionality
     document.getElementById('image-btn').addEventListener('click', function() {
+        if (chatClient.isTemporaryChat) {
+            chatClient.showMessage('Temporary chat only supports text messages', true);
+            return;
+        }
         const imageInput = document.getElementById('image-input');
         imageInput.click();
     });
@@ -3569,6 +5679,10 @@ function initChat() {
     
     // File upload button functionality
     document.getElementById('file-btn').addEventListener('click', function() {
+        if (chatClient.isTemporaryChat) {
+            chatClient.showMessage('Temporary chat only supports text messages', true);
+            return;
+        }
         const fileInput = document.getElementById('file-input');
         fileInput.click();
     });
@@ -3665,7 +5779,7 @@ function initChat() {
     
     // Show join room modal when join button is clicked
     document.getElementById('join-room-btn').addEventListener('click', function() {
-        joinRoomModal.style.display = 'block';
+        chatClient.openRoomSearchModal();
     });
     
     // Close join room modal when close button is clicked
@@ -4329,6 +6443,11 @@ function initChat() {
         }
     });
     
+    // Add friend button functionality
+    document.getElementById('add-friend-btn').addEventListener('click', function() {
+        chatClient.openUserSearchModal();
+    });
+    
     document.getElementById('refresh-rooms-btn').addEventListener('click', function() {
         chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
     });
@@ -4360,3 +6479,369 @@ function switchTab(tabName) {
 
 // Expose chatClient to global scope for child windows
 window.chatClient = chatClient;
+
+// User Menu Functionality
+function initUserMenu() {
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    const userMenuDropdown = document.getElementById('user-menu-dropdown');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (userAvatar) {
+        const username = sessionStorage.getItem('username') || localStorage.getItem('username');
+        if (username) {
+            loadUserAvatar(userAvatar, username);
+        }
+    }
+    
+    if (userMenuBtn && userMenuDropdown) {
+        userMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userMenuDropdown.classList.toggle('show');
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!userMenuDropdown.contains(e.target) && !userMenuBtn.contains(e.target)) {
+                userMenuDropdown.classList.remove('show');
+            }
+        });
+        
+        const viewProfileBtn = document.getElementById('view-profile-btn');
+        const viewSettingsBtn = document.getElementById('view-settings-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        if (viewProfileBtn) {
+            viewProfileBtn.addEventListener('click', function() {
+                window.location.href = 'user-profile.jsp';
+            });
+        }
+        
+        if (viewSettingsBtn) {
+            viewSettingsBtn.addEventListener('click', function() {
+                window.location.href = 'user-settings.jsp';
+            });
+        }
+        
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to logout?')) {
+                    if (chatClient.ws && chatClient.ws.readyState === WebSocket.OPEN) {
+                        chatClient.ws.close();
+                    }
+                    sessionStorage.clear();
+                    window.location.href = 'login.jsp';
+                }
+            });
+        }
+    }
+}
+
+// User Profile Page Functionality
+function initUserProfile() {
+    const backToChatBtn = document.getElementById('back-to-chat-btn');
+    
+    if (backToChatBtn) {
+        backToChatBtn.addEventListener('click', function() {
+            window.location.href = 'chat.jsp';
+        });
+    }
+    
+    const editProfileBtn = document.getElementById('edit-profile-btn');
+    const viewSettingsBtn = document.getElementById('view-settings-btn');
+    const changeAvatarBtn = document.getElementById('change-avatar-btn');
+    const avatarInput = document.getElementById('avatar-input');
+    
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function() {
+            window.location.href = 'user-settings.jsp';
+        });
+    }
+    
+    if (viewSettingsBtn) {
+        viewSettingsBtn.addEventListener('click', function() {
+            window.location.href = 'user-settings.jsp';
+        });
+    }
+    
+    if (changeAvatarBtn && avatarInput) {
+        changeAvatarBtn.addEventListener('click', function() {
+            avatarInput.click();
+        });
+        
+        avatarInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const username = sessionStorage.getItem('username');
+                
+                if (username) {
+                    uploadAvatarToServer(username, file, function(success, result) {
+                        if (success) {
+                            alert('Avatar updated successfully!');
+                            loadUserAvatar(document.getElementById('profile-avatar'), username);
+                        } else {
+                            alert('Avatar update failed: ' + result);
+                        }
+                    });
+                }
+            }
+        });
+    }
+    
+    loadUserProfile();
+}
+
+function loadUserProfile() {
+    const username = sessionStorage.getItem('username');
+    
+    if (username) {
+        document.getElementById('profile-username').textContent = username;
+        document.getElementById('detail-username').textContent = username;
+        
+        const displayName = localStorage.getItem('displayName') || username;
+        document.getElementById('profile-display-name').textContent = displayName;
+        document.getElementById('detail-display-name').textContent = displayName;
+        
+        const email = localStorage.getItem('email') || 'Not set';
+        document.getElementById('detail-email').textContent = email;
+        
+        const joinedDate = localStorage.getItem('joinedDate') || new Date().toLocaleDateString();
+        document.getElementById('detail-joined').textContent = joinedDate;
+        
+        const lastActive = new Date().toLocaleString();
+        document.getElementById('detail-last-active').textContent = lastActive;
+        
+        const totalMessages = localStorage.getItem('totalMessages') || '0';
+        document.getElementById('stat-messages').textContent = totalMessages;
+        document.getElementById('detail-total-messages').textContent = totalMessages;
+        
+        const roomsJoined = localStorage.getItem('roomsJoined') || '0';
+        document.getElementById('stat-rooms').textContent = roomsJoined;
+        document.getElementById('detail-rooms-joined').textContent = roomsJoined;
+        
+        const imagesSent = localStorage.getItem('imagesSent') || '0';
+        document.getElementById('detail-images-sent').textContent = imagesSent;
+        
+        const filesShared = localStorage.getItem('filesShared') || '0';
+        document.getElementById('detail-files-shared').textContent = filesShared;
+        
+        const onlineTime = localStorage.getItem('onlineTime') || '0';
+        document.getElementById('stat-online-time').textContent = onlineTime + 'h';
+        
+        // Load avatar from server
+        const profileAvatar = document.getElementById('profile-avatar');
+        if (profileAvatar) {
+            loadUserAvatar(profileAvatar, username);
+        }
+        
+        // 注意：用户统计数据会在WebSocket认证成功后自动请求（在handleUUIDAuthSuccess中）
+    }
+}
+
+// User Settings Page Functionality
+function initUserSettings() {
+    const backToChatBtn = document.getElementById('back-to-chat-btn');
+    
+    if (backToChatBtn) {
+        backToChatBtn.addEventListener('click', function() {
+            window.location.href = 'chat.jsp';
+        });
+    }
+    
+    initSettingsTabs();
+    loadSettings();
+    initSettingsActions();
+}
+
+function initSettingsTabs() {
+    const tabBtns = document.querySelectorAll('.settings-tab-btn');
+    const tabContents = document.querySelectorAll('.settings-tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        });
+    });
+}
+
+function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('userSettings')) || {};
+    
+    document.getElementById('theme-select').value = settings.theme || 'light';
+    document.getElementById('font-size-select').value = settings.fontSize || 'medium';
+    document.getElementById('bubble-style-select').value = settings.bubbleStyle || 'rounded';
+    document.getElementById('show-timestamps').checked = settings.showTimestamps !== false;
+    document.getElementById('desktop-notifications').checked = settings.desktopNotifications || false;
+    document.getElementById('sound-notifications').checked = settings.soundNotifications !== false;
+    document.getElementById('message-preview').checked = settings.messagePreview !== false;
+    document.getElementById('mute-all').checked = settings.muteAll || false;
+    document.getElementById('show-online-status').checked = settings.showOnlineStatus !== false;
+    document.getElementById('read-receipts').checked = settings.readReceipts !== false;
+    document.getElementById('profile-visibility').value = settings.profileVisibility || 'everyone';
+    document.getElementById('allow-nsfw').checked = settings.allowNsfw || false;
+    document.getElementById('message-storage').checked = settings.messageStorage !== false;
+    document.getElementById('storage-type').value = settings.storageType || 'indexeddb';
+    document.getElementById('max-messages').value = settings.maxMessages || '200';
+    document.getElementById('sync-interval').value = settings.syncInterval || '30';
+    
+    applyTheme(settings.theme || 'light');
+    applyFontSize(settings.fontSize || 'medium');
+}
+
+function saveSettings() {
+    const settings = {
+        theme: document.getElementById('theme-select').value,
+        fontSize: document.getElementById('font-size-select').value,
+        bubbleStyle: document.getElementById('bubble-style-select').value,
+        showTimestamps: document.getElementById('show-timestamps').checked,
+        desktopNotifications: document.getElementById('desktop-notifications').checked,
+        soundNotifications: document.getElementById('sound-notifications').checked,
+        messagePreview: document.getElementById('message-preview').checked,
+        muteAll: document.getElementById('mute-all').checked,
+        showOnlineStatus: document.getElementById('show-online-status').checked,
+        readReceipts: document.getElementById('read-receipts').checked,
+        profileVisibility: document.getElementById('profile-visibility').value,
+        allowNsfw: document.getElementById('allow-nsfw').checked,
+        messageStorage: document.getElementById('message-storage').checked,
+        storageType: document.getElementById('storage-type').value,
+        maxMessages: document.getElementById('max-messages').value,
+        syncInterval: document.getElementById('sync-interval').value
+    };
+    
+    localStorage.setItem('userSettings', JSON.stringify(settings));
+    
+    applyTheme(settings.theme);
+    applyFontSize(settings.fontSize);
+    
+    alert('Settings saved successfully!');
+}
+
+function resetSettings() {
+    if (confirm('Are you sure you want to reset all settings to default?')) {
+        localStorage.removeItem('userSettings');
+        loadSettings();
+        alert('Settings reset to default!');
+    }
+}
+
+function applyTheme(theme) {
+    document.body.className = '';
+    
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else if (theme === 'auto') {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList.add('dark-theme');
+        }
+    }
+}
+
+function applyFontSize(fontSize) {
+    document.body.style.fontSize = '';
+    
+    if (fontSize === 'small') {
+        document.body.style.fontSize = '14px';
+    } else if (fontSize === 'large') {
+        document.body.style.fontSize = '18px';
+    } else {
+        document.body.style.fontSize = '16px';
+    }
+}
+
+function initSettingsActions() {
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const resetSettingsBtn = document.getElementById('reset-settings-btn');
+    const changePasswordBtn = document.getElementById('change-password-btn');
+    const changeDisplayNameBtn = document.getElementById('change-display-name-btn');
+    const changeEmailBtn = document.getElementById('change-email-btn');
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+    const clearDataBtn = document.getElementById('clear-data-btn');
+    
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveSettings);
+    }
+    
+    if (resetSettingsBtn) {
+        resetSettingsBtn.addEventListener('click', resetSettings);
+    }
+    
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', function() {
+            const newPassword = prompt('Enter new password:');
+            if (newPassword && newPassword.length >= 6) {
+                localStorage.setItem('password', newPassword);
+                alert('Password changed successfully!');
+            } else if (newPassword) {
+                alert('Password must be at least 6 characters long!');
+            }
+        });
+    }
+    
+    if (changeDisplayNameBtn) {
+        changeDisplayNameBtn.addEventListener('click', function() {
+            const newDisplayName = prompt('Enter new display name:');
+            if (newDisplayName && newDisplayName.trim()) {
+                localStorage.setItem('displayName', newDisplayName.trim());
+                alert('Display name changed successfully!');
+            }
+        });
+    }
+    
+    if (changeEmailBtn) {
+        changeEmailBtn.addEventListener('click', function() {
+            const newEmail = prompt('Enter new email address:');
+            if (newEmail && newEmail.includes('@')) {
+                localStorage.setItem('email', newEmail);
+                alert('Email changed successfully!');
+            } else if (newEmail) {
+                alert('Please enter a valid email address!');
+            }
+        });
+    }
+    
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone!')) {
+                if (confirm('This will permanently delete all your data. Are you absolutely sure?')) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    alert('Account deleted successfully!');
+                    window.location.href = 'login.jsp';
+                }
+            }
+        });
+    }
+    
+    if (clearDataBtn) {
+        clearDataBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all locally stored data?')) {
+                localStorage.clear();
+                alert('All data cleared successfully!');
+                loadSettings();
+            }
+        });
+    }
+    
+    const desktopNotificationsCheckbox = document.getElementById('desktop-notifications');
+    if (desktopNotificationsCheckbox) {
+        desktopNotificationsCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                if ('Notification' in window) {
+                    Notification.requestPermission().then(permission => {
+                        if (permission !== 'granted') {
+                            alert('Notification permission denied!');
+                            this.checked = false;
+                        }
+                    });
+                } else {
+                    alert('Your browser does not support notifications!');
+                    this.checked = false;
+                }
+            }
+        });
+    }
+}
