@@ -43,6 +43,13 @@ body {
     align-items: center;
 }
 
+.chat-header .user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 0 0 auto;
+}
+
 .user-info {
     display: flex;
     align-items: center;

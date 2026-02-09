@@ -1602,7 +1602,7 @@ let chatClient = {
             case MessageType.ALL_FRIEND_REQUESTS:
                 this.handleAllFriendRequests(message);
                 break;
-            case MessageType.SEARCH_ROOMS:
+            case MessageType.ROOMS_SEARCH_RESULT:
                 this.handleRoomsSearchResult(message);
                 break;
             case MessageType.REQUEST_ROOM_JOIN:
