@@ -217,8 +217,8 @@ compile_server() {
     # 创建bin目录（如果不存在）
     mkdir -p bin
     
-    # 编译服务器端代码
-    javac -cp .:lib/* -d bin $(find . -name "*.java")
+    # 编译服务器端代码（排除admin目录，因为它是Spring Boot项目，使用Maven编译）
+    javac -cp .:lib/* -d bin $(find . -name "src" -prune -o -name "*.java" -print)
     
     if [ $? -eq 0 ]; then
         # 复制数据库配置文件到bin目录

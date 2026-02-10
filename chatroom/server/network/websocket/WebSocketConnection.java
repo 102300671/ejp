@@ -2447,7 +2447,7 @@ public class WebSocketConnection {
                 }
                 
                 if (roomId != null) {
-                    Message successMsg = new Message(MessageType.RECALL_MESSAGE, "server", roomName, content);
+                    Message successMsg = new Message(MessageType.RECALL_MESSAGE, username, roomName, content);
                     messageRouter.broadcastToRoom(roomId, messageCodec.encode(successMsg));
                     System.out.println("消息撤回成功: " + messageId);
                 } else {

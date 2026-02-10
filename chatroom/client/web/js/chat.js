@@ -1835,10 +1835,12 @@ let chatClient = {
                         messageDiv.innerHTML = `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${msg.time}</small></div>`;
                         messageWrapper.appendChild(messageDiv);
                         
-                        // 添加右键菜单功能（对所有有ID的消息）
+                        messagesArea.appendChild(messageWrapper);
+                        
+                        // 添加右键菜单功能（对所有有ID的消息，只对消息气泡生效）
                         if (msg.id) {
                             console.log('为消息添加右键菜单:', msg.id, msg.from);
-                            messageWrapper.addEventListener('contextmenu', (e) => {
+                            messageDiv.addEventListener('contextmenu', (e) => {
                                 console.log('右键菜单被触发:', msg.id);
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1847,8 +1849,6 @@ let chatClient = {
                         } else {
                             console.log('消息没有ID，不添加右键菜单:', msg);
                         }
-                        
-                        messagesArea.appendChild(messageWrapper);
                     }
                 });
                 messagesArea.scrollTop = messagesArea.scrollHeight;
@@ -2045,6 +2045,7 @@ let chatClient = {
             const data = JSON.parse(message.content);
             const messageId = data.messageId;
             const roomName = data.roomName;
+            const recallUser = message.from;
             
             if (this.messages[roomName]) {
                 this.messages[roomName] = this.messages[roomName].filter(msg => msg.id !== messageId);
@@ -2056,7 +2057,7 @@ let chatClient = {
             }
             
             // 显示撤回提示
-            this.showMessage('消息已撤回', true, roomName);
+            this.showMessage(`[System] ${recallUser} 撤回了一条消息`, true, roomName);
         } catch (error) {
             this.log('error', `处理消息撤回响应失败: ${error.message}`);
         }
