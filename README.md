@@ -13,6 +13,8 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - **数据库集成**：使用MySQL数据库存储房间信息、用户数据和消息历史
 - **消息历史**：支持房间消息和私人消息的历史记录查询
 - **消息加密**：使用AES-GCM加密敏感消息内容
+- **好友系统**：支持好友请求、好友关系管理和好友聊天
+- **管理后台**：基于Spring Boot的Web管理界面，提供用户、房间、消息管理功能
 
 ### 高级功能
 - **自动重连机制**：客户端断线后自动尝试重连
@@ -40,6 +42,19 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - **AESUtil**：AES-GCM加密工具类
 - **ZFileTokenManager**：ZFile文件服务器集成管理
 - **ZFileConfig**：ZFile配置管理
+- **FriendshipDAO**：好友关系数据访问对象
+- **FriendRequestDAO**：好友请求数据访问对象
+- **ServiceConfig**：服务配置管理
+
+### 管理后台（Spring Boot）
+- **AdminApplication**：Spring Boot主应用类
+- **MainController**：主页面控制器，提供仪表板、用户、房间、消息管理界面
+- **UserController**：用户管理API，提供用户CRUD、搜索、好友管理等功能
+- **RoomController**：房间管理API
+- **MessageController**：消息管理API
+- **UserService**：用户服务层，处理用户相关业务逻辑
+- **RoomService**：房间服务层，处理房间相关业务逻辑
+- **MessageService**：消息服务层，处理消息相关业务逻辑
 
 ### 客户端
 - **ClientConnection**：与服务器的网络连接
@@ -69,6 +84,15 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - `mysql-connector-j-9.5.0.jar` - MySQL数据库驱动
 - `slf4j-api-1.7.36.jar` - 日志框架API
 - `slf4j-simple-1.7.36.jar` - 简单日志实现
+
+#### 管理后台依赖 (`chatroom/server/pom.xml`)
+- Spring Boot 3.2.0 - Spring Boot框架
+- Spring Boot Starter Web - Web应用支持
+- Spring Boot Starter Thymeleaf - 模板引擎
+- Spring Boot Starter Data JPA - JPA数据访问
+- MySQL Connector Java 8.0.33 - MySQL数据库驱动
+- Lombok - 简化Java代码
+- bcrypt 0.10.2 - 密码加密
 
 #### 客户端依赖 (`chatroom/client/lib/`)
 - `gson-2.13.2.jar` - JSON数据处理
@@ -132,6 +156,8 @@ javac -cp .:chatroom/server/lib/* -d chatroom/server/bin $(find chatroom/server 
 - `room_member`：房间成员表，管理用户与房间的关联
 - `user_uuid`：用户UUID表，管理用户会话标识
 - `messages`：消息表，存储所有消息历史（房间消息和私人消息）
+- `friendships`：好友关系表，存储用户之间的好友关系
+- `friend_requests`：好友请求表，管理好友请求状态（PENDING/ACCEPTED/REJECTED）
 
 5. **MySQL自动配置**
 项目提供了 `setup_mysql.sh` 脚本，可以帮助您自动配置MySQL数据库：
@@ -169,6 +195,24 @@ java -cp .:chatroom/server/bin:chatroom/server/lib/* server.ChatServer
 java -cp .:chatroom/server/bin:chatroom/server/lib/* server.ChatServer [port]
 ```
 
+### 启动管理后台
+
+```bash
+# 使用Maven启动Spring Boot管理后台
+cd chatroom/server
+mvn spring-boot:run
+
+# 或者先打包再运行
+mvn clean package
+java -jar target/chatroom-admin-1.0.0.jar
+```
+
+管理后台默认运行在 `http://localhost:8083`，提供以下功能：
+- **仪表板**：查看系统统计信息（用户数、房间数、消息数）
+- **用户管理**：查看、创建、删除用户，修改用户密码，查看用户好友和房间
+- **房间管理**：查看和管理所有房间
+- **消息管理**：查看消息历史和统计信息
+
 ### 启动客户端
 
 ```bash
@@ -192,6 +236,27 @@ java -cp .:chatroom/client/bin:chatroom/client/lib/* client.Client localhost/[ip
 3. 注册或登录账号
 4. 创建房间或加入房间
 5. 开始聊天
+
+### 好友功能使用说明
+
+好友系统允许用户之间建立好友关系并进行私人聊天：
+
+1. **发送好友请求**：
+   - 在聊天客户端中使用 `/addfriend <username>` 命令发送好友请求
+   - 系统会向目标用户发送好友请求通知
+
+2. **处理好友请求**：
+   - 使用 `/accept <username>` 接受好友请求
+   - 使用 `/reject <username>` 拒绝好友请求
+   - 使用 `/friends` 查看所有好友请求
+
+3. **好友聊天**：
+   - 添加好友后，可以使用 `/chat <username>` 开始私人聊天
+   - 好友之间的消息是私密的，只有双方可见
+
+4. **管理好友**：
+   - 使用 `/removefriend <username>` 删除好友
+   - 使用 `/listfriends` 查看好友列表
 
 ## 项目结构
 
@@ -224,11 +289,33 @@ ejp/
 │   └── server/            # 服务器端代码
 │       ├── bin/           # 编译输出目录
 │       ├── lib/           # 服务器端依赖库
-│       ├── message/       # 消息相关类
+│       ├── src/           # Spring Boot管理后台源码
+│       │   └── main/
+│       │       ├── java/admin/     # 管理后台Java代码
+│       │       │   ├── AdminApplication.java
+│       │       │   ├── controller/    # 控制器
+│       │       │   │   ├── MainController.java
+│       │       │   │   ├── UserController.java
+│       │       │   │   ├── RoomController.java
+│       │       │   │   └── MessageController.java
+│       │       │   └── service/       # 服务层
+│       │       │       ├── UserService.java
+│       │       │       ├── RoomService.java
+│       │       │       └── MessageService.java
+│       │       └── resources/         # 资源文件
+│       │           ├── application.properties
+│       │           └── templates/     # Thymeleaf模板
+│       │               ├── index.html
+│       │               ├── users.html
+│       │               ├── rooms.html
+│       │               └── messages.html
+│       ├── target/      # Maven编译输出目录
+│       ├── pom.xml      # Maven项目配置文件
+│       ├── message/     # 消息相关类
 │       │   ├── Message.java
 │       │   ├── MessageCodec.java
 │       │   └── MessageType.java
-│       ├── network/       # 网络连接类
+│       ├── network/     # 网络连接类
 │       │   ├── router/
 │       │   │   └── MessageRouter.java
 │       │   ├── socket/    # Socket相关类
@@ -239,11 +326,11 @@ ejp/
 │       │       ├── WebSocketServer.java
 │       │       ├── WebSocketConnection.java
 │       │       └── WebSocketClientConnectionAdapter.java
-│       ├── room/          # 房间相关类
+│       ├── room/        # 房间相关类
 │       │   ├── Room.java
 │       │   ├── PublicRoom.java
 │       │   └── PrivateRoom.java
-│       ├── sql/           # 数据库相关类
+│       ├── sql/         # 数据库相关类
 │       │   ├── DatabaseManager.java
 │       │   ├── database.properties
 │       │   ├── user/
@@ -252,13 +339,18 @@ ejp/
 │       │   │       └── UUIDGenerator.java
 │       │   ├── room/
 │       │   │   └── RoomDAO.java
-│       │   └── message/
-│       │       └── MessageDAO.java
-│       ├── user/          # 用户相关类
+│       │   ├── message/
+│       │   │   └── MessageDAO.java
+│       │   └── friend/    # 好友相关类
+│       │       ├── FriendshipDAO.java
+│       │       └── FriendRequestDAO.java
+│       ├── user/        # 用户相关类
 │       │   └── User.java
-│       ├── util/          # 工具类
+│       ├── util/        # 工具类
 │       │   └── AESUtil.java
-│       ├── zfile/         # ZFile文件服务器集成
+│       ├── config/      # 配置类
+│       │   └── ServiceConfig.java
+│       ├── zfile/       # ZFile文件服务器集成
 │       │   ├── ZFileConfig.java
 │       │   └── ZFileTokenManager.java
 │       └── ChatServer.java # 服务器主类
@@ -272,17 +364,22 @@ ejp/
 ## 技术栈
 
 ### 后端技术
-- Java 8+
+- Java 8+ / Java 17（管理后台）
 - Socket API
 - WebSocket API
 - JDBC
 - MySQL（可选）
+- Spring Boot 3.2.0（管理后台）
+- Spring MVC（管理后台）
+- Spring Data JPA（管理后台）
+- Thymeleaf（管理后台模板引擎）
 
 ### 前端技术
 - HTML5
 - CSS3
 - JavaScript
 - WebSocket API
+- Thymeleaf（管理后台）
 
 ## 开发说明
 
@@ -330,6 +427,22 @@ ejp/
 - BroadcastChannel跨窗口消息同步
 - 响应式设计
 
+#### 好友系统
+- 好友请求机制：支持发送、接受、拒绝好友请求
+- 好友关系管理：建立和删除好友关系
+- 好友聊天：支持好友之间的私人聊天
+- 好友查询：支持查询用户的好友列表和好友请求状态
+- 数据持久化：好友关系和请求存储在数据库中
+
+#### 管理后台特性
+- 基于Spring Boot的Web管理界面
+- RESTful API设计
+- Thymeleaf模板引擎
+- 用户管理：查看、创建、删除用户，修改密码
+- 房间管理：查看和管理所有房间
+- 消息管理：查看消息历史和统计信息
+- 响应式设计，支持移动端访问
+
 ### 数据库配置
 
 #### database.properties配置示例
@@ -338,7 +451,7 @@ ejp/
 db.driver=com.mysql.cj.jdbc.Driver
 
 # 数据库连接配置
-db.url=jdbc:mysql://localhost:3306/chatroom?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+db.url=jdbc:mysql://localhost:3306/dbname?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
 db.user=your_username
 db.password=your_password
 ```
@@ -384,7 +497,7 @@ config = new ZFileConfig("http://ip:port", "username", "password");
 
 修改为你的ZFile服务器配置：
 ```java
-config = new ZFileConfig("http://your-zfile-server:8080", "your-username", "your-password");
+config = new ZFileConfig("http://your-zfile-server:port", "your-username", "your-password");
 ```
 
 **配置参数说明：**

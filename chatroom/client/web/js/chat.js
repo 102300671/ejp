@@ -183,7 +183,7 @@ let chatClient = {
     isReconnecting: false, // 是否正在重连
     isInPrivateChat: false, // 是否在私聊模式
     privateChatRecipient: null, // 私聊接收者
-    isTemporaryChat: true, // 是否为临时聊天（默认true，后续好友聊天设为false）
+    isTemporaryChat: false, // 是否为临时聊天（默认false，进入临时聊天时设为true）
     isFriendChat: false, // 是否为好友聊天（默认false）
     friends: [], // 好友列表
     receivedFriendRequests: [], // 收到的好友请求
@@ -194,6 +194,7 @@ let chatClient = {
     pendingImageNSFW: false, // 待上传图片是否为NSFW
     pendingFileUpload: null, // 待上传的文件
     pendingFileType: null, // 待上传文件的类型
+    pendingFileOpenMode: null, // 待上传文件的打开方式：'download', 'view', 'edit'
     uploadToken: null, // 上传token
     
     // ========== 新增：服务配置相关属性 ==========
@@ -1793,6 +1794,7 @@ let chatClient = {
                                 const icon = fileInfo.type === 'code' ? '📄' : (fileInfo.type === 'text' ? '📝' : '📎');
                                 const fileClass = fileInfo.type === 'code' ? 'code-file' : (fileInfo.type === 'text' ? 'text-file' : 'binary-file');
                                 const isNSFW = msg.isNSFW || false;
+                                const openMode = fileInfo.openMode || 'view';
                                 
                                 // 动态拼接ZFile地址
                                 let fileUrl = fileInfo.url;
@@ -1812,7 +1814,7 @@ let chatClient = {
                                 }
                                 
                                 contentHtml = `
-                                    <div class="file-message ${fileClass}" onclick="openFileModal('${fileUrl}', '${fileInfo.name}', '${fileInfo.type}', ${isNSFW})" style="cursor: pointer;">
+                                    <div class="file-message ${fileClass}" onclick="openFileModal('${fileUrl}', '${fileInfo.name}', '${fileInfo.type}', ${isNSFW}, '${openMode}')" style="cursor: pointer;">
                                         <div class="file-header">
                                             <span class="file-icon">${icon}</span>
                                             <div class="file-info">
@@ -2436,6 +2438,23 @@ let chatClient = {
         });
     },
     
+    generateUniqueFileName: function(originalFileName) {
+        const now = new Date();
+        const timestamp = now.getTime();
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        
+        const lastDotIndex = originalFileName.lastIndexOf('.');
+        let extension = '';
+        let baseName = originalFileName;
+        
+        if (lastDotIndex > 0) {
+            extension = originalFileName.substring(lastDotIndex);
+            baseName = originalFileName.substring(0, lastDotIndex);
+        }
+        
+        return `${baseName}_${timestamp}_${randomStr}${extension}`;
+    },
+
     uploadImageToZfile: async function(file) {
         // 检查是否在临时聊天模式下
         if (this.isTemporaryChat) {
@@ -2491,6 +2510,9 @@ let chatClient = {
         
         // 完整的上传路径
         const uploadPath = `${basePath}/${datePath}`;
+
+        // 生成唯一的文件名
+        const uniqueFileName = this.generateUniqueFileName(uploadFile.name);
         
         // 第一步：创建上传任务
         const createUploadUrl = `${this.zfileServerUrl}/api/file/operator/upload/file`;
@@ -2506,7 +2528,7 @@ let chatClient = {
             body: JSON.stringify({
                 storageKey: 'chatroom-files',
                 path: uploadPath,
-                name: uploadFile.name,
+                name: uniqueFileName,
                 size: uploadFile.size,
                 password: ''
             })
@@ -2558,7 +2580,7 @@ let chatClient = {
             if (data && data.code === '0') {
                 this.log('info', '图片上传成功');
                 // 只存储相对路径，渲染时动态拼接ZFile地址
-                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uniqueFileName)}`;
                 const iv = uploadFile.iv || null;
                 this.sendImageMessage(relativePath, iv, originalImageDataUrl);
             } else {
@@ -2693,6 +2715,9 @@ let chatClient = {
         
         // 完整的上传路径
         const uploadPath = `${basePath}/${datePath}`;
+
+        // 生成唯一的文件名
+        const uniqueFileName = this.generateUniqueFileName(uploadFile.name);
         
         // 第一步：创建上传任务
         const createUploadUrl = `${this.zfileServerUrl}/api/file/operator/upload/file`;
@@ -2708,7 +2733,7 @@ let chatClient = {
             body: JSON.stringify({
                 storageKey: 'chatroom-files',
                 path: uploadPath,
-                name: uploadFile.name,
+                name: uniqueFileName,
                 size: uploadFile.size,
                 password: ''
             })
@@ -2760,7 +2785,7 @@ let chatClient = {
             if (data && data.code === '0') {
                 this.log('info', '文件上传成功');
                 // 只存储相对路径，渲染时动态拼接ZFile地址
-                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uploadFile.name)}`;
+                const relativePath = `/pd/chatroom-files/chatroom${uploadPath}/${encodeURIComponent(uniqueFileName)}`;
                 let fileName = file.name;
                 let fileSize = this.formatFileSize(file.size);
                 let fileTypeDisplay = fileType === 'code' ? '代码' : (fileType === 'text' ? '文本' : '文件');
@@ -2769,7 +2794,8 @@ let chatClient = {
                     type: fileType,
                     name: fileName,
                     size: fileSize,
-                    url: relativePath
+                    url: relativePath,
+                    openMode: this.pendingFileOpenMode || 'edit'
                 });
                 
                 const message = {
@@ -2794,6 +2820,7 @@ let chatClient = {
             this.uploadToken = null;
             this.pendingFileUpload = null;
             this.pendingFileType = null;
+            this.pendingFileOpenMode = null;
         });
     },
     
@@ -2823,9 +2850,11 @@ let chatClient = {
             const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
             
             const fileIcon = this.getFileIcon(fileExtension, fileType);
+            const canPreviewWithOnlyOffice = this.canPreviewWithOnlyOffice(fileExtension);
             
             let previewContent = '';
             let isExpandable = false;
+            let openModeOptions = '';
             
             if (fileType === 'text' || fileType === 'code') {
                 const lines = fileContent.split('\n');
@@ -2847,7 +2876,6 @@ let chatClient = {
                     </div>
                 `;
             } else {
-                const canPreviewWithOnlyOffice = this.canPreviewWithOnlyOffice(fileExtension);
                 previewContent = `
                     <div class="file-preview-binary">
                         <div class="binary-file-icon">${fileIcon}</div>
@@ -2855,6 +2883,19 @@ let chatClient = {
                             <p>二进制文件${canPreviewWithOnlyOffice ? '，可通过OnlyOffice预览' : '，无法预览内容'}</p>
                             <p class="binary-file-warning">${canPreviewWithOnlyOffice ? '点击文件可在线预览和编辑' : '文件将以原始格式传输'}</p>
                         </div>
+                    </div>
+                `;
+            }
+            
+            if (canPreviewWithOnlyOffice) {
+                openModeOptions = `
+                    <div class="form-group">
+                        <label>打开方式：</label>
+                        <select id="file-open-mode" class="file-open-mode-select">
+                            <option value="download">仅下载</option>
+                            <option value="view">只读预览</option>
+                            <option value="edit" selected>可编辑</option>
+                        </select>
                     </div>
                 `;
             }
@@ -2881,6 +2922,8 @@ let chatClient = {
                                 ${previewContent}
                             </div>
                         </div>
+                        
+                        ${openModeOptions}
                         
                         <div class="form-group">
                             <label class="nsfw-checkbox-label">
@@ -2952,11 +2995,20 @@ let chatClient = {
                 modal.style.display = 'none';
                 this.pendingFileUpload = null;
                 this.pendingFileType = null;
+                this.pendingFileOpenMode = null;
             });
             
             document.getElementById('confirm-file-upload-btn').addEventListener('click', () => {
                 const isNSFW = nsfwCheckbox.checked;
                 this.pendingFileNSFW = isNSFW;
+                
+                const openModeSelect = document.getElementById('file-open-mode');
+                if (openModeSelect) {
+                    this.pendingFileOpenMode = openModeSelect.value;
+                } else {
+                    this.pendingFileOpenMode = null;
+                }
+                
                 modal.style.display = 'none';
                 this.requestUploadToken();
             });
@@ -2966,6 +3018,7 @@ let chatClient = {
                 modal.style.display = 'none';
                 this.pendingFileUpload = null;
                 this.pendingFileType = null;
+                this.pendingFileOpenMode = null;
             });
         };
         
@@ -2981,7 +3034,7 @@ let chatClient = {
             '.doc', '.docx', '.docm', '.dot', '.dotx', '.dotm', '.odt', '.fodt',
             '.xls', '.xlsx', '.xlsm', '.xlt', '.xltx', '.xltm', '.ods', '.fods',
             '.ppt', '.pptx', '.pptm', '.pps', '.ppsx', '.ppsm', '.odp', '.fodp',
-            '.pdf', '.txt', '.rtf', '.csv', '.html', '.htm', '.xml', '.mht', '.mhtml',
+            '.pdf',
             '.epub', '.djvu', '.xps', '.oxps'
         ];
         return onlyOfficeExtensions.includes(extension.toLowerCase());
@@ -3203,8 +3256,10 @@ let chatClient = {
             this.ws.close();
         }
         
-        // Redirect to login page
-        window.location.href = 'login.jsp';
+        // Redirect to login page with server info
+        const serverIp = sessionStorage.getItem('serverIp') || localStorage.getItem('serverIp') || '';
+        const wsPort = sessionStorage.getItem('wsPort') || localStorage.getItem('wsPort') || '';
+        window.location.href = `login.jsp?serverIp=${encodeURIComponent(serverIp)}&wsPort=${encodeURIComponent(wsPort)}`;
     },
     
     // Message handlers
@@ -3955,6 +4010,8 @@ let chatClient = {
             this.privateChatRecipient = null;
             this.previousRoom = null;
             this.previousRoomType = null;
+            this.isTemporaryChat = false;
+            this.isFriendChat = false;
             
             // Hide return to room button
             const returnButton = document.getElementById('return-to-room-btn');
@@ -6317,7 +6374,7 @@ function initChat() {
         imageModal.style.display = 'block';
     };
     
-    window.openFileModal = async function(fileUrl, fileName, fileType, isNSFW = false) {
+    window.openFileModal = async function(fileUrl, fileName, fileType, isNSFW = false, openMode = 'edit') {
         let fileModal = document.getElementById('file-modal');
         const previewContainerId = 'file-preview-container';
         
@@ -6368,9 +6425,23 @@ function initChat() {
         console.log('是否支持OnlyOffice预览:', canPreviewWithOnlyOffice);
         console.log('是否NSFW:', isNSFW);
         console.log('文件类型:', fileType);
+        console.log('打开方式:', openMode);
         
         try {
-            if (canPreviewWithOnlyOffice && !isNSFW) {
+            if (openMode === 'download') {
+                console.log('进入下载分支');
+                const a = document.createElement('a');
+                a.href = fileUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                document.getElementById('file-loading').style.display = 'none';
+                fileModal.style.display = 'none';
+                return;
+            }
+            
+            if (canPreviewWithOnlyOffice && !isNSFW && fileType !== 'text' && fileType !== 'code') {
                 console.log('进入OnlyOffice预览分支');
                 
                 const urlObj = new URL(fileUrl);
@@ -6438,6 +6509,30 @@ function initChat() {
                         console.log('文档URL主机:', testUrl.hostname);
                         console.log('文档URL路径:', testUrl.pathname);
                     }
+                    
+                    // 设置编辑器模式
+                    if (!config.editorConfig) {
+                        config.editorConfig = {};
+                    }
+                    
+                    switch (openMode) {
+                        case 'download':
+                            config.editorConfig.mode = 'view';
+                            config.editorConfig.readonly = true;
+                            config.editorConfig.canDownload = true;
+                            config.editorConfig.canPrint = true;
+                            break;
+                        case 'view':
+                            config.editorConfig.mode = 'view';
+                            config.editorConfig.readonly = true;
+                            break;
+                        case 'edit':
+                        default:
+                            // 可编辑模式使用默认配置，不设置任何模式相关配置
+                            break;
+                    }
+                    
+                    console.log('OnlyOffice编辑器模式:', openMode);
                     
                     console.log('开始初始化OnlyOffice编辑器');
                     
@@ -6820,6 +6915,9 @@ function initChat() {
         chatClient.sendMessage(MessageType.LEAVE, chatClient.currentRoom, chatClient.username + ' left the room');
         chatClient.currentRoom = 'system';
         chatClient.currentRoomType = 'PUBLIC';
+        chatClient.isTemporaryChat = false;
+        chatClient.isFriendChat = false;
+        chatClient.isInPrivateChat = false;
         document.getElementById('current-room-name').textContent = 'System Room';
         
         // Refresh room list to reflect the leave
@@ -6847,6 +6945,9 @@ function initChat() {
         // Switch back to system room
         chatClient.currentRoom = 'system';
         chatClient.currentRoomType = 'PUBLIC';
+        chatClient.isTemporaryChat = false;
+        chatClient.isFriendChat = false;
+        chatClient.isInPrivateChat = false;
         document.getElementById('current-room-name').textContent = 'System Room';
         
         // Refresh room list to reflect the exit

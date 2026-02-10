@@ -247,6 +247,37 @@ create_tables() {
       CONSTRAINT `user_uuid_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
     
+    # 创建friendships表
+    eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
+    CREATE TABLE IF NOT EXISTS `friendships` (
+      `id` int NOT NULL AUTO_INCREMENT,
+      `user1_id` int NOT NULL,
+      `user2_id` int NOT NULL,
+      `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (`id`) USING BTREE,
+      UNIQUE KEY `unique_friendship` (`user1_id`, `user2_id`) USING BTREE,
+      KEY `user2_id` (`user2_id`) USING BTREE,
+      CONSTRAINT `friendships_ibfk_1` FOREIGN KEY (`user1_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT `friendships_ibfk_2` FOREIGN KEY (`user2_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    
+    # 创建friend_requests表
+    eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
+    CREATE TABLE IF NOT EXISTS `friend_requests` (
+      `id` int NOT NULL AUTO_INCREMENT,
+      `from_user_id` int NOT NULL,
+      `to_user_id` int NOT NULL,
+      `status` enum('PENDING','ACCEPTED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'PENDING',
+      `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (`id`) USING BTREE,
+      KEY `from_user_id` (`from_user_id`) USING BTREE,
+      KEY `to_user_id` (`to_user_id`) USING BTREE,
+      KEY `status` (`status`) USING BTREE,
+      CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT `friend_requests_ibfk_2` FOREIGN KEY (`to_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    
     # 创建system房间
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"INSERT IGNORE INTO `room` (`room_name`, `room_type`) VALUES ('system', 'PUBLIC');\";"
     
@@ -356,6 +387,53 @@ EOL
     fi
 }
 
+# 更新Spring Boot application.properties文件
+update_application_properties() {
+    log_info "更新Spring Boot application.properties文件..."
+    
+    APPLICATION_PROPERTIES="chatroom/server/src/main/resources/application.properties"
+    
+    # 创建目录（如果不存在）
+    mkdir -p "$(dirname "$APPLICATION_PROPERTIES")"
+    
+    # 检查文件是否存在，如果存在则备份
+    if [ -f "$APPLICATION_PROPERTIES" ]; then
+        cp "$APPLICATION_PROPERTIES" "${APPLICATION_PROPERTIES}.backup"
+        log_info "已备份原application.properties文件"
+    fi
+    
+    # 创建配置文件
+    cat > "$APPLICATION_PROPERTIES" << EOL
+server.port=8083
+spring.application.name=chatroom-admin
+
+spring.datasource.url=jdbc:mysql://localhost:3306/$DATABASE_NAME?useSSL=false&serverTimezone=$SELECTED_TIMEZONE&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+spring.datasource.username=$MYSQL_USER
+spring.datasource.password=$MYSQL_PASSWORD
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+spring.thymeleaf.cache=false
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+spring.thymeleaf.mode=HTML
+EOL
+    
+    if [ $? -eq 0 ]; then
+        log_success "application.properties文件创建并更新成功"
+        # 显示更新后的配置
+        log_info "更新后的Spring Boot数据库配置:"
+        grep -E "^spring.datasource\." "$APPLICATION_PROPERTIES"
+    else
+        log_error "更新application.properties文件失败"
+        exit 1
+    fi
+}
+
 # 主函数
 main() {
     log_info "======================================"
@@ -399,11 +477,15 @@ main() {
     grant_user_privileges
     create_tables
     update_database_properties
+    update_application_properties
     
     log_info "======================================"
     log_info "        配置完成!                    "
     log_info "======================================"
     log_success "MySQL数据库已成功配置"
+    log_info "管理后台配置文件已更新: chatroom/server/src/main/resources/application.properties"
+    log_info "启动管理后台: cd chatroom/server && mvn spring-boot:run"
+    log_info "访问管理后台: http://localhost:8083"
 }
 
 # 运行主函数

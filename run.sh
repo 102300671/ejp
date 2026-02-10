@@ -13,10 +13,12 @@ CLIENT_DIR="$PROJECT_ROOT/chatroom/client"
 SERVER_DIR="$PROJECT_ROOT/chatroom/server"
 CLIENT_LIB_DIR="$CLIENT_DIR/lib"
 SERVER_LIB_DIR="$SERVER_DIR/lib"
+ADMIN_DIR="$SERVER_DIR"
 
 # 主类
 CLIENT_MAIN="client.Client"
 SERVER_MAIN="server.ChatServer"
+ADMIN_MAIN="admin.AdminApplication"
 
 # 依赖库定义
 SERVER_DEPENDENCIES=(
@@ -171,6 +173,20 @@ check_java() {
     fi
 }
 
+# 检查Maven是否安装
+check_maven() {
+    log_info "检查Maven是否安装..."
+    if command -v mvn &> /dev/null; then
+        MAVEN_VERSION=$(mvn -version | head -n 1 | awk '{print $3}')
+        log_success "Maven已安装 (版本: $MAVEN_VERSION)"
+        return 0
+    else
+        log_warning "Maven未安装，管理后台功能将不可用"
+        log_info "如需使用管理后台，请先安装Maven: https://maven.apache.org/download.cgi"
+        return 1
+    fi
+}
+
 # 编译客户端
 compile_client() {
     log_info "编译客户端..."
@@ -219,6 +235,54 @@ compile_server() {
     fi
 }
 
+# 编译管理后台
+compile_admin() {
+    log_info "编译Spring Boot管理后台..."
+    
+    cd "$ADMIN_DIR"
+    
+    # 检查Maven是否安装
+    if ! check_maven; then
+        log_error "Maven未安装，无法编译管理后台"
+        return 1
+    fi
+    
+    # 使用Maven编译
+    mvn clean compile
+    
+    if [ $? -eq 0 ]; then
+        log_success "管理后台编译成功"
+        return 0
+    else
+        log_error "管理后台编译失败"
+        return 1
+    fi
+}
+
+# 打包管理后台
+package_admin() {
+    log_info "打包Spring Boot管理后台..."
+    
+    cd "$ADMIN_DIR"
+    
+    # 检查Maven是否安装
+    if ! check_maven; then
+        log_error "Maven未安装，无法打包管理后台"
+        return 1
+    fi
+    
+    # 使用Maven打包
+    mvn clean package -DskipTests
+    
+    if [ $? -eq 0 ]; then
+        log_success "管理后台打包成功"
+        return 0
+    else
+        log_error "管理后台打包失败"
+        return 1
+    fi
+}
+
 # 编译所有代码
 compile_all() {
     log_info "======================================"
@@ -230,13 +294,27 @@ compile_all() {
         log_warning "依赖下载失败，尝试使用已有依赖继续编译"
     fi
     
+    # 编译服务器端和客户端
     if compile_server && compile_client; then
-        log_success "所有代码编译成功"
-        return 0
+        log_success "服务器端和客户端编译成功"
     else
-        log_error "编译失败"
+        log_error "服务器端或客户端编译失败"
         return 1
     fi
+    
+    # 编译管理后台（如果Maven可用）
+    if check_maven; then
+        if compile_admin; then
+            log_success "管理后台编译成功"
+        else
+            log_warning "管理后台编译失败，但服务器端和客户端编译成功"
+        fi
+    else
+        log_warning "Maven未安装，跳过管理后台编译"
+    fi
+    
+    log_success "所有代码编译完成"
+    return 0
 }
 
 # 运行客户端
@@ -279,6 +357,32 @@ run_server() {
     java -cp "bin:lib/*" $SERVER_MAIN "$@"
 }
 
+# 运行管理后台
+run_admin() {
+    log_info "======================================"
+    log_info "            运行管理后台              "
+    log_info "======================================"
+    
+    cd "$ADMIN_DIR"
+    
+    # 检查Maven是否安装
+    if ! check_maven; then
+        log_error "Maven未安装，无法运行管理后台"
+        return 1
+    fi
+    
+    # 检查是否需要编译
+    if [ ! -d "target/classes" ]; then
+        log_warning "管理后台未编译，正在编译..."
+        if ! compile_admin; then
+            return 1
+        fi
+    fi
+    
+    # 运行管理后台
+    mvn spring-boot:run "$@"
+}
+
 # 显示帮助信息
 show_help() {
     log_info "======================================"
@@ -288,14 +392,17 @@ show_help() {
 用法: ./run.sh [选项] [参数]
 
 选项:
-  -c, --compile     编译所有代码
+  -c, --compile     编译所有代码（包括管理后台）
   -s, --server      运行服务器端
   -cl, --client     运行客户端
+  -a, --admin       运行Spring Boot管理后台
+  -pa, --package    打包管理后台（生成JAR文件）
   -h, --help        显示帮助信息
 
 参数:
   服务器: ./run.sh -s [端口]            指定服务器端口
   客户端: ./run.sh -cl [服务器地址] [端口]  指定服务器地址和端口
+  管理后台: ./run.sh -a [端口]          指定管理后台端口（默认8083）
 
 示例:
   ./run.sh -c                            编译所有代码
@@ -303,7 +410,11 @@ show_help() {
   ./run.sh -s 8080                       运行服务器（指定端口）
   ./run.sh -cl                           运行客户端（默认配置）
   ./run.sh -cl localhost 8080            运行客户端（指定服务器）
+  ./run.sh -a                            运行管理后台（默认端口8083）
+  ./run.sh -a 9090                       运行管理后台（指定端口9090）
+  ./run.sh -pa                           打包管理后台
   ./run.sh -c && ./run.sh -s 8080        编译并运行服务器
+  ./run.sh -c && ./run.sh -a             编译并运行管理后台
 "
 }
 
@@ -331,6 +442,13 @@ main() {
         -cl|--client)
             shift
             run_client "$@"
+            ;;
+        -a|--admin)
+            shift
+            run_admin "$@"
+            ;;
+        -pa|--package)
+            package_admin
             ;;
         -h|--help)
             show_help
