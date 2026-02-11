@@ -146,11 +146,206 @@ public class UserInterface {
             case LEAVE:
                 System.out.println("[系统] " + message.getFrom() + " 离开了房间 " + message.getTo());
                 break;
+            case HISTORY_RESPONSE:
+                displayHistoryResponse(message);
+                break;
+            case LIST_ROOM_USERS:
+                displayRoomUsers(message);
+                break;
+            case FRIEND_REQUEST:
+                System.out.println("[好友请求] " + message.getFrom() + " 请求添加你为好友");
+                break;
+            case FRIEND_REQUEST_RESPONSE:
+                System.out.println("[好友] " + message.getContent());
+                break;
+            case FRIEND_LIST:
+                displayFriendList(message);
+                break;
+            case ALL_FRIEND_REQUESTS:
+                displayFriendRequests(message);
+                break;
+            case USERS_SEARCH_RESULT:
+                displayUserSearchResult(message);
+                break;
+            case ROOMS_SEARCH_RESULT:
+                displayRoomSearchResult(message);
+                break;
+            case ROOM_JOIN_REQUEST:
+                System.out.println("[房间请求] " + message.getFrom() + " 申请加入房间 " + message.getTo());
+                break;
+            case ROOM_JOIN_RESPONSE:
+                System.out.println("[房间] " + message.getContent());
+                break;
+            case USER_STATS_RESPONSE:
+                displayUserStats(message);
+                break;
+            case PRIVATE_CHAT:
+                System.out.println("[私聊] " + message.getFrom() + ": " + message.getContent() + " (" + message.getTime() + ")");
+                break;
+            case DELETE_MESSAGE:
+                System.out.println("[系统] 消息已删除: " + message.getContent());
+                break;
+            case RECALL_MESSAGE:
+                System.out.println("[系统] " + message.getFrom() + " 撤回了一条消息");
+                break;
             default:
                 // 隐藏未知消息的详细内容
-                System.out.println("[系统] 收到未知类型消息");
+                System.out.println("[系统] 收到消息: " + message.getType() + " from " + message.getFrom());
                 break;
         }
+    }
+    
+    /**
+     * 显示消息历史响应
+     */
+    private void displayHistoryResponse(Message message) {
+        System.out.println("============================================");
+        System.out.println("消息历史 (" + message.getTo() + "):");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] messages = content.split("\\|\\|");
+            for (String msg : messages) {
+                if (!msg.isEmpty()) {
+                    System.out.println(msg);
+                }
+            }
+        } else {
+            System.out.println("暂无消息历史");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示房间成员列表
+     */
+    private void displayRoomUsers(Message message) {
+        System.out.println("============================================");
+        System.out.println("房间成员 (" + message.getTo() + "):");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] users = content.split("\\|\\|");
+            for (String user : users) {
+                if (!user.isEmpty()) {
+                    System.out.println("  - " + user);
+                }
+            }
+        } else {
+            System.out.println("暂无成员");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示好友列表
+     */
+    private void displayFriendList(Message message) {
+        System.out.println("============================================");
+        System.out.println("好友列表:");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] friends = content.split("\\|\\|");
+            if (friends.length > 0) {
+                for (String friend : friends) {
+                    if (!friend.isEmpty()) {
+                        System.out.println("  - " + friend);
+                    }
+                }
+            } else {
+                System.out.println("暂无好友");
+            }
+        } else {
+            System.out.println("暂无好友");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示好友请求
+     */
+    private void displayFriendRequests(Message message) {
+        System.out.println("============================================");
+        System.out.println("好友请求:");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] requests = content.split("\\|\\|");
+            if (requests.length > 0) {
+                for (String request : requests) {
+                    if (!request.isEmpty()) {
+                        System.out.println("  - " + request);
+                    }
+                }
+            } else {
+                System.out.println("暂无好友请求");
+            }
+        } else {
+            System.out.println("暂无好友请求");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示用户搜索结果
+     */
+    private void displayUserSearchResult(Message message) {
+        System.out.println("============================================");
+        System.out.println("用户搜索结果:");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] users = content.split("\\|\\|");
+            if (users.length > 0) {
+                for (String user : users) {
+                    if (!user.isEmpty()) {
+                        System.out.println("  - " + user);
+                    }
+                }
+            } else {
+                System.out.println("未找到匹配的用户");
+            }
+        } else {
+            System.out.println("未找到匹配的用户");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示房间搜索结果
+     */
+    private void displayRoomSearchResult(Message message) {
+        System.out.println("============================================");
+        System.out.println("房间搜索结果:");
+        System.out.println("============================================");
+        String content = message.getContent();
+        if (content != null && !content.isEmpty()) {
+            String[] rooms = content.split("\\|\\|");
+            if (rooms.length > 0) {
+                for (String room : rooms) {
+                    if (!room.isEmpty()) {
+                        System.out.println("  - " + room);
+                    }
+                }
+            } else {
+                System.out.println("未找到匹配的房间");
+            }
+        } else {
+            System.out.println("未找到匹配的房间");
+        }
+        System.out.println("============================================");
+    }
+    
+    /**
+     * 显示用户统计信息
+     */
+    private void displayUserStats(Message message) {
+        System.out.println("============================================");
+        System.out.println("用户统计信息:");
+        System.out.println("============================================");
+        System.out.println(message.getContent());
+        System.out.println("============================================");
     }
     
     /**
@@ -203,15 +398,35 @@ public class UserInterface {
     private void displayHelp() {
         System.out.println("============================================");
         System.out.println("可用命令:");
-        System.out.println("/create <room> [type]  - 创建房间，类型默认为PUBLIC");
-        System.out.println("/join <room>        - 加入指定房间");
-        System.out.println("/leave <room>       - 离开指定房间");
-        System.out.println("/exit <room>        - 退出指定房间并删除记录");
-        System.out.println("/list               - 查看用户所在的所有房间");
-        System.out.println("/msg <user> <message>  - 发送私人消息");
-        System.out.println("/help               - 显示此帮助信息");
-        System.out.println("/quit               - 退出客户端");
-        System.out.println("直接输入消息        - 发送到当前房间");
+        System.out.println("房间管理:");
+        System.out.println("  /create <room> [type]  - 创建房间，类型默认为PUBLIC");
+        System.out.println("  /join <room>          - 加入指定房间");
+        System.out.println("  /leave <room>         - 离开指定房间");
+        System.out.println("  /exit <room>          - 退出指定房间并删除记录");
+        System.out.println("  /list                 - 查看用户所在的所有房间");
+        System.out.println("  /members <room>       - 查看房间成员列表");
+        System.out.println("  /searchrooms <keyword> - 搜索房间");
+        System.out.println("  /requestjoin <room>   - 申请加入房间");
+        System.out.println("消息管理:");
+        System.out.println("  /history [limit]       - 查看当前房间消息历史");
+        System.out.println("  /pm <user> <message>  - 发送私人消息");
+        System.out.println("  /recall <messageId>   - 撤回消息");
+        System.out.println("好友系统:");
+        System.out.println("  /addfriend <username> - 发送好友请求");
+        System.out.println("  /accept <username>    - 接受好友请求");
+        System.out.println("  /reject <username>    - 拒绝好友请求");
+        System.out.println("  /friends              - 查看好友列表");
+        System.out.println("  /friendrequests       - 查看好友请求");
+        System.out.println("  /removefriend <username> - 删除好友");
+        System.out.println("  /chat <username>       - 开始与好友聊天");
+        System.out.println("用户功能:");
+        System.out.println("  /stats                - 查看用户统计信息");
+        System.out.println("  /searchusers <keyword> - 搜索用户");
+        System.out.println("  /show                 - 显示当前房间和类型");
+        System.out.println("其他:");
+        System.out.println("  /help                 - 显示此帮助信息");
+        System.out.println("  /quit                 - 退出客户端");
+        System.out.println("直接输入消息            - 发送到当前房间");
         System.out.println("============================================");
     }
     
@@ -231,7 +446,6 @@ public class UserInterface {
                 if (parts.length >= 2) {
                     String room = parts[1];
                     String type = parts.length >= 3 ? parts[2].toUpperCase() : "PUBLIC";
-                    // 发送创建房间消息
                     sendSystemMessage("CREATE", room, type);
                     displaySystemMessage("正在创建房间: " + room + " (类型: " + type + ")");
                 } else {
@@ -243,7 +457,6 @@ public class UserInterface {
                 if (parts.length >= 2) {
                     String room = parts[1];
                     currentRoom = room;
-                    // 默认类型为PUBLIC，实际类型会从服务器获取
                     currentRoomType = "PUBLIC";
                     sendSystemMessage("JOIN", room, username + " 加入了房间");
                     displaySystemMessage("已加入房间: " + room + " (类型: " + currentRoomType + ")");
@@ -258,9 +471,7 @@ public class UserInterface {
                     if (room.equals(currentRoom)) {
                         currentRoom = "system";
                     }
-                    // /leave 只是离开房间，不删除room_member记录
                     displaySystemMessage("已离开房间: " + room);
-                    // 如果离开的不是system房间，自动回到system房间
                     if (!room.equals("system")) {
                         currentRoom = "system";
                         displaySystemMessage("当前房间已切换到: " + currentRoom);
@@ -276,10 +487,8 @@ public class UserInterface {
                     if (room.equals(currentRoom)) {
                         currentRoom = "system";
                     }
-                    // /exit 退出房间，同时删除room_member记录
                     sendSystemMessage("EXIT", room, username + " 退出了房间");
                     displaySystemMessage("已退出房间: " + room);
-                    // 如果退出的不是system房间，自动回到system房间
                     if (!room.equals("system")) {
                         displaySystemMessage("当前房间已切换到: " + currentRoom);
                     }
@@ -289,37 +498,172 @@ public class UserInterface {
                 break;
                 
             case "/list":
-                // 发送列表房间请求
                 sendSystemMessage("LIST_ROOMS", "", "");
                 displaySystemMessage("正在获取房间列表...");
                 break;
                 
+            case "/members":
+                if (parts.length >= 2) {
+                    String room = parts[1];
+                    sendSystemMessage("LIST_ROOM_USERS", room, "");
+                    displaySystemMessage("正在获取房间成员列表...");
+                } else {
+                    sendSystemMessage("LIST_ROOM_USERS", currentRoom, "");
+                    displaySystemMessage("正在获取当前房间成员列表...");
+                }
+                break;
+                
+            case "/searchrooms":
+                if (parts.length >= 2) {
+                    String keyword = parts[1];
+                    Message searchMsg = new Message(MessageType.SEARCH_ROOMS, username, "server", keyword);
+                    clientConnection.sendMessage(searchMsg);
+                    displaySystemMessage("正在搜索房间: " + keyword);
+                } else {
+                    displaySystemMessage("请指定搜索关键词: /searchrooms <keyword>");
+                }
+                break;
+                
+            case "/requestjoin":
+                if (parts.length >= 2) {
+                    String room = parts[1];
+                    Message requestMsg = new Message(MessageType.REQUEST_ROOM_JOIN, username, room, "");
+                    clientConnection.sendMessage(requestMsg);
+                    displaySystemMessage("已发送加入房间请求: " + room);
+                } else {
+                    displaySystemMessage("请指定房间名称: /requestjoin <room>");
+                }
+                break;
+                
+            case "/history":
+                int limit = 50;
+                if (parts.length >= 2) {
+                    try {
+                        limit = Integer.parseInt(parts[1]);
+                    } catch (NumberFormatException e) {
+                        displaySystemMessage("无效的限制数量，使用默认值50");
+                    }
+                }
+                Message historyMsg = new Message(MessageType.REQUEST_HISTORY, username, currentRoom, String.valueOf(limit));
+                clientConnection.sendMessage(historyMsg);
+                displaySystemMessage("正在获取消息历史...");
+                break;
+                
+            case "/pm":
             case "/msg":
                 if (parts.length >= 3) {
                     String user = parts[1];
                     String content = parts[2];
-                    
-                    // 检查当前房间
-                    if ("system".equals(currentRoom)) {
-                        displaySystemMessage("在system房间中禁止发送私人消息");
-                        break;
-                    }
-                    
-                    // 在私人消息内容前添加当前房间信息，格式："[room:房间名]消息内容"
-                    String formattedContent = "[room:" + currentRoom + "]" + content;
-                    sendTextMessage(user, formattedContent);
+                    Message pmMsg = new Message(MessageType.PRIVATE_CHAT, username, user, content);
+                    clientConnection.sendMessage(pmMsg);
+                    System.out.println("[私聊] 你 -> " + user + ": " + content);
                 } else {
-                    displaySystemMessage("请指定接收者和消息内容: /msg <user> <message>");
+                    displaySystemMessage("请指定接收者和消息内容: /pm <user> <message>");
                 }
+                break;
+                
+            case "/recall":
+                if (parts.length >= 2) {
+                    String messageId = parts[1];
+                    Message recallMsg = new Message(MessageType.RECALL_MESSAGE, username, currentRoom, messageId);
+                    clientConnection.sendMessage(recallMsg);
+                    displaySystemMessage("正在撤回消息: " + messageId);
+                } else {
+                    displaySystemMessage("请指定消息ID: /recall <messageId>");
+                }
+                break;
+                
+            case "/addfriend":
+                if (parts.length >= 2) {
+                    String friendUser = parts[1];
+                    Message addFriendMsg = new Message(MessageType.FRIEND_REQUEST, username, friendUser, "");
+                    clientConnection.sendMessage(addFriendMsg);
+                    displaySystemMessage("已发送好友请求给: " + friendUser);
+                } else {
+                    displaySystemMessage("请指定用户名: /addfriend <username>");
+                }
+                break;
+                
+            case "/accept":
+                if (parts.length >= 2) {
+                    String friendUser = parts[1];
+                    Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "ACCEPT");
+                    clientConnection.sendMessage(acceptMsg);
+                    displaySystemMessage("已接受好友请求: " + friendUser);
+                } else {
+                    displaySystemMessage("请指定用户名: /accept <username>");
+                }
+                break;
+                
+            case "/reject":
+                if (parts.length >= 2) {
+                    String friendUser = parts[1];
+                    Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "REJECT");
+                    clientConnection.sendMessage(rejectMsg);
+                    displaySystemMessage("已拒绝好友请求: " + friendUser);
+                } else {
+                    displaySystemMessage("请指定用户名: /reject <username>");
+                }
+                break;
+                
+            case "/friends":
+                Message friendListMsg = new Message(MessageType.REQUEST_FRIEND_LIST, username, "server", "");
+                clientConnection.sendMessage(friendListMsg);
+                displaySystemMessage("正在获取好友列表...");
+                break;
+                
+            case "/friendrequests":
+                Message friendRequestsMsg = new Message(MessageType.REQUEST_ALL_FRIEND_REQUESTS, username, "server", "");
+                clientConnection.sendMessage(friendRequestsMsg);
+                displaySystemMessage("正在获取好友请求...");
+                break;
+                
+            case "/removefriend":
+                if (parts.length >= 2) {
+                    String friendUser = parts[1];
+                    Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "REMOVE");
+                    clientConnection.sendMessage(removeMsg);
+                    displaySystemMessage("已删除好友: " + friendUser);
+                } else {
+                    displaySystemMessage("请指定用户名: /removefriend <username>");
+                }
+                break;
+                
+            case "/chat":
+                if (parts.length >= 2) {
+                    String chatUser = parts[1];
+                    currentRoom = chatUser;
+                    currentRoomType = "PRIVATE";
+                    displaySystemMessage("已切换到私聊模式，正在与 " + chatUser + " 聊天");
+                    displaySystemMessage("使用 /pm " + chatUser + " <message> 发送消息");
+                } else {
+                    displaySystemMessage("请指定用户名: /chat <username>");
+                }
+                break;
+                
+            case "/stats":
+                Message statsMsg = new Message(MessageType.REQUEST_USER_STATS, username, "server", "");
+                clientConnection.sendMessage(statsMsg);
+                displaySystemMessage("正在获取用户统计信息...");
+                break;
+                
+            case "/searchusers":
+                if (parts.length >= 2) {
+                    String keyword = parts[1];
+                    Message searchUsersMsg = new Message(MessageType.SEARCH_USERS, username, "server", keyword);
+                    clientConnection.sendMessage(searchUsersMsg);
+                    displaySystemMessage("正在搜索用户: " + keyword);
+                } else {
+                    displaySystemMessage("请指定搜索关键词: /searchusers <keyword>");
+                }
+                break;
+                
+            case "/show":
+                displaySystemMessage("当前房间: " + currentRoom + " (" + currentRoomType + ")");
                 break;
                 
             case "/help":
                 displayHelp();
-                break;
-                
-            case "/show":
-                // 显示当前房间和类型
-                displaySystemMessage("当前房间: " + currentRoom + " (" + currentRoomType + ")");
                 break;
                 
             case "/quit":

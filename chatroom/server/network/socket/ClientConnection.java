@@ -579,6 +579,408 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
+                case REQUEST_HISTORY:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理消息历史请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        int limit = 50;
+                        try {
+                            limit = Integer.parseInt(message.getContent());
+                        } catch (NumberFormatException e) {
+                        }
+                        
+                        MessageDAO messageDAO = new MessageDAO();
+                        List<Message> history = messageDAO.getRoomMessages(message.getTo(), limit, connection);
+                        
+                        StringBuilder historyContent = new StringBuilder();
+                        for (Message msg : history) {
+                            historyContent.append("[").append(msg.getTime()).append("] ")
+                                       .append(msg.getFrom()).append(": ").append(msg.getContent())
+                                       .append("||");
+                        }
+                        
+                        Message historyMessage = new Message(MessageType.HISTORY_RESPONSE, "server", message.getTo(), historyContent.toString());
+                        send(messageCodec.encode(historyMessage));
+                    } catch (SQLException e) {
+                        System.err.println("获取消息历史失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取消息历史失败: " + e.getMessage());
+                        send(messageCodec.encode(systemMessage));
+                    }
+                    break;
+                case PRIVATE_CHAT:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理私人消息: " + currentUser.getUsername() + " -> " + message.getTo());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String recipient = message.getTo();
+                        String privateContent = message.getContent();
+                        
+                        int recipientId = userDAO.getUserIdByUsername(recipient, connection);
+                        if (recipientId == 0) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        Session recipientSession = messageRouter.getSession(String.valueOf(recipientId));
+                        if (recipientSession == null || !recipientSession.isActive()) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不在线");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        Message privateMsg = new Message(MessageType.PRIVATE_CHAT, currentUser.getUsername(), recipient, privateContent);
+                        if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), String.valueOf(recipientId), messageCodec.encode(privateMsg))) {
+                            MessageDAO messageDAO = new MessageDAO();
+                            messageDAO.saveMessage(privateMsg, "PRIVATE", connection);
+                        } else {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "发送私人消息失败");
+                            send(messageCodec.encode(errorMsg));
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("发送私人消息失败: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                    break;
+                case FRIEND_REQUEST:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理好友请求: " + currentUser.getUsername() + " -> " + message.getTo());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String recipient = message.getTo();
+                        int recipientId = userDAO.getUserIdByUsername(recipient, connection);
+                        
+                        if (recipientId == 0) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
+                        if (friendshipDAO.areFriends(currentUser.getId(), recipientId, connection)) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已经是好友了");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        server.sql.friend.FriendRequestDAO friendRequestDAO = new server.sql.friend.FriendRequestDAO();
+                        if (friendRequestDAO.hasPendingRequest(currentUser.getId(), recipientId, connection)) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "好友请求已发送，等待对方处理");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        friendRequestDAO.sendFriendRequest(currentUser.getId(), recipientId, connection);
+                        
+                        Session recipientSession = messageRouter.getSession(String.valueOf(recipientId));
+                        if (recipientSession != null && recipientSession.isActive()) {
+                            Message friendRequestMsg = new Message(MessageType.FRIEND_REQUEST, currentUser.getUsername(), recipient, "");
+                            recipientSession.getClientConnection().send(messageCodec.encode(friendRequestMsg));
+                        }
+                        
+                        Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "好友请求已发送给 " + recipient);
+                        send(messageCodec.encode(successMsg));
+                    } catch (SQLException e) {
+                        System.err.println("发送好友请求失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "发送好友请求失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case FRIEND_REQUEST_RESPONSE:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理好友请求响应: " + currentUser.getUsername() + " -> " + message.getTo());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String friendUsername = message.getTo();
+                        String response = message.getContent();
+                        int friendId = userDAO.getUserIdByUsername(friendUsername, connection);
+                        
+                        if (friendId == 0) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + friendUsername + "不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        server.sql.friend.FriendRequestDAO friendRequestDAO = new server.sql.friend.FriendRequestDAO();
+                        server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
+                        
+                        if ("ACCEPT".equals(response)) {
+                            friendRequestDAO.updateFriendRequestStatus(friendRequestDAO.getFriendRequest(friendId, currentUser.getId(), connection).id, "ACCEPTED", connection);
+                            friendshipDAO.createFriendship(friendId, currentUser.getId(), connection);
+                            
+                            Session friendSession = messageRouter.getSession(String.valueOf(friendId));
+                            if (friendSession != null && friendSession.isActive()) {
+                                Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "ACCEPT");
+                                friendSession.getClientConnection().send(messageCodec.encode(acceptMsg));
+                            }
+                            
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已接受 " + friendUsername + " 的好友请求");
+                            send(messageCodec.encode(successMsg));
+                        } else if ("REJECT".equals(response)) {
+                            friendRequestDAO.updateFriendRequestStatus(friendRequestDAO.getFriendRequest(friendId, currentUser.getId(), connection).id, "REJECTED", connection);
+                            
+                            Session friendSession = messageRouter.getSession(String.valueOf(friendId));
+                            if (friendSession != null && friendSession.isActive()) {
+                                Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "REJECT");
+                                friendSession.getClientConnection().send(messageCodec.encode(rejectMsg));
+                            }
+                            
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已拒绝 " + friendUsername + " 的好友请求");
+                            send(messageCodec.encode(successMsg));
+                        } else if ("REMOVE".equals(response)) {
+                            friendshipDAO.removeFriendship(currentUser.getId(), friendId, connection);
+                            
+                            Session friendSession = messageRouter.getSession(String.valueOf(friendId));
+                            if (friendSession != null && friendSession.isActive()) {
+                                Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "REMOVE");
+                                friendSession.getClientConnection().send(messageCodec.encode(removeMsg));
+                            }
+                            
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已删除好友 " + friendUsername);
+                            send(messageCodec.encode(successMsg));
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("处理好友请求响应失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "操作失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case REQUEST_FRIEND_LIST:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理好友列表请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
+                        List<server.sql.friend.FriendshipDAO.Friendship> friends = friendshipDAO.getUserFriends(currentUser.getId(), connection);
+                        
+                        StringBuilder friendsList = new StringBuilder();
+                        for (server.sql.friend.FriendshipDAO.Friendship friendship : friends) {
+                            String friendName = friendship.user1Id == currentUser.getId() ? friendship.user2Username : friendship.user1Username;
+                            friendsList.append(friendName).append("||");
+                        }
+                        
+                        Message friendListMsg = new Message(MessageType.FRIEND_LIST, "server", currentUser.getUsername(), friendsList.toString());
+                        send(messageCodec.encode(friendListMsg));
+                    } catch (SQLException e) {
+                        System.err.println("获取好友列表失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取好友列表失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case REQUEST_ALL_FRIEND_REQUESTS:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理好友请求列表请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        server.sql.friend.FriendRequestDAO friendRequestDAO = new server.sql.friend.FriendRequestDAO();
+                        List<server.sql.friend.FriendRequestDAO.FriendRequest> requests = friendRequestDAO.getAllFriendRequests(currentUser.getId(), connection);
+                        
+                        StringBuilder requestsList = new StringBuilder();
+                        for (server.sql.friend.FriendRequestDAO.FriendRequest request : requests) {
+                            String otherUser = request.fromUserId == currentUser.getId() ? request.toUsername : request.fromUsername;
+                            requestsList.append(otherUser).append(":").append(request.status).append("||");
+                        }
+                        
+                        Message requestsMsg = new Message(MessageType.ALL_FRIEND_REQUESTS, "server", currentUser.getUsername(), requestsList.toString());
+                        send(messageCodec.encode(requestsMsg));
+                    } catch (SQLException e) {
+                        System.err.println("获取好友请求列表失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取好友请求列表失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case SEARCH_USERS:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理用户搜索请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String keyword = message.getContent();
+                        String sql = "SELECT username FROM user WHERE username LIKE ? LIMIT 10";
+                        
+                        StringBuilder usersList = new StringBuilder();
+                        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                            stmt.setString(1, "%" + keyword + "%");
+                            ResultSet rs = stmt.executeQuery();
+                            while (rs.next()) {
+                                String username = rs.getString("username");
+                                if (!username.equals(currentUser.getUsername())) {
+                                    usersList.append(username).append("||");
+                                }
+                            }
+                        }
+                        
+                        if (usersList.length() == 0) {
+                            usersList.append("未找到匹配的用户");
+                        }
+                        
+                        Message searchResultMsg = new Message(MessageType.USERS_SEARCH_RESULT, "server", currentUser.getUsername(), usersList.toString());
+                        send(messageCodec.encode(searchResultMsg));
+                    } catch (SQLException e) {
+                        System.err.println("搜索用户失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "搜索用户失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case SEARCH_ROOMS:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间搜索请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String keyword = message.getContent();
+                        String sql = "SELECT room_name, room_type FROM room WHERE room_name LIKE ? LIMIT 10";
+                        
+                        StringBuilder roomsList = new StringBuilder();
+                        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                            stmt.setString(1, "%" + keyword + "%");
+                            ResultSet rs = stmt.executeQuery();
+                            while (rs.next()) {
+                                String roomName = rs.getString("room_name");
+                                String roomType = rs.getString("room_type");
+                                roomsList.append(roomName).append("#").append(roomType).append("||");
+                            }
+                        }
+                        
+                        if (roomsList.length() == 0) {
+                            roomsList.append("未找到匹配的房间");
+                        }
+                        
+                        Message searchResultMsg = new Message(MessageType.ROOMS_SEARCH_RESULT, "server", currentUser.getUsername(), roomsList.toString());
+                        send(messageCodec.encode(searchResultMsg));
+                    } catch (SQLException e) {
+                        System.err.println("搜索房间失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "搜索房间失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case REQUEST_ROOM_JOIN:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间加入请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String roomName = message.getTo();
+                        Room room = roomDAO.getRoomByName(roomName, connection);
+                        
+                        if (room == null) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + roomName + "不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        if (room instanceof PublicRoom) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "公共房间可以直接加入，使用 /join " + roomName);
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        PrivateRoom privateRoom = (PrivateRoom) room;
+                        String ownerId = privateRoom.getOwnerId();
+                        if (ownerId != null && ownerId.equals(String.valueOf(currentUser.getId()))) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "您是房主，无需申请加入");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        Session ownerSession = messageRouter.getSession(ownerId);
+                        if (ownerSession != null && ownerSession.isActive()) {
+                            Message joinRequestMsg = new Message(MessageType.ROOM_JOIN_REQUEST, currentUser.getUsername(), roomName, "");
+                            ownerSession.getClientConnection().send(messageCodec.encode(joinRequestMsg));
+                            
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已发送加入房间请求给房主");
+                            send(messageCodec.encode(successMsg));
+                        } else {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房主不在线，无法处理加入请求");
+                            send(messageCodec.encode(errorMsg));
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("处理房间加入请求失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "处理房间加入请求失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case REQUEST_USER_STATS:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理用户统计请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        MessageDAO messageDAO = new MessageDAO();
+                        int messageCount = messageDAO.getUserMessageCount(currentUser.getUsername(), connection);
+                        int imageCount = messageDAO.getUserImageCount(currentUser.getUsername(), connection);
+                        int fileCount = messageDAO.getUserFileCount(currentUser.getUsername(), connection);
+                        
+                        server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
+                        List<server.sql.friend.FriendshipDAO.Friendship> friends = friendshipDAO.getUserFriends(currentUser.getId(), connection);
+                        int friendCount = friends.size();
+                        
+                        String stats = String.format("用户统计信息:\n用户名: %s\n消息总数: %d\n图片数量: %d\n文件数量: %d\n好友数量: %d\n注册时间: %s\n状态: %s",
+                                currentUser.getUsername(), messageCount, imageCount, fileCount, friendCount,
+                                currentUser.getCreatedAt() != null ? currentUser.getCreatedAt().toString() : "未知",
+                                currentUser.getStatus() != null ? currentUser.getStatus() : "未知");
+                        
+                        Message statsMsg = new Message(MessageType.USER_STATS_RESPONSE, "server", currentUser.getUsername(), stats);
+                        send(messageCodec.encode(statsMsg));
+                    } catch (SQLException e) {
+                        System.err.println("获取用户统计失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取用户统计失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case RECALL_MESSAGE:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理消息撤回请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String messageId = message.getContent();
+                        MessageDAO messageDAO = new MessageDAO();
+                        
+                        if (messageDAO.deleteMessage(messageId, connection)) {
+                            Message recallMsg = new Message(MessageType.RECALL_MESSAGE, currentUser.getUsername(), message.getTo(), "");
+                            messageRouter.broadcastToRoom(message.getTo(), messageCodec.encode(recallMsg));
+                            
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "消息已撤回");
+                            send(messageCodec.encode(successMsg));
+                        } else {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "撤回消息失败，消息不存在或无权限");
+                            send(messageCodec.encode(errorMsg));
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("撤回消息失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "撤回消息失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
                 default:
                     // 已认证，处理其他消息类型
                     if (!isAuthenticated) {
