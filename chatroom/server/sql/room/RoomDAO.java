@@ -443,4 +443,98 @@ public class RoomDAO {
             return rowsAffected > 0;
         }
     }
+    
+    /**
+     * 更新用户在房间中的显示名
+     * @param roomId 房间ID
+     * @param userId 用户ID
+     * @param displayName 显示名，如果为null或空字符串则清除显示名
+     * @param conn 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException SQL异常
+     */
+    public boolean updateUserRoomDisplayName(String roomId, String userId, String displayName, Connection conn) throws SQLException {
+        String sql = "update room_member set display_name = ? where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (displayName == null || displayName.trim().isEmpty()) {
+                pstmt.setNull(1, Types.VARCHAR);
+            } else {
+                pstmt.setString(1, displayName.trim());
+            }
+            pstmt.setInt(2, Integer.parseInt(roomId));
+            pstmt.setInt(3, Integer.parseInt(userId));
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("更新房间显示名: 房间ID=" + roomId + ", 用户ID=" + userId + ", displayName=" + displayName + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+        }
+    }
+    
+    /**
+     * 获取用户在房间中的显示名
+     * @param roomId 房间ID
+     * @param userId 用户ID
+     * @param conn 数据库连接
+     * @return 显示名，如果未设置则返回null
+     * @throws SQLException SQL异常
+     */
+    public String getUserRoomDisplayName(String roomId, String userId, Connection conn) throws SQLException {
+        String sql = "select display_name from room_member where room_id = ? and user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            pstmt.setInt(2, Integer.parseInt(userId));
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("display_name");
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 检查房间内显示名是否可用（唯一性检查）
+     * @param roomId 房间ID
+     * @param displayName 要检查的显示名
+     * @param conn 数据库连接
+     * @return true表示显示名可用，false表示已被占用
+     * @throws SQLException SQL异常
+     */
+    public boolean isRoomDisplayNameAvailable(String roomId, String displayName, Connection conn) throws SQLException {
+        if (displayName == null || displayName.trim().isEmpty()) {
+            return false;
+        }
+        
+        String sql = "select count(*) from room_member where room_id = ? and display_name = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            pstmt.setString(2, displayName.trim());
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) == 0;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * 获取用户在房间中的显示名，如果未设置则返回用户名
+     * @param roomId 房间ID
+     * @param userId 用户ID
+     * @param username 用户名（备用）
+     * @param conn 数据库连接
+     * @return 显示名或用户名
+     * @throws SQLException SQL异常
+     */
+    public String getUserDisplayNameInRoom(String roomId, String userId, String username, Connection conn) throws SQLException {
+        String displayName = getUserRoomDisplayName(roomId, userId, conn);
+        if (displayName != null && !displayName.trim().isEmpty()) {
+            return displayName;
+        }
+        return username;
+    }
 }

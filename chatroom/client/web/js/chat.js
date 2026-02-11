@@ -155,6 +155,7 @@ let chatClient = {
     currentRoomType: 'PUBLIC',
     rooms: [],
     messages: {}, // Store messages by room name: { [roomName]: [{content, from, time, isSystem}] },
+    roomDisplayNames: {}, // Store display names by room: { [roomName]: { [userId]: displayName } },
     isConnected: false,
     isAuthenticated: false,
     childWindows: {}, // Store open windows by room name: { [roomName]: windowObject },
@@ -1656,6 +1657,12 @@ let chatClient = {
             case MessageType.RECALL_MESSAGE:
                 this.handleRecallMessage(message);
                 break;
+            case MessageType.ROOM_DISPLAY_NAMES_RESPONSE:
+                this.handleRoomDisplayNamesResponse(message);
+                break;
+            case MessageType.ROOM_DISPLAY_NAME_UPDATED:
+                this.handleRoomDisplayNameUpdated(message);
+                break;
             default:
                 console.log('Unknown message type:', message.type);
         }
@@ -1722,8 +1729,8 @@ let chatClient = {
                         systemMessageDiv.innerHTML = msg.content;
                         messagesArea.appendChild(systemMessageDiv);
                     } else {
-                        const displayedUsername = msg.from;
-                        const isSent = displayedUsername === currentUsername;
+                        const displayedUsername = this.getDisplayNameInRoom(msg.from, roomName);
+                        const isSent = msg.from === currentUsername;
                         
                         const messageWrapper = document.createElement('div');
                         messageWrapper.className = isSent ? 'sent-message-wrapper' : 'received-message-wrapper';
@@ -1734,7 +1741,7 @@ let chatClient = {
                         const avatarImg = document.createElement('img');
                         avatarImg.className = 'message-avatar';
                         avatarImg.alt = displayedUsername;
-                        loadUserAvatar(avatarImg, displayedUsername);
+                        loadUserAvatar(avatarImg, msg.from);
                         messageHeader.appendChild(avatarImg);
                         
                         const usernameDiv = document.createElement('div');
@@ -2340,6 +2347,9 @@ let chatClient = {
             
             if (this.currentRoom === targetRoom) {
                 this.updateMessagesArea(targetRoom);
+            } else {
+                // 如果不在当前房间，显示通知
+                this.showToast(`New image from ${from} in ${targetRoom}`, 'info');
             }
         } catch (error) {
             this.log('error', `处理图片消息失败: ${error.message}`);
@@ -2405,6 +2415,9 @@ let chatClient = {
             
             if (this.currentRoom === targetRoom) {
                 this.updateMessagesArea(targetRoom);
+            } else {
+                // 如果不在当前房间，显示通知
+                this.showToast(`New file from ${from} in ${targetRoom}`, 'info');
             }
         } catch (error) {
             this.log('error', `处理文件消息失败: ${error.message}`);
@@ -3338,6 +3351,9 @@ let chatClient = {
             // 更新当前窗口UI
             if (this.currentRoom === roomName) {
                 this.updateMessagesArea(roomName);
+            } else {
+                // 如果不在当前房间，显示通知
+                this.showToast(`New message from ${message.from} in ${roomName}`, 'info');
             }
             
             // 广播到其他窗口
@@ -3741,6 +3757,13 @@ let chatClient = {
                     <p>${this.getRoleText(currentUserRole)}</p>
                 </div>
             </div>
+            <div class="settings-item">
+                <div class="settings-item-info">
+                    <h5>Your Display Name in This Room</h5>
+                    <p>Set a custom name that others will see in this room (leave empty to use your username)</p>
+                </div>
+                <input type="text" id="room-display-name" class="settings-input" placeholder="Enter display name" maxlength="50">
+            </div>
         `;
         modalBody.appendChild(roomInfoSection);
         
@@ -3827,18 +3850,22 @@ let chatClient = {
         const acceptTemporaryChat = document.getElementById('room-accept-temporary-chat').checked;
         const roomTypeSelect = document.getElementById('room-type-select');
         const roomType = roomTypeSelect ? roomTypeSelect.value : null;
+        const displayNameInput = document.getElementById('room-display-name');
+        const displayName = displayNameInput ? displayNameInput.value.trim() : '';
         
-        const settings = {
-            roomName: roomName,
-            acceptTemporaryChat: acceptTemporaryChat
-        };
+        // Send display name setting
+        const displayNameContent = `${roomName}|display_name|${displayName}`;
+        this.sendMessage(MessageType.UPDATE_ROOM_SETTINGS, roomName, displayNameContent);
         
+        // Send accept temporary chat setting
+        const acceptChatContent = `${roomName}|accept_temporary_chat|${acceptTemporaryChat}`;
+        this.sendMessage(MessageType.UPDATE_ROOM_SETTINGS, roomName, acceptChatContent);
+        
+        // Send room type setting if available (only for owners)
         if (roomType) {
-            settings.roomType = roomType;
+            const roomTypeContent = `${roomName}|room_type|${roomType}`;
+            this.sendMessage(MessageType.UPDATE_ROOM_SETTINGS, roomName, roomTypeContent);
         }
-        
-        // Send settings to server
-        this.sendMessage(MessageType.UPDATE_ROOM_SETTINGS, roomName, JSON.stringify(settings));
         
         // Close modal
         const modal = document.getElementById('room-settings-modal');
@@ -3914,6 +3941,92 @@ let chatClient = {
             case 'ADMIN': return 'Admin';
             case 'MEMBER': return 'Member';
             default: return role;
+        }
+    },
+    
+    // Get display name for user in room
+    getDisplayNameInRoom: function(username, roomName) {
+        if (!this.roomDisplayNames[roomName]) {
+            return username;
+        }
+        
+        const userId = this.getUserIdByUsername(username);
+        if (userId && this.roomDisplayNames[roomName][userId]) {
+            return this.roomDisplayNames[roomName][userId];
+        }
+        
+        return username;
+    },
+    
+    // Get user ID by username (simplified version - in real app this should be maintained properly)
+    getUserIdByUsername: function(username) {
+        // This is a simplified implementation
+        // In a real application, you would maintain a mapping of usernames to user IDs
+        // For now, we'll use a simple hash function to generate a consistent ID
+        let hash = 0;
+        for (let i = 0; i < username.length; i++) {
+            const char = username.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString();
+    },
+    
+    // Request room display names
+    requestRoomDisplayNames: function(roomName) {
+        this.sendMessage(MessageType.REQUEST_ROOM_DISPLAY_NAMES, roomName, roomName);
+    },
+    
+    // Handle room display names response
+    handleRoomDisplayNamesResponse: function(message) {
+        const content = message.content;
+        const roomName = message.to;
+        
+        if (!this.roomDisplayNames[roomName]) {
+            this.roomDisplayNames[roomName] = {};
+        }
+        
+        const entries = content.split('||');
+        entries.forEach(entry => {
+            if (entry && entry.includes(':')) {
+                const [userId, displayName] = entry.split(':');
+                if (userId && displayName) {
+                    this.roomDisplayNames[roomName][userId] = displayName;
+                }
+            }
+        });
+        
+        // Update messages display
+        if (this.currentRoom === roomName) {
+            this.updateMessagesArea(roomName);
+        }
+    },
+    
+    // Handle room display name updated
+    handleRoomDisplayNameUpdated: function(message) {
+        const content = message.content;
+        const roomName = message.to;
+        
+        if (!this.roomDisplayNames[roomName]) {
+            this.roomDisplayNames[roomName] = {};
+        }
+        
+        const parts = content.split(':');
+        if (parts.length >= 3) {
+            const userId = parts[0];
+            const displayName = parts[1];
+            const username = parts[2];
+            
+            if (displayName && displayName.trim() !== '') {
+                this.roomDisplayNames[roomName][userId] = displayName;
+            } else {
+                delete this.roomDisplayNames[roomName][userId];
+            }
+            
+            // Update messages display
+            if (this.currentRoom === roomName) {
+                this.updateMessagesArea(roomName);
+            }
         }
     },
     
@@ -4048,6 +4161,9 @@ let chatClient = {
         
         // Send JOIN message to server to switch room
         this.sendMessage(MessageType.JOIN, roomName, '');
+        
+        // Request room display names
+        this.requestRoomDisplayNames(roomName);
         
         // 加载该房间的本地消息
         this.loadLocalMessages(roomName);
@@ -7364,7 +7480,6 @@ function initSettingsActions() {
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const resetSettingsBtn = document.getElementById('reset-settings-btn');
     const changePasswordBtn = document.getElementById('change-password-btn');
-    const changeDisplayNameBtn = document.getElementById('change-display-name-btn');
     const changeEmailBtn = document.getElementById('change-email-btn');
     const deleteAccountBtn = document.getElementById('delete-account-btn');
     const clearDataBtn = document.getElementById('clear-data-btn');
@@ -7385,16 +7500,6 @@ function initSettingsActions() {
                 alert('Password changed successfully!');
             } else if (newPassword) {
                 alert('Password must be at least 6 characters long!');
-            }
-        });
-    }
-    
-    if (changeDisplayNameBtn) {
-        changeDisplayNameBtn.addEventListener('click', function() {
-            const newDisplayName = prompt('Enter new display name:');
-            if (newDisplayName && newDisplayName.trim()) {
-                localStorage.setItem('displayName', newDisplayName.trim());
-                alert('Display name changed successfully!');
             }
         });
     }

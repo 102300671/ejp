@@ -40,14 +40,6 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Display Name</h4>
-                                    <p>Change how your name appears to others</p>
-                                </div>
-                                <button id="change-display-name-btn" class="settings-btn">Edit</button>
-                            </div>
-                            
-                            <div class="settings-item">
-                                <div class="settings-item-info">
                                     <h4>Email Address</h4>
                                     <p>Update your email for account recovery</p>
                                 </div>

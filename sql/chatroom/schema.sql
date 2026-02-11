@@ -44,9 +44,11 @@ CREATE TABLE `room_member` (
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `role` ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '用户在房间中的角色：OWNER-房主，ADMIN-管理员，MEMBER-普通成员',
   `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '在该房间是否接受临时聊天',
+  `display_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '用户在该房间的显示名称，如果为空则使用用户名',
   PRIMARY KEY (`room_id`,`user_id`) USING BTREE,
   KEY `user_id` (`user_id`) USING BTREE,
   KEY `idx_role` (`role`) USING BTREE,
+  UNIQUE KEY `unique_room_display_name` (`room_id`, `display_name`) COMMENT '同一房间内显示名不能重复',
   CONSTRAINT `room_member_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `room` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `room_member_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;

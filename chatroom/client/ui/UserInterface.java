@@ -3,6 +3,8 @@ import client.message.Message;
 import client.message.MessageType;
 import client.network.ClientConnection;
 import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
 
 public class UserInterface {
     private final Scanner scanner;
@@ -11,6 +13,7 @@ public class UserInterface {
     private String currentRoom;
     private String currentRoomType;
     private volatile boolean isRunning;
+    private final Map<String, Map<String, String>> roomDisplayNames; // 房间显示名映射: {roomName: {userId: displayName}}
     
     /**
      * 构造用户界面对象
@@ -24,6 +27,7 @@ public class UserInterface {
         this.isRunning = false;
         this.currentRoom = "system";
         this.currentRoomType = "PUBLIC";
+        this.roomDisplayNames = new HashMap<>();
         
         // 设置消息接收回调
         clientConnection.setMessageReceivedCallback(new ClientConnection.MessageReceivedCallback() {
@@ -133,8 +137,9 @@ public class UserInterface {
                     content = content.substring(roomEnd + 1);
                     System.out.println("[私聊] " + message.getFrom() + ": " + content + " (" + message.getTime() + ")");
                 } else {
-                    // 房间消息，简化显示
-                    System.out.println("[" + message.getFrom() + "]: " + content + " (" + message.getTime() + ")");
+                    // 房间消息，简化显示，使用房间内显示名
+                    String displayName = getDisplayNameInRoom(message.getFrom(), message.getTo());
+                    System.out.println("[" + displayName + "]: " + content + " (" + message.getTime() + ")");
                 }
                 break;
             case SYSTEM:
@@ -187,6 +192,18 @@ public class UserInterface {
                 break;
             case RECALL_MESSAGE:
                 System.out.println("[系统] " + message.getFrom() + " 撤回了一条消息");
+                break;
+            case ROOM_DISPLAY_NAMES_RESPONSE:
+                handleRoomDisplayNamesResponse(message);
+                break;
+            case ROOM_DISPLAY_NAME_UPDATED:
+                handleRoomDisplayNameUpdated(message);
+                break;
+            case ROOM_DISPLAY_NAMES_RESPONSE:
+                handleRoomDisplayNamesResponse(message);
+                break;
+            case ROOM_DISPLAY_NAME_UPDATED:
+                handleRoomDisplayNameUpdated(message);
                 break;
             default:
                 // 隐藏未知消息的详细内容
@@ -423,6 +440,7 @@ public class UserInterface {
         System.out.println("  /stats                - 查看用户统计信息");
         System.out.println("  /searchusers <keyword> - 搜索用户");
         System.out.println("  /show                 - 显示当前房间和类型");
+        System.out.println("  /setdisplayname <name> - 设置当前房间的显示名");
         System.out.println("其他:");
         System.out.println("  /help                 - 显示此帮助信息");
         System.out.println("  /quit                 - 退出客户端");
@@ -460,6 +478,9 @@ public class UserInterface {
                     currentRoomType = "PUBLIC";
                     sendSystemMessage("JOIN", room, username + " 加入了房间");
                     displaySystemMessage("已加入房间: " + room + " (类型: " + currentRoomType + ")");
+                    // 请求房间显示名映射
+                    Message requestDisplayNamesMsg = new Message(MessageType.REQUEST_ROOM_DISPLAY_NAMES, username, "server", room);
+                    clientConnection.sendMessage(requestDisplayNamesMsg);
                 } else {
                     displaySystemMessage("请指定房间名称: /join <room>");
                 }
@@ -662,6 +683,18 @@ public class UserInterface {
                 displaySystemMessage("当前房间: " + currentRoom + " (" + currentRoomType + ")");
                 break;
                 
+            case "/setdisplayname":
+                if (parts.length >= 2) {
+                    String displayName = parts[1];
+                    String content = currentRoom + "|display_name|" + displayName;
+                    Message setDisplayNameMsg = new Message(MessageType.UPDATE_ROOM_SETTINGS, username, "server", content);
+                    clientConnection.sendMessage(setDisplayNameMsg);
+                    displaySystemMessage("正在设置房间显示名: " + displayName);
+                } else {
+                    displaySystemMessage("请指定显示名: /setdisplayname <display_name>");
+                }
+                break;
+                
             case "/help":
                 displayHelp();
                 break;
@@ -706,5 +739,264 @@ public class UserInterface {
                 }
             }
         }
+
+    
+    /**
+     * 处理房间显示名响应
+     */
+    private void handleRoomDisplayNamesResponse(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] entries = content.split("\\\|\\\\|");
+        for (String entry : entries) {
+            if (!entry.isEmpty() && entry.contains(":")) {
+                String[] parts = entry.split(":");
+                if (parts.length >= 2) {
+                    String userId = parts[0];
+                    String displayName = parts[1];
+                    displayNames.put(userId, displayName);
+                }
+            }
+        }
+        
+        displaySystemMessage("已加载房间 " + roomName + " 的显示名映射");
     }
+    
+    /**
+     * 处理房间显示名更新
+     */
+    private void handleRoomDisplayNameUpdated(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] parts = content.split(":");
+        if (parts.length >= 3) {
+            String userId = parts[0];
+            String displayName = parts[1];
+            String username = parts[2];
+            
+            if (displayName != null && !displayName.trim().isEmpty()) {
+                displayNames.put(userId, displayName);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已更新为: " + displayName);
+            } else {
+                displayNames.remove(userId);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已清除");
+            }
+        }
+    }
+    
+    /**
+     * 获取用户在房间中的显示名
+     */
+    private String getDisplayNameInRoom(String username, String roomName) {
+        if (!roomDisplayNames.containsKey(roomName)) {
+            return username;
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String userId = getUserIdByUsername(username);
+        
+        if (userId != null && displayNames.containsKey(userId)) {
+            return displayNames.get(userId);
+        }
+        
+        return username;
+    }
+    
+    /**
+     * 根据用户名生成用户ID（简化版本）
+     */
+    private String getUserIdByUsername(String username) {
+        int hash = 0;
+        for (int i = 0; i < username.length(); i++) {
+            char c = username.charAt(i);
+            hash = ((hash << 5) - hash) + c;
+            hash = hash & hash;
+        }
+        return String.valueOf(Math.abs(hash));
+    }
+
+}    
+    /**
+     * 处理房间显示名响应
+     */
+    private void handleRoomDisplayNamesResponse(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] entries = content.split("\\|\\|");
+        for (String entry : entries) {
+            if (!entry.isEmpty() && entry.contains(":")) {
+                String[] parts = entry.split(":");
+                if (parts.length >= 2) {
+                    String userId = parts[0];
+                    String displayName = parts[1];
+                    displayNames.put(userId, displayName);
+                }
+            }
+        }
+        
+        displaySystemMessage("已加载房间 " + roomName + " 的显示名映射");
+    }
+    
+    /**
+     * 处理房间显示名更新
+     */
+    private void handleRoomDisplayNameUpdated(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] parts = content.split(":");
+        if (parts.length >= 3) {
+            String userId = parts[0];
+            String displayName = parts[1];
+            String username = parts[2];
+            
+            if (displayName != null && !displayName.trim().isEmpty()) {
+                displayNames.put(userId, displayName);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已更新为: " + displayName);
+            } else {
+                displayNames.remove(userId);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已清除");
+            }
+        }
+    }
+    
+    /**
+     * 获取用户在房间中的显示名
+     */
+    private String getDisplayNameInRoom(String username, String roomName) {
+        if (!roomDisplayNames.containsKey(roomName)) {
+            return username;
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String userId = getUserIdByUsername(username);
+        
+        if (userId != null && displayNames.containsKey(userId)) {
+            return displayNames.get(userId);
+        }
+        
+        return username;
+    }
+    
+    /**
+     * 根据用户名生成用户ID（简化版本）
+     */
+    private String getUserIdByUsername(String username) {
+        int hash = 0;
+        for (int i = 0; i < username.length(); i++) {
+            char c = username.charAt(i);
+            hash = ((hash << 5) - hash) + c;
+            hash = hash & hash;
+        }
+        return String.valueOf(Math.abs(hash));
+    
+    /**
+     * 处理房间显示名响应
+     */
+    private void handleRoomDisplayNamesResponse(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] entries = content.split("\\|\\|");
+        for (String entry : entries) {
+            if (!entry.isEmpty() && entry.contains(":")) {
+                String[] parts = entry.split(":");
+                if (parts.length >= 2) {
+                    String userId = parts[0];
+                    String displayName = parts[1];
+                    displayNames.put(userId, displayName);
+                }
+            }
+        }
+        
+        displaySystemMessage("已加载房间 " + roomName + " 的显示名映射");
+    }
+    
+    /**
+     * 处理房间显示名更新
+     */
+    private void handleRoomDisplayNameUpdated(Message message) {
+        String roomName = message.getTo();
+        String content = message.getContent();
+        
+        if (!roomDisplayNames.containsKey(roomName)) {
+            roomDisplayNames.put(roomName, new HashMap<>());
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String[] parts = content.split(":");
+        if (parts.length >= 3) {
+            String userId = parts[0];
+            String displayName = parts[1];
+            String username = parts[2];
+            
+            if (displayName != null && !displayName.trim().isEmpty()) {
+                displayNames.put(userId, displayName);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已更新为: " + displayName);
+            } else {
+                displayNames.remove(userId);
+                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已清除");
+            }
+        }
+    }
+    
+    /**
+     * 获取用户在房间中的显示名
+     */
+    private String getDisplayNameInRoom(String username, String roomName) {
+        if (!roomDisplayNames.containsKey(roomName)) {
+            return username;
+        }
+        
+        Map<String, String> displayNames = roomDisplayNames.get(roomName);
+        String userId = getUserIdByUsername(username);
+        
+        if (userId != null && displayNames.containsKey(userId)) {
+            return displayNames.get(userId);
+        }
+        
+        return username;
+    }
+    
+    /**
+     * 根据用户名生成用户ID（简化版本）
+     */
+    private String getUserIdByUsername(String username) {
+        int hash = 0;
+        for (int i = 0; i < username.length(); i++) {
+            char c = username.charAt(i);
+            hash = ((hash << 5) - hash) + c;
+            hash = hash & hash;
+        }
+        return String.valueOf(Math.abs(hash));
+    }
+
 }

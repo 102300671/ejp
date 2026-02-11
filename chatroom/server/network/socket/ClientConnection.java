@@ -981,6 +981,117 @@ public class ClientConnection implements Runnable {
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
+                case UPDATE_ROOM_SETTINGS:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间设置更新: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String[] parts = message.getContent().split("\\|");
+                        if (parts.length < 2) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "设置格式错误");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        String roomName = parts[0];
+                        String settingType = parts[1];
+                        
+                        RoomDAO roomDAO = new RoomDAO(messageRouter);
+                        Room room = roomDAO.getRoomByName(roomName, connection);
+                        
+                        if (room == null) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        String roomId = room.getId();
+                        
+                        if ("display_name".equals(settingType)) {
+                            String displayName = parts.length > 2 ? parts[2] : null;
+                            
+                            if (displayName != null && !displayName.trim().isEmpty()) {
+                                if (!roomDAO.isRoomDisplayNameAvailable(roomId, displayName, connection)) {
+                                    Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "该显示名已被占用");
+                                    send(messageCodec.encode(errorMsg));
+                                    break;
+                                }
+                            }
+                            
+                            if (roomDAO.updateUserRoomDisplayName(roomId, String.valueOf(currentUser.getId()), displayName, connection)) {
+                                Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间显示名已更新");
+                                send(messageCodec.encode(successMsg));
+                                
+                                // Broadcast display name update to room members
+                                String updateContent = String.valueOf(currentUser.getId()) + ":" + (displayName != null ? displayName : "") + ":" + currentUser.getUsername();
+                                Message updateMsg = new Message(MessageType.ROOM_DISPLAY_NAME_UPDATED, "server", roomName, updateContent);
+                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(updateMsg));
+                            } else {
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新显示名失败");
+                                send(messageCodec.encode(errorMsg));
+                            }
+                        } else if ("accept_temporary_chat".equals(settingType)) {
+                            boolean accept = Boolean.parseBoolean(parts[2]);
+                            if (roomDAO.updateRoomAcceptTemporaryChat(roomId, String.valueOf(currentUser.getId()), accept, connection)) {
+                                Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "临时聊天设置已更新");
+                                send(messageCodec.encode(successMsg));
+                            } else {
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新临时聊天设置失败");
+                                send(messageCodec.encode(errorMsg));
+                            }
+                        } else {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "未知的设置类型");
+                            send(messageCodec.encode(errorMsg));
+                        }
+                    } catch (SQLException e) {
+                        System.err.println("更新房间设置失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新房间设置失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
+                case REQUEST_ROOM_DISPLAY_NAMES:
+                    if (!isAuthenticated) {
+                        sendAuthFailure("未认证，请先登录或注册");
+                        break;
+                    }
+                    System.out.println("处理房间显示名请求: " + currentUser.getUsername());
+                    try (Connection connection = dbManager.getConnection()) {
+                        String roomName = message.getContent();
+                        RoomDAO roomDAO = new RoomDAO(messageRouter);
+                        Room room = roomDAO.getRoomByName(roomName, connection);
+                        
+                        if (room == null) {
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间不存在");
+                            send(messageCodec.encode(errorMsg));
+                            break;
+                        }
+                        
+                        String roomId = room.getId();
+                        List<java.util.Map<String, Object>> members = roomDAO.getRoomMembersWithRoles(roomId, connection);
+                        
+                        StringBuilder displayNamesContent = new StringBuilder();
+                        for (java.util.Map<String, Object> member : members) {
+                            int userId = (int) member.get("userId");
+                            String username = (String) member.get("username");
+                            String displayName = roomDAO.getUserRoomDisplayName(roomId, String.valueOf(userId), connection);
+                            
+                            if (displayName != null && !displayName.trim().isEmpty()) {
+                                displayNamesContent.append(userId).append(":").append(displayName).append("||");
+                            }
+                        }
+                        
+                        Message displayNamesMsg = new Message(MessageType.ROOM_DISPLAY_NAMES_RESPONSE, "server", currentUser.getUsername(), displayNamesContent.toString());
+                        send(messageCodec.encode(displayNamesMsg));
+                    } catch (SQLException e) {
+                        System.err.println("获取房间显示名失败: " + e.getMessage());
+                        e.printStackTrace();
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取房间显示名失败: " + e.getMessage());
+                        send(messageCodec.encode(errorMsg));
+                    }
+                    break;
                 default:
                     // 已认证，处理其他消息类型
                     if (!isAuthenticated) {
