@@ -2540,8 +2540,9 @@ public class WebSocketConnection {
             }
             
             // 解析消息时间
-            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(message.getTime(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            long messageTimeMillis = messageTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+            java.time.format.DateTimeFormatter isoFormatter = java.time.format.DateTimeFormatter.ISO_DATE_TIME;
+            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(message.getTime(), isoFormatter);
+            long messageTimeMillis = messageTime.atZone(BEIJING_ZONE).toInstant().toEpochMilli();
             long currentTime = System.currentTimeMillis();
             long timeDiff = (currentTime - messageTimeMillis) / 1000 / 60; // 转换为分钟
             
