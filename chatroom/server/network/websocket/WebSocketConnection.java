@@ -44,6 +44,8 @@ public class WebSocketConnection {
     private RoomDAO roomDAO;
     private Session currentSession;
     
+    private static final java.time.ZoneId BEIJING_ZONE = java.time.ZoneId.of("Asia/Shanghai");
+    
     public WebSocketConnection(WebSocket conn, MessageRouter messageRouter) {
         this.conn = conn;
         this.clientAddress = conn.getRemoteSocketAddress().getAddress().getHostAddress();
@@ -1188,7 +1190,8 @@ public class WebSocketConnection {
                 "server",
                 username,
                 tokenInfo,
-                new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .format(java.time.ZonedDateTime.now(BEIJING_ZONE))
             );
             
             send(messageCodec.encode(tokenResponse));
@@ -1201,7 +1204,8 @@ public class WebSocketConnection {
                 "server",
                 username,
                 "获取上传 token 失败: " + e.getMessage(),
-                new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .format(java.time.ZonedDateTime.now(BEIJING_ZONE))
             );
             send(messageCodec.encode(errorMsg));
         }
@@ -1616,7 +1620,7 @@ public class WebSocketConnection {
      * @param note 备注
      */
     private void logNSFWImageAudit(String from, String to, String imageUrl, String note) {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(BEIJING_ZONE);
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String timestamp = now.format(formatter);
         
@@ -1661,7 +1665,8 @@ public class WebSocketConnection {
             
             // 如果没有消息，返回当前时间
             if (latestTimestamp == null) {
-                latestTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+                latestTimestamp = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .format(java.time.ZonedDateTime.now(BEIJING_ZONE));
             }
             
             // 创建最新时间戳响应
