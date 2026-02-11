@@ -2415,6 +2415,34 @@ body {
     font-weight: 600;
 }
 
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-online {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-offline {
+    background-color: #6c757d;
+    color: white;
+}
+
+.status-away {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.status-busy {
+    background-color: #dc3545;
+    color: white;
+}
+
 .profile-actions {
     display: flex;
     gap: 10px;
@@ -2724,6 +2752,15 @@ body {
     font-weight: bold;
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
+}
+
+.user-status-badge {
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
 }
 
 /* Room Settings Button */

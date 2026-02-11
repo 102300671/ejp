@@ -188,6 +188,14 @@
                     <div class="value" th:text="${userCount}">0</div>
                 </div>
                 <div class="stat-card">
+                    <h3>在线用户</h3>
+                    <div class="value" th:text="${userStatusStats != null and userStatusStats.containsKey('online') ? userStatusStats['online'] : 0}">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>离线用户</h3>
+                    <div class="value" th:text="${userStatusStats != null and userStatusStats.containsKey('offline') ? userStatusStats['offline'] : 0}">0</div>
+                </div>
+                <div class="stat-card">
                     <h3>总房间数</h3>
                     <div class="value" th:text="${roomCount}">0</div>
                 </div>

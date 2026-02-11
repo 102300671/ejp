@@ -64,6 +64,7 @@ CREATE TABLE `user` (
   `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否接受临时聊天',
+  `status` ENUM('ONLINE', 'OFFLINE', 'AWAY', 'BUSY') NOT NULL DEFAULT 'OFFLINE' COMMENT '用户状态：ONLINE-在线，OFFLINE-离线，AWAY-离开，BUSY-忙碌',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `username` (`username`) USING BTREE

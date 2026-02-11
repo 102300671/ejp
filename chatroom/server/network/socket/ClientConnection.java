@@ -4,6 +4,8 @@ import java.net.*;
 import java.sql.*;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import server.message.*;
 import server.network.router.MessageRouter;
 import server.network.session.Session;
@@ -514,8 +516,24 @@ public class ClientConnection implements Runnable {
                             break;
                         }
                         
-                        // 获取房间用户列表
-                        List<Map<String, Object>> usersList = messageRouter.getRoomUsers(room.getId());
+                        // 获取房间用户列表（包含角色信息）
+                        List<Map<String, Object>> usersList = roomDAO.getRoomMembersWithRoles(room.getId(), connection);
+                        
+                        // 获取在线用户ID集合
+                        List<Map<String, Object>> roomUsersList = messageRouter.getRoomUsers(room.getId());
+                        Set<String> onlineUserIds = new HashSet<>();
+                        for (Map<String, Object> userMap : roomUsersList) {
+                            if (Boolean.TRUE.equals(userMap.get("isOnline"))) {
+                                // 从数据库获取用户ID
+                                String username = (String) userMap.get("username");
+                                try {
+                                    int userId = userDAO.getUserIdByUsername(username, connection);
+                                    onlineUserIds.add(String.valueOf(userId));
+                                } catch (SQLException e) {
+                                    System.err.println("获取用户ID失败: " + e.getMessage());
+                                }
+                            }
+                        }
                         
                         // 构建JSON响应
                         StringBuilder response = new StringBuilder("{\"users\":[");
@@ -524,9 +542,30 @@ public class ClientConnection implements Runnable {
                             if (!first) {
                                 response.append(",");
                             }
-                            response.append("{\"username\":\"").append(user.get("username")).append("\",\"isOnline\":");
-                            response.append(user.get("isOnline")).append("}");
+                            String userId = String.valueOf(user.get("userId"));
+                            boolean isOnline = onlineUserIds.contains(userId);
+                            String status = (String) user.get("status");
+                            response.append("{\"userId\":").append(userId)
+                                   .append(",\"username\":\"").append(user.get("username")).append("\"")
+                                   .append(",\"role\":\"").append(user.get("role")).append("\"")
+                                   .append(",\"isOnline\":").append(isOnline)
+                                   .append(",\"status\":\"").append(status != null ? status : "OFFLINE").append("\"")
+                                   .append(",\"joinedAt\":\"").append(user.get("joinedAt")).append("\"")
+                                   .append("}");
                             first = false;
+                        }
+                        response.append("],\"currentUserRole\":\"").append(roomDAO.getUserRole(room.getId(), String.valueOf(currentUser.getId()), connection)).append("\"");
+                        
+                        // 添加房主和管理员信息
+                        response.append(",\"ownerId\":\"").append(room.getOwnerId()).append("\"");
+                        response.append(",\"adminIds\":[");
+                        boolean firstAdmin = true;
+                        for (String adminId : room.getAdminIds()) {
+                            if (!firstAdmin) {
+                                response.append(",");
+                            }
+                            response.append("\"").append(adminId).append("\"");
+                            firstAdmin = false;
                         }
                         response.append("]}");
                         
@@ -696,6 +735,15 @@ public class ClientConnection implements Runnable {
             // 标记用户已认证
             isAuthenticated = true;
             
+            // 更新用户状态为ONLINE
+            try {
+                userDAO.updateUserStatus(currentUser.getId(), "ONLINE", connection);
+                System.out.println("用户状态已更新为ONLINE: " + username);
+            } catch (SQLException e) {
+                System.err.println("更新用户状态失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             System.out.println("用户登录成功: " + username + " (ID: " + currentUser.getId() + ")");
             
             // 创建并注册会话
@@ -859,6 +907,15 @@ public class ClientConnection implements Runnable {
             String userId = String.valueOf(currentUser.getId());
             messageRouter.deregisterSession(userId);
             System.out.println("会话已注销: 用户ID=" + userId);
+            
+            // 更新用户状态为OFFLINE
+            try (Connection connection = dbManager.getConnection()) {
+                userDAO.updateUserStatus(currentUser.getId(), "OFFLINE", connection);
+                System.out.println("用户状态已更新为OFFLINE: " + currentUser.getUsername());
+            } catch (SQLException e) {
+                System.err.println("更新用户状态失败: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
         
         try {

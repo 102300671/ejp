@@ -69,7 +69,7 @@ public class UserDAO {
      * @throws SQLException 如果查询过程中发生数据库错误
      */
     public User getUserByUsername(String username, Connection connection) throws SQLException {
-        String sql = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, uu.uuid " +
+        String sql = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, u.status, uu.uuid " +
                      "FROM user u " +
                      "LEFT JOIN user_uuid uu ON u.id = uu.user_id " +
                      "WHERE u.username = ?";
@@ -84,10 +84,12 @@ public class UserDAO {
                     String hashedPassword = resultSet.getString("password");
                     String createdAt = resultSet.getString("created_at");
                     boolean acceptTemporaryChat = resultSet.getBoolean("accept_temporary_chat");
+                    String status = resultSet.getString("status");
                     String uuid = resultSet.getString("uuid");
                     
                     User user = new User(id, dbUsername, hashedPassword, createdAt, uuid);
                     user.setAcceptTemporaryChat(acceptTemporaryChat);
+                    user.setStatus(status);
                     return user;
                 }
             }
@@ -245,6 +247,33 @@ public class UserDAO {
             
         } catch (SQLException e) {
             System.err.println("更新用户临时聊天设置失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    /**
+     * 更新用户状态
+     * @param userId 用户ID
+     * @param status 用户状态 (ONLINE, OFFLINE, AWAY, BUSY)
+     * @param connection 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException 如果更新过程中发生数据库错误
+     */
+    public boolean updateUserStatus(int userId, String status, Connection connection) throws SQLException {
+        String sql = "UPDATE user SET status = ? WHERE id = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, status);
+            preparedStatement.setInt(2, userId);
+            
+            int rowsAffected = preparedStatement.executeUpdate();
+            System.out.println("更新用户状态: 用户ID=" + userId + ", status=" + status + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("更新用户状态失败 (用户ID: " + userId + "): " + e.getMessage());
             e.printStackTrace();
             throw e;
         }

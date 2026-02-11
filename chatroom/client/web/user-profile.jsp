@@ -79,6 +79,10 @@
                     <div class="detail-section">
                         <h4>Activity</h4>
                         <div class="detail-row">
+                            <span class="detail-label">Status:</span>
+                            <span class="detail-value" id="detail-status">-</span>
+                        </div>
+                        <div class="detail-row">
                             <span class="detail-label">Total Messages:</span>
                             <span class="detail-value" id="detail-total-messages">0</span>
                         </div>

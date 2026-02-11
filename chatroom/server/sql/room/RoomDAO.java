@@ -157,7 +157,7 @@ public class RoomDAO {
     
     public List<java.util.Map<String, Object>> getRoomMembersWithRoles(String roomId, Connection conn) throws SQLException {
         List<java.util.Map<String, Object>> members = new ArrayList<>();
-        String sql = "select rm.user_id, u.username, rm.role, rm.joined_at from room_member rm " +
+        String sql = "select rm.user_id, u.username, rm.role, rm.joined_at, u.status from room_member rm " +
                      "join user u on rm.user_id = u.id where rm.room_id = ? order by rm.role, rm.joined_at";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, Integer.parseInt(roomId));
@@ -169,6 +169,7 @@ public class RoomDAO {
                     memberInfo.put("username", rs.getString("username"));
                     memberInfo.put("role", rs.getString("role"));
                     memberInfo.put("joinedAt", rs.getTimestamp("joined_at") != null ? rs.getTimestamp("joined_at").toString() : null);
+                    memberInfo.put("status", rs.getString("status"));
                     members.add(memberInfo);
                 }
             }

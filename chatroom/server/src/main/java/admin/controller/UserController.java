@@ -99,4 +99,24 @@ public class UserController {
     public ResponseEntity<List<Map<String, Object>>> getUserRooms(@PathVariable int id) {
         return ResponseEntity.ok(userService.getUserRooms(id));
     }
+    
+    @PutMapping("/{id}/status")
+    public ResponseEntity<String> updateUserStatus(@PathVariable int id, @RequestBody Map<String, String> request) {
+        String status = request.get("status");
+        
+        if (status == null) {
+            return ResponseEntity.badRequest().body("状态不能为空");
+        }
+        
+        boolean success = userService.updateUserStatus(id, status);
+        if (success) {
+            return ResponseEntity.ok("状态更新成功");
+        }
+        return ResponseEntity.badRequest().body("状态更新失败");
+    }
+    
+    @GetMapping("/status/stats")
+    public ResponseEntity<Map<String, Object>> getUserStatusStats() {
+        return ResponseEntity.ok(userService.getUserStatusStats());
+    }
 }

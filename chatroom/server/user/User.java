@@ -7,6 +7,7 @@ public class User {
     private final String createdAt;
     private String uuid;
     private boolean acceptTemporaryChat;
+    private String status;
     
     /**
      * 构造用户对象
@@ -23,6 +24,7 @@ public class User {
         this.createdAt = createdAt;
         this.uuid = uuid;
         this.acceptTemporaryChat = true;
+        this.status = "OFFLINE";
     }
     
     public int getId() {
@@ -55,5 +57,13 @@ public class User {
     
     public void setAcceptTemporaryChat(boolean acceptTemporaryChat) {
         this.acceptTemporaryChat = acceptTemporaryChat;
+    }
+    
+    public String getStatus() {
+        return status;
+    }
+    
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

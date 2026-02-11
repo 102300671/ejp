@@ -65,10 +65,19 @@ public class WebSocketConnection {
         System.out.println("WebSocket连接已关闭: " + clientAddress + ":" + clientPort + ", 代码: " + code + ", 原因: " + reason);
         isConnected = false;
         
-        // 注销会话
+        // 注销会话并更新用户状态
         if (isAuthenticated && currentUser != null) {
             String userId = String.valueOf(currentUser.getId());
             messageRouter.deregisterSession(userId);
+            
+            // 更新用户状态为OFFLINE
+            try (Connection connection = dbManager.getConnection()) {
+                userDAO.updateUserStatus(currentUser.getId(), "OFFLINE", connection);
+                System.out.println("用户状态已更新为OFFLINE: " + currentUser.getUsername());
+            } catch (SQLException e) {
+                System.err.println("更新用户状态失败: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
     
@@ -787,10 +796,12 @@ public class WebSocketConnection {
                             }
                             String userId = String.valueOf(user.get("userId"));
                             boolean isOnline = onlineUserIds.contains(userId);
+                            String status = (String) user.get("status");
                             response.append("{\"userId\":").append(userId)
                                    .append(",\"username\":\"").append(user.get("username")).append("\"")
                                    .append(",\"role\":\"").append(user.get("role")).append("\"")
                                    .append(",\"isOnline\":").append(isOnline)
+                                   .append(",\"status\":\"").append(status != null ? status : "OFFLINE").append("\"")
                                    .append(",\"joinedAt\":\"").append(user.get("joinedAt")).append("\"")
                                    .append("}");
                             first = false;
@@ -997,6 +1008,15 @@ public class WebSocketConnection {
             
             System.out.println("用户登录成功: " + username + " (ID: " + currentUser.getId() + ")");
             
+            // 更新用户状态为ONLINE
+            try {
+                userDAO.updateUserStatus(currentUser.getId(), "ONLINE", connection);
+                System.out.println("用户状态已更新为ONLINE: " + username);
+            } catch (SQLException e) {
+                System.err.println("更新用户状态失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             // 创建并注册会话
             createAndRegisterSession();
             
@@ -1106,6 +1126,15 @@ public class WebSocketConnection {
             // 标记用户已认证
             isAuthenticated = true;
             currentUser = user;
+            
+            // 更新用户状态为ONLINE
+            try {
+                userDAO.updateUserStatus(currentUser.getId(), "ONLINE", connection);
+                System.out.println("用户状态已更新为ONLINE: " + user.getUsername());
+            } catch (SQLException e) {
+                System.err.println("更新用户状态失败: " + e.getMessage());
+                e.printStackTrace();
+            }
             
             System.out.println("用户UUID认证成功: " + user.getUsername() + " (ID: " + user.getId() + ")");
             
@@ -1689,6 +1718,9 @@ public class WebSocketConnection {
             // 获取加入时间
             String joinTime = userDAO.getUserJoinTime(username, connection);
             
+            // 获取用户状态
+            String status = currentUser.getStatus();
+            
             // 创建统计数据JSON
             com.google.gson.Gson gson = new com.google.gson.Gson();
             java.util.Map<String, Object> stats = new java.util.HashMap<>();
@@ -1697,6 +1729,7 @@ public class WebSocketConnection {
             stats.put("fileCount", fileCount);
             stats.put("roomCount", roomCount);
             stats.put("joinTime", joinTime != null ? joinTime : "");
+            stats.put("status", status != null ? status : "OFFLINE");
             
             String statsJson = gson.toJson(stats);
             
@@ -1705,7 +1738,7 @@ public class WebSocketConnection {
             
             // 发送响应
             send(messageCodec.encode(responseMsg));
-            System.out.println("发送用户统计数据响应: " + username + " - 消息数: " + messageCount + ", 图片数: " + imageCount + ", 文件数: " + fileCount + ", 房间数: " + roomCount + ", 加入时间: " + joinTime);
+            System.out.println("发送用户统计数据响应: " + username + " - 消息数: " + messageCount + ", 图片数: " + imageCount + ", 文件数: " + fileCount + ", 房间数: " + roomCount + ", 加入时间: " + joinTime + ", 状态: " + status);
         } catch (java.sql.SQLException e) {
             System.err.println("获取用户统计数据失败: " + e.getMessage());
             e.printStackTrace();

@@ -770,7 +770,7 @@ let chatClient = {
         try {
             const stats = message.content ? JSON.parse(message.content) : {};
             
-            this.log('info', `用户统计数据: 消息数=${stats.messageCount}, 房间数=${stats.roomCount}, 加入时间=${stats.joinTime}`);
+            this.log('info', `用户统计数据: 消息数=${stats.messageCount}, 房间数=${stats.roomCount}, 加入时间=${stats.joinTime}, 状态=${stats.status}`);
             
             // 更新UI显示统计数据
             this.updateUserStats(stats);
@@ -3577,10 +3577,24 @@ let chatClient = {
                 usernameDiv.className = 'user-name';
                 usernameDiv.textContent = usernameDisplay;
                 
+                // Create status badge
+                const statusBadge = document.createElement('div');
+                statusBadge.className = 'user-status-badge';
+                const statusMap = {
+                    'ONLINE': { text: '在线', class: 'status-online' },
+                    'OFFLINE': { text: '离线', class: 'status-offline' },
+                    'AWAY': { text: '离开', class: 'status-away' },
+                    'BUSY': { text: '忙碌', class: 'status-busy' }
+                };
+                const statusInfo = statusMap[user.status] || { text: user.status || '未知', class: 'status-offline' };
+                statusBadge.textContent = statusInfo.text;
+                statusBadge.classList.add(statusInfo.class);
+                
                 // Append elements to user item
                 userItem.appendChild(avatarImg);
                 userItem.appendChild(statusIndicator);
                 userItem.appendChild(usernameDiv);
+                userItem.appendChild(statusBadge);
                 
                 // Only add role badge for OWNER and ADMIN
                 if (user.role === 'OWNER' || user.role === 'ADMIN') {
@@ -5787,6 +5801,20 @@ let chatClient = {
         const filesSharedElement = document.getElementById('detail-files-shared');
         if (filesSharedElement) {
             filesSharedElement.textContent = stats.fileCount || 0;
+        }
+        
+        // 更新用户状态
+        const statusElement = document.getElementById('detail-status');
+        if (statusElement && stats.status) {
+            const statusMap = {
+                'ONLINE': { text: '在线', class: 'status-online' },
+                'OFFLINE': { text: '离线', class: 'status-offline' },
+                'AWAY': { text: '离开', class: 'status-away' },
+                'BUSY': { text: '忙碌', class: 'status-busy' }
+            };
+            const statusInfo = statusMap[stats.status] || { text: stats.status, class: 'status-offline' };
+            statusElement.textContent = statusInfo.text;
+            statusElement.className = 'status-badge ' + statusInfo.class;
         }
         
         this.log('info', '用户统计数据已更新');

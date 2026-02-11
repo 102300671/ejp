@@ -26,6 +26,7 @@ public class MainController {
         model.addAttribute("userCount", userService.getUserCount());
         model.addAttribute("roomCount", roomService.getRoomCount());
         model.addAttribute("messageCount", messageService.getMessageCount());
+        model.addAttribute("userStatusStats", userService.getUserStatusStats());
         return "index";
     }
     

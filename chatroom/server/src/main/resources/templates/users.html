@@ -182,6 +182,37 @@
             color: white;
         }
         
+        .badge-info {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .badge-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .badge-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .status-online {
+            color: #2ecc71;
+        }
+        
+        .status-offline {
+            color: #95a5a6;
+        }
+        
+        .status-away {
+            color: #f39c12;
+        }
+        
+        .status-busy {
+            color: #e74c3c;
+        }
+        
         .modal {
             display: none;
             position: fixed;
@@ -279,6 +310,7 @@
                         <tr>
                             <th>ID</th>
                             <th>用户名</th>
+                            <th>状态</th>
                             <th>创建时间</th>
                             <th>接受临时聊天</th>
                             <th>操作</th>
@@ -326,6 +358,15 @@
                 <label>新密码</label>
                 <input type="password" id="editPassword">
             </div>
+            <div class="form-group">
+                <label>用户状态</label>
+                <select id="editStatus">
+                    <option value="ONLINE">在线</option>
+                    <option value="OFFLINE">离线</option>
+                    <option value="AWAY">离开</option>
+                    <option value="BUSY">忙碌</option>
+                </select>
+            </div>
             <div class="modal-footer">
                 <button class="btn btn-danger" onclick="closeEditModal()">取消</button>
                 <button class="btn btn-primary" onclick="updateUser()">更新</button>
@@ -334,6 +375,17 @@
     </div>
     
     <script>
+        function getStatusBadge(status) {
+            const statusMap = {
+                'ONLINE': { text: '在线', class: 'badge-success' },
+                'OFFLINE': { text: '离线', class: 'badge-secondary' },
+                'AWAY': { text: '离开', class: 'badge-warning' },
+                'BUSY': { text: '忙碌', class: 'badge-danger' }
+            };
+            const statusInfo = statusMap[status] || { text: status, class: 'badge-secondary' };
+            return `<span class="badge ${statusInfo.class}">${statusInfo.text}</span>`;
+        }
+        
         function loadUsers() {
             fetch('/api/users')
                 .then(response => response.json())
@@ -345,6 +397,7 @@
                         row.innerHTML = `
                             <td>${user.id}</td>
                             <td>${user.username}</td>
+                            <td>${getStatusBadge(user.status)}</td>
                             <td>${user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '-'}</td>
                             <td>
                                 <span class="badge ${user.accept_temporary_chat ? 'badge-success' : 'badge-warning'}">
@@ -373,6 +426,7 @@
                         row.innerHTML = `
                             <td>${user.id}</td>
                             <td>${user.username}</td>
+                            <td>${getStatusBadge(user.status)}</td>
                             <td>${user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '-'}</td>
                             <td>
                                 <span class="badge ${user.accept_temporary_chat ? 'badge-success' : 'badge-warning'}">
@@ -424,9 +478,14 @@
         }
         
         function openEditModal(userId) {
-            document.getElementById('editUserId').value = userId;
-            document.getElementById('editPassword').value = '';
-            document.getElementById('editModal').style.display = 'block';
+            fetch(`/api/users/${userId}`)
+                .then(response => response.json())
+                .then(user => {
+                    document.getElementById('editUserId').value = user.id;
+                    document.getElementById('editPassword').value = '';
+                    document.getElementById('editStatus').value = user.status || 'OFFLINE';
+                    document.getElementById('editModal').style.display = 'block';
+                });
         }
         
         function closeEditModal() {
@@ -438,24 +497,47 @@
         function updateUser() {
             const userId = document.getElementById('editUserId').value;
             const password = document.getElementById('editPassword').value;
+            const status = document.getElementById('editStatus').value;
             
-            if (!password) {
-                alert('密码不能为空');
-                return;
+            let updateCount = 0;
+            let completedCount = 0;
+            
+            function checkComplete() {
+                completedCount++;
+                if (completedCount >= updateCount) {
+                    closeEditModal();
+                    loadUsers();
+                }
             }
             
-            fetch(`/api/users/${userId}/password`, {
+            if (password) {
+                updateCount++;
+                fetch(`/api/users/${userId}/password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                })
+                .then(response => response.text())
+                .then(result => {
+                    console.log('密码更新:', result);
+                    checkComplete();
+                });
+            }
+            
+            updateCount++;
+            fetch(`/api/users/${userId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ password })
+                body: JSON.stringify({ status })
             })
             .then(response => response.text())
             .then(result => {
-                alert(result);
-                closeEditModal();
-                loadUsers();
+                console.log('状态更新:', result);
+                checkComplete();
             });
         }
         
