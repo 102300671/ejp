@@ -866,19 +866,55 @@ let chatClient = {
     
     // 保存最后同步时间
     saveLastSyncTime: function() {
-        localStorage.setItem('lastSyncTime', JSON.stringify(this.lastSyncTime));
+        if (!this.messageStorage || this.useLocalStorageFallback) {
+            localStorage.setItem('lastSyncTime', JSON.stringify(this.lastSyncTime));
+        } else {
+            for (const roomName in this.lastSyncTime) {
+                this.messageStorage.setLastSyncTime(roomName, new Date(this.lastSyncTime[roomName]))
+                    .catch(error => {
+                        console.error('保存最后同步时间到IndexedDB失败:', roomName, error);
+                    });
+            }
+        }
     },
     
     // 加载最后同步时间
     loadLastSyncTime: function() {
-        const syncTimeStr = localStorage.getItem('lastSyncTime');
-        if (syncTimeStr) {
-            try {
-                this.lastSyncTime = JSON.parse(syncTimeStr);
-            } catch (error) {
-                this.log('error', `加载最后同步时间失败: ${error.message}`);
-                this.lastSyncTime = {};
+        if (!this.messageStorage || this.useLocalStorageFallback) {
+            const syncTimeStr = localStorage.getItem('lastSyncTime');
+            if (syncTimeStr) {
+                try {
+                    this.lastSyncTime = JSON.parse(syncTimeStr);
+                } catch (error) {
+                    this.log('error', `加载最后同步时间失败: ${error.message}`);
+                    this.lastSyncTime = {};
+                }
             }
+        } else {
+            this.messageStorage.openDB()
+                .then(db => {
+                    const transaction = db.transaction(this.messageStorage.LAST_SYNC_STORE, 'readonly');
+                    const store = transaction.objectStore(this.messageStorage.LAST_SYNC_STORE);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => {
+                        const syncTimes = {};
+                        request.result.forEach(item => {
+                            syncTimes[item.id] = item.timestamp;
+                        });
+                        this.lastSyncTime = syncTimes;
+                        console.log('从IndexedDB加载最后同步时间:', syncTimes);
+                    };
+                    
+                    request.onerror = () => {
+                        console.error('从IndexedDB加载最后同步时间失败:', request.error);
+                        this.lastSyncTime = {};
+                    };
+                })
+                .catch(error => {
+                    console.error('打开IndexedDB加载最后同步时间失败:', error);
+                    this.lastSyncTime = {};
+                });
         }
     },
     
