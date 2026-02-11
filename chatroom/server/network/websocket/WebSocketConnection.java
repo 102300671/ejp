@@ -1243,27 +1243,42 @@ public class WebSocketConnection {
         System.out.println("创建的imageMessage: " + imageMessage.toString());
         
         boolean isPrivateChat = isPrivateChat(to);
+        System.out.println("isPrivateChat(" + to + ") = " + isPrivateChat);
         
         if (isPrivateChat) {
+            System.out.println("处理私聊图片消息");
             String recipientId = null;
             for (Session session : messageRouter.getSessions().values()) {
                 if (session.getUsername().equals(to)) {
                     recipientId = session.getUserId();
+                    System.out.println("找到接收者session: " + to + ", userId: " + recipientId);
                     break;
                 }
             }
             
             if (recipientId != null) {
+                System.out.println("发送私聊图片消息到: " + recipientId);
                 if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(imageMessage))) {
                     try (Connection connection = dbManager.getConnection()) {
                         MessageDAO messageDAO = new MessageDAO();
                         messageDAO.saveMessage(imageMessage, "PRIVATE", connection);
+                        System.out.println("私聊图片消息已保存到数据库");
                     } catch (SQLException e) {
                         System.err.println("保存私聊图片消息到数据库失败: " + e.getMessage());
                     }
                 }
+            } else {
+                System.out.println("接收者 " + to + " 不在线，无法发送消息");
+                try (Connection connection = dbManager.getConnection()) {
+                    MessageDAO messageDAO = new MessageDAO();
+                    messageDAO.saveMessage(imageMessage, "PRIVATE", connection);
+                    System.out.println("私聊图片消息已保存到数据库（接收者离线）");
+                } catch (SQLException e) {
+                    System.err.println("保存私聊图片消息到数据库失败: " + e.getMessage());
+                }
             }
         } else {
+            System.out.println("处理房间图片消息");
             for (String roomId : messageRouter.getRooms().keySet()) {
                 if (to.equals(messageRouter.getRooms().get(roomId).getName())) {
                     messageRouter.broadcastToRoom(roomId, messageCodec.encode(imageMessage), String.valueOf(currentUser.getId()));
@@ -1271,6 +1286,7 @@ public class WebSocketConnection {
                     try (Connection connection = dbManager.getConnection()) {
                         MessageDAO messageDAO = new MessageDAO();
                         messageDAO.saveMessage(imageMessage, "ROOM", connection);
+                        System.out.println("房间图片消息已保存到数据库");
                     } catch (SQLException e) {
                         System.err.println("保存房间图片消息到数据库失败: " + e.getMessage());
                     }
