@@ -1,0 +1,8 @@
+admin/controller/RoomController.class
+admin/service/MessageService.class
+admin/controller/MainController.class
+admin/controller/MessageController.class
+admin/service/RoomService.class
+admin/AdminApplication.class
+admin/controller/UserController.class
+admin/service/UserService.class

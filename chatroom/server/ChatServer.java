@@ -115,7 +115,8 @@ public class ChatServer {
                 // 只添加非system房间（system房间已单独处理）
                 if (!"system".equals(room.getName())) {
                     boolean isPublic = room instanceof PublicRoom;
-                    messageRouter.createRoom(room.getName(), room.getId(), isPublic);
+                    // 直接添加从数据库加载的房间对象，保留conversation_id
+                    messageRouter.addRoom(room);
                     System.out.println("已加载" + (isPublic ? "公共" : "私人") + "房间: " + room.getName() + " (ID: " + room.getId() + ")");
                 }
             }

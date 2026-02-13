@@ -150,10 +150,10 @@ public class ClientConnection implements Runnable {
                     }
                     
                     String from = currentUser.getUsername();
-                    String to = message.getTo();
                     String content = message.getContent();
+                    Integer conversationId = message.getConversationId();
                     
-                    System.out.println("处理文本消息: 从" + from + "到" + to + "的消息: " + content);
+                    System.out.println("处理文本消息: 从" + from + "的消息: " + content);
                     
                     // 检查是否为私人消息（消息接收者是用户名且内容包含房间信息）
                     if (content.startsWith("[room:")) {
@@ -167,7 +167,7 @@ public class ClientConnection implements Runnable {
                         
                         // 检查房间
                         if ("system".equals(roomName)) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "在system房间中禁止发送私人消息");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "在system房间中禁止发送私人消息", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -185,29 +185,42 @@ public class ClientConnection implements Runnable {
                         }
                         
                         if (roomId == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "房间" + roomName + "不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间" + roomName + "不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         // 检查是否为公共房间
                         if (!isPublicRoom) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "在私人房间中禁止发送私人消息");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "在私人房间中禁止发送私人消息", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         // 查找接收者用户ID
                         String recipientId = null;
-                        for (Session session : messageRouter.getSessions().values()) {
-                            if (session.getUsername().equals(to)) {
-                                recipientId = session.getUserId();
-                                break;
+                        String to = null;
+                        // 从消息内容中解析接收者
+                        // 假设格式为 "[room:roomName]to:recipient;content"
+                        if (actualContent.startsWith("to:")) {
+                            int toEnd = actualContent.indexOf(";" );
+                            if (toEnd > 0) {
+                                to = actualContent.substring(3, toEnd);
+                                actualContent = actualContent.substring(toEnd + 1);
+                            }
+                        }
+                        
+                        if (to != null) {
+                            for (Session session : messageRouter.getSessions().values()) {
+                                if (session.getUsername().equals(to)) {
+                                    recipientId = session.getUserId();
+                                    break;
+                                }
                             }
                         }
                         
                         if (recipientId == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "用户" + to + "不存在或不在线");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + to + "不存在或不在线", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -228,19 +241,19 @@ public class ClientConnection implements Runnable {
                         }
                         
                         if (!senderInRoom) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "您不在房间" + roomName + "中");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "您不在房间" + roomName + "中", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         if (!recipientInRoom) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "用户" + to + "不在房间" + roomName + "中");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + to + "不在房间" + roomName + "中", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         // 发送私人消息
-                        Message privateMsg = new Message(MessageType.TEXT, from, to, actualContent);
+                        Message privateMsg = new Message(MessageType.TEXT, from, actualContent, conversationId);
                         if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(privateMsg))) {
                             System.out.println("私人消息发送成功: 从" + from + "到" + to + "的消息: " + actualContent);
                             
@@ -253,68 +266,83 @@ public class ClientConnection implements Runnable {
                                 e.printStackTrace();
                             }
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", from, "发送私人消息失败: 用户" + to + "可能不在线");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私人消息失败: 用户" + to + "可能不在线", null);
                             send(messageCodec.encode(errorMsg));
                         }
                     } else {
                         // 广播消息到目标房间
-                        for (String roomId : messageRouter.getRooms().keySet()) {
-                            if (message.getTo().equals(messageRouter.getRooms().get(roomId).getName())) {
-                                // 创建正确的广播消息
-                                Message broadcastMessage = new Message(
-                                    MessageType.TEXT,
-                                    from, // 使用认证后的用户名
-                                    message.getTo(),
-                                    content,
-                                    message.getTime()
-                                );
-                                // 广播消息
-                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(broadcastMessage));
-                                
-                                // 保存房间消息到数据库
-                                try (Connection connection = dbManager.getConnection()) {
-                                    MessageDAO messageDAO = new MessageDAO();
-                                    messageDAO.saveMessage(broadcastMessage, "ROOM", connection);
-                                } catch (SQLException e) {
-                                    System.err.println("保存房间消息到数据库失败: " + e.getMessage());
-                                    e.printStackTrace();
+                        // 使用conversationId查找对应的房间
+                        String roomId = null;
+                        if (conversationId != null) {
+                            // 查找对应conversationId的房间
+                            for (String rId : messageRouter.getRooms().keySet()) {
+                                Room room = messageRouter.getRooms().get(rId);
+                                // 假设Room有getConversationId方法
+                                if (room.getConversationId() != null && room.getConversationId().equals(conversationId)) {
+                                    roomId = rId;
+                                    break;
                                 }
-                                break;
+                            }
+                        }
+                        
+                        if (roomId != null) {
+                            // 创建正确的广播消息
+                            Message broadcastMessage = new Message(
+                                MessageType.TEXT,
+                                from, // 使用认证后的用户名
+                                content,
+                                message.getTime(),
+                                conversationId
+                            );
+                            // 广播消息
+                            messageRouter.broadcastToRoom(roomId, messageCodec.encode(broadcastMessage));
+                            
+                            // 保存房间消息到数据库
+                            try (Connection connection = dbManager.getConnection()) {
+                                MessageDAO messageDAO = new MessageDAO();
+                                messageDAO.saveMessage(broadcastMessage, "ROOM", connection);
+                            } catch (SQLException e) {
+                                System.err.println("保存房间消息到数据库失败: " + e.getMessage());
+                                e.printStackTrace();
                             }
                         }
                     }
                     break;
                 case JOIN:
-                    // 已认证，处理加入房间消息
                     if (!isAuthenticated) {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理加入房间消息: " + currentUser.getUsername() + "加入" + message.getTo() + "房间");
-                    // 将用户加入目标房间
-                    try (Connection connection = dbManager.getConnection()) {
-                        String roomName = message.getTo();
-                        String userId = String.valueOf(currentUser.getId());
-                        
-                        // 查找messageRouter中的房间
-                        String roomId = null;
+                    
+                    Integer joinConversationId = message.getConversationId();
+                    String joinRoomName = null;
+                    
+                    String roomId = null;
+                    if (joinConversationId != null) {
                         for (String rId : messageRouter.getRooms().keySet()) {
-                            if (roomName.equals(messageRouter.getRooms().get(rId).getName())) {
+                            Room room = messageRouter.getRooms().get(rId);
+                            if (room.getConversationId() != null && room.getConversationId().equals(joinConversationId)) {
                                 roomId = rId;
+                                joinRoomName = room.getName();
                                 break;
                             }
                         }
+                    }
+                    
+                    System.out.println("处理加入房间消息: " + currentUser.getUsername() + "加入" + joinRoomName + "房间");
+                    
+                    try (Connection connection = dbManager.getConnection()) {
+                        String userId = String.valueOf(currentUser.getId());
                         
                         if (roomId == null) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + roomName + "不存在");
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间不存在", null, joinConversationId);
                             send(messageCodec.encode(systemMessage));
                             break;
                         }
                         
-                        // 检查用户是否已在房间中（数据库层面）
                         boolean alreadyInRoom = roomDAO.isUserInRoom(roomId, userId, connection);
                         if (alreadyInRoom) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "您已在房间" + roomName + "中");
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "您已在房间" + joinRoomName + "中", null);
                             send(messageCodec.encode(systemMessage));
                         }
                         
@@ -328,39 +356,38 @@ public class ClientConnection implements Runnable {
                         
                         // 不再发送多余的成功消息，因为MessageRouter已经广播了JOIN消息
                         
-                        System.out.println("用户加入房间成功: " + currentUser.getUsername() + " 加入 " + roomName + " (ID: " + roomId + ")");
+                        System.out.println("用户加入房间成功: " + currentUser.getUsername() + " 加入 " + joinRoomName + " (ID: " + roomId + ")");
                         Room room = messageRouter.getRooms().get(roomId);
-                        System.out.println("当前房间" + roomName + "中的用户数量: " + room.getUserCount());
+                        System.out.println("当前房间" + joinRoomName + "中的用户数量: " + room.getUserCount());
                     } catch (SQLException e) {
                         System.err.println("加入房间失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "加入房间失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "加入房间失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
                 case LEAVE:
-                    // 已认证，处理离开房间消息
                     if (!isAuthenticated) {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理离开房间消息: " + currentUser.getUsername() + "离开" + message.getTo() + "房间");
-                    // 将用户离开目标房间
-                    for (String roomId : messageRouter.getRooms().keySet()) {
-                        if (message.getTo().equals(messageRouter.getRooms().get(roomId).getName())) {
-                            // 离开房间
+                    
+                    Integer leaveConversationId = message.getConversationId();
+                    String actualRoomName = "";
+                    
+                    for (String leaveRoomId : messageRouter.getRooms().keySet()) {
+                        if (actualRoomName.equals(messageRouter.getRooms().get(leaveRoomId).getName())) {
                             String userId = String.valueOf(currentUser.getId());
-                            messageRouter.leaveRoom(userId, roomId);
-                            // 创建正确的离开消息
+                            messageRouter.leaveRoom(userId, leaveRoomId);
+                            
                             Message leaveMessage = new Message(
                                 MessageType.LEAVE,
                                 currentUser.getUsername(),
-                                message.getTo(),
+                                actualRoomName,
                                 null,
-                                null
+                                leaveConversationId
                             );
-                            // 广播离开消息
-                            messageRouter.broadcastToRoom(roomId, messageCodec.encode(leaveMessage));
+                            messageRouter.broadcastToRoom(leaveRoomId, messageCodec.encode(leaveMessage));
                             break;
                         }
                     }
@@ -371,40 +398,36 @@ public class ClientConnection implements Runnable {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理创建房间消息: " + message.getFrom() + "创建" + message.getTo() + "房间，类型: " + message.getContent());
+                    System.out.println("处理创建房间消息: " + message.getFrom());
                     try (Connection connection = dbManager.getConnection()) {
-                        String roomName = message.getTo();
-                        String roomType = message.getContent().toUpperCase();
+                        String createRoomName = message.getContent();
+                        String roomType = createRoomName.toUpperCase();
                         
-                        // 检查房间是否已存在
-                        if (roomDAO.roomExists(roomName, connection)) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + roomName + "已存在");
+                        if (roomDAO.roomExists(createRoomName, connection)) {
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "已存在", null);
                             send(messageCodec.encode(systemMessage));
                             break;
                         }
                         
-                        // 创建新房间
                         Room newRoom;
                         if ("PRIVATE".equals(roomType)) {
-                            newRoom = new PrivateRoom(roomName, null, messageRouter);
+                            newRoom = new PrivateRoom(createRoomName, null, messageRouter);
                             roomDAO.insertPrivateRoom((PrivateRoom) newRoom, connection);
                         } else {
-                            newRoom = new PublicRoom(roomName, null, messageRouter);
+                            newRoom = new PublicRoom(createRoomName, null, messageRouter);
                             roomDAO.insertPublicRoom((PublicRoom) newRoom, connection);
                         }
                         
-                        // 添加房间到消息路由器
                         messageRouter.addRoom(newRoom);
                         
-                        // 发送成功消息
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "房间" + roomName + "创建成功，类型: " + roomType);
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "创建成功，类型: " + roomType, null);
                         send(messageCodec.encode(systemMessage));
                         
-                        System.out.println("房间创建成功: " + roomName + " (ID: " + newRoom.getId() + ", 类型: " + roomType + ")");
+                        System.out.println("房间创建成功: " + createRoomName + " (ID: " + newRoom.getId() + ", 类型: " + roomType + ")");
                     } catch (SQLException e) {
                         System.err.println("创建房间失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "创建房间失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "创建房间失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -414,45 +437,40 @@ public class ClientConnection implements Runnable {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理退出房间消息: " + currentUser.getUsername() + "退出" + message.getTo() + "房间");
+                    System.out.println("处理退出房间消息: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        // 查找房间
-                        Room room = roomDAO.getRoomByName(message.getTo(), connection);
+                        Integer exitConversationId = message.getConversationId();
+                        String exitRoomName = "";
+                        Room room = roomDAO.getRoomByName(exitRoomName, connection);
                         if (room == null) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + message.getTo() + "不存在");
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + exitRoomName + "不存在", null);
                             send(messageCodec.encode(systemMessage));
                             break;
                         }
                         
-                        String roomId = room.getId();
+                        String exitRoomId = room.getId();
                         String userId = String.valueOf(currentUser.getId());
                         
-                        // 从消息路由器中移除用户
-                        messageRouter.leaveRoom(userId, roomId);
+                        messageRouter.leaveRoom(userId, exitRoomId);
+                        roomDAO.leaveRoom(exitRoomId, userId, connection);
                         
-                        // 从数据库中删除room_member记录
-                        roomDAO.leaveRoom(roomId, userId, connection);
-                        
-                        // 创建正确的退出消息
                         Message exitMessage = new Message(
                             MessageType.EXIT_ROOM,
                             currentUser.getUsername(),
-                            message.getTo(),
+                            exitRoomName,
                             null,
-                            null
+                            exitConversationId
                         );
-                        // 广播退出消息
-                        messageRouter.broadcastToRoom(roomId, messageCodec.encode(exitMessage));
+                        messageRouter.broadcastToRoom(exitRoomId, messageCodec.encode(exitMessage));
                         
-                        // 发送成功消息给用户
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已退出房间: " + message.getTo());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "已退出房间: " + exitRoomName, null);
                         send(messageCodec.encode(systemMessage));
                         
-                        System.out.println("用户退出房间成功: " + currentUser.getUsername() + " 离开 " + message.getTo());
+                        System.out.println("用户退出房间成功: " + currentUser.getUsername() + " 离开 " + exitRoomName);
                     } catch (SQLException e) {
                         System.err.println("退出房间失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "退出房间失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "退出房间失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -486,14 +504,14 @@ public class ClientConnection implements Runnable {
                                     roomsList.append("无");
                                 }
                                 
-                                Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), roomsList.toString());
+                                Message systemMessage = new Message(MessageType.SYSTEM, "server", roomsList.toString(), null);
                                 send(messageCodec.encode(systemMessage));
                             }
                         }
                     } catch (SQLException e) {
                         System.err.println("获取房间列表失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", message.getFrom(), "获取房间列表失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "获取房间列表失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -505,18 +523,17 @@ public class ClientConnection implements Runnable {
                     }
                     System.out.println("处理房间用户列表请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String roomName = message.getTo();
+                        Integer listUsersConversationId = message.getConversationId();
+                        String roomName = "";
                         RoomDAO roomDAO = new RoomDAO(messageRouter);
                         
-                        // 获取房间ID
                         Room room = roomDAO.getRoomByName(roomName, connection);
                         if (room == null) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + roomName + "不存在");
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + roomName + "不存在", null);
                             send(messageCodec.encode(systemMessage));
                             break;
                         }
                         
-                        // 获取房间用户列表（包含角色信息）
                         List<Map<String, Object>> usersList = roomDAO.getRoomMembersWithRoles(room.getId(), connection);
                         
                         // 获取在线用户ID集合
@@ -570,12 +587,12 @@ public class ClientConnection implements Runnable {
                         response.append("]}");
                         
                         // 发送响应
-                        Message usersMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), response.toString());
+                        Message usersMessage = new Message(MessageType.SYSTEM, "server", response.toString(), null);
                         send(messageCodec.encode(usersMessage));
                     } catch (Exception e) {
                         System.err.println("获取房间用户列表失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取房间用户列表失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "获取房间用户列表失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -586,6 +603,7 @@ public class ClientConnection implements Runnable {
                     }
                     System.out.println("处理消息历史请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
+                        Integer historyConversationId = message.getConversationId();
                         int limit = 50;
                         try {
                             limit = Integer.parseInt(message.getContent());
@@ -593,7 +611,7 @@ public class ClientConnection implements Runnable {
                         }
                         
                         MessageDAO messageDAO = new MessageDAO();
-                        List<Message> history = messageDAO.getRoomMessages(message.getTo(), limit, connection);
+                        List<Message> history = messageDAO.getConversationMessages(historyConversationId, limit, connection);
                         
                         StringBuilder historyContent = new StringBuilder();
                         for (Message msg : history) {
@@ -602,12 +620,12 @@ public class ClientConnection implements Runnable {
                                        .append("||");
                         }
                         
-                        Message historyMessage = new Message(MessageType.HISTORY_RESPONSE, "server", message.getTo(), historyContent.toString());
+                        Message historyMessage = new Message(MessageType.HISTORY_RESPONSE, "server", historyContent.toString(), null, historyConversationId);
                         send(messageCodec.encode(historyMessage));
                     } catch (SQLException e) {
                         System.err.println("获取消息历史失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message systemMessage = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取消息历史失败: " + e.getMessage());
+                        Message systemMessage = new Message(MessageType.SYSTEM, "server", "获取消息历史失败: " + e.getMessage(), null);
                         send(messageCodec.encode(systemMessage));
                     }
                     break;
@@ -616,31 +634,32 @@ public class ClientConnection implements Runnable {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理私人消息: " + currentUser.getUsername() + " -> " + message.getTo());
+                    System.out.println("处理私人消息: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String recipient = message.getTo();
+                        Integer privateChatConversationId = message.getConversationId();
+                        String recipient = "";
                         String privateContent = message.getContent();
                         
                         int recipientId = userDAO.getUserIdByUsername(recipient, connection);
                         if (recipientId == 0) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + recipient + "不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         Session recipientSession = messageRouter.getSession(String.valueOf(recipientId));
                         if (recipientSession == null || !recipientSession.isActive()) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不在线");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + recipient + "不在线", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
-                        Message privateMsg = new Message(MessageType.PRIVATE_CHAT, currentUser.getUsername(), recipient, privateContent);
+                        Message privateMsg = new Message(MessageType.PRIVATE_CHAT, currentUser.getUsername(), privateContent, null, privateChatConversationId);
                         if (messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), String.valueOf(recipientId), messageCodec.encode(privateMsg))) {
                             MessageDAO messageDAO = new MessageDAO();
                             messageDAO.saveMessage(privateMsg, "PRIVATE", connection);
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "发送私人消息失败");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私人消息失败", null);
                             send(messageCodec.encode(errorMsg));
                         }
                     } catch (SQLException e) {
@@ -653,27 +672,28 @@ public class ClientConnection implements Runnable {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理好友请求: " + currentUser.getUsername() + " -> " + message.getTo());
+                    System.out.println("处理好友请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String recipient = message.getTo();
+                        Integer friendRequestConversationId = message.getConversationId();
+                        String recipient = "";
                         int recipientId = userDAO.getUserIdByUsername(recipient, connection);
                         
                         if (recipientId == 0) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + recipient + "不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + recipient + "不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
                         if (friendshipDAO.areFriends(currentUser.getId(), recipientId, connection)) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已经是好友了");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "已经是好友了", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         server.sql.friend.FriendRequestDAO friendRequestDAO = new server.sql.friend.FriendRequestDAO();
                         if (friendRequestDAO.hasPendingRequest(currentUser.getId(), recipientId, connection)) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "好友请求已发送，等待对方处理");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "好友请求已发送，等待对方处理", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -682,16 +702,16 @@ public class ClientConnection implements Runnable {
                         
                         Session recipientSession = messageRouter.getSession(String.valueOf(recipientId));
                         if (recipientSession != null && recipientSession.isActive()) {
-                            Message friendRequestMsg = new Message(MessageType.FRIEND_REQUEST, currentUser.getUsername(), recipient, "");
+                            Message friendRequestMsg = new Message(MessageType.FRIEND_REQUEST, currentUser.getUsername(), "", null, friendRequestConversationId);
                             recipientSession.getClientConnection().send(messageCodec.encode(friendRequestMsg));
                         }
                         
-                        Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "好友请求已发送给 " + recipient);
+                        Message successMsg = new Message(MessageType.SYSTEM, "server", "好友请求已发送给 " + recipient, null);
                         send(messageCodec.encode(successMsg));
                     } catch (SQLException e) {
                         System.err.println("发送好友请求失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "发送好友请求失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送好友请求失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -700,14 +720,15 @@ public class ClientConnection implements Runnable {
                         sendAuthFailure("未认证，请先登录或注册");
                         break;
                     }
-                    System.out.println("处理好友请求响应: " + currentUser.getUsername() + " -> " + message.getTo());
+                    System.out.println("处理好友请求响应: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String friendUsername = message.getTo();
+                        Integer friendResponseConversationId = message.getConversationId();
+                        String friendUsername = "";
                         String response = message.getContent();
                         int friendId = userDAO.getUserIdByUsername(friendUsername, connection);
                         
                         if (friendId == 0) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "用户" + friendUsername + "不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户" + friendUsername + "不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -721,39 +742,39 @@ public class ClientConnection implements Runnable {
                             
                             Session friendSession = messageRouter.getSession(String.valueOf(friendId));
                             if (friendSession != null && friendSession.isActive()) {
-                                Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "ACCEPT");
+                                Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), "ACCEPT", null, friendResponseConversationId);
                                 friendSession.getClientConnection().send(messageCodec.encode(acceptMsg));
                             }
                             
-                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已接受 " + friendUsername + " 的好友请求");
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", "已接受 " + friendUsername + " 的好友请求", null);
                             send(messageCodec.encode(successMsg));
                         } else if ("REJECT".equals(response)) {
                             friendRequestDAO.updateFriendRequestStatus(friendRequestDAO.getFriendRequest(friendId, currentUser.getId(), connection).id, "REJECTED", connection);
                             
                             Session friendSession = messageRouter.getSession(String.valueOf(friendId));
                             if (friendSession != null && friendSession.isActive()) {
-                                Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "REJECT");
+                                Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), "REJECT", null, friendResponseConversationId);
                                 friendSession.getClientConnection().send(messageCodec.encode(rejectMsg));
                             }
                             
-                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已拒绝 " + friendUsername + " 的好友请求");
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", "已拒绝 " + friendUsername + " 的好友请求", null);
                             send(messageCodec.encode(successMsg));
                         } else if ("REMOVE".equals(response)) {
                             friendshipDAO.removeFriendship(currentUser.getId(), friendId, connection);
                             
                             Session friendSession = messageRouter.getSession(String.valueOf(friendId));
                             if (friendSession != null && friendSession.isActive()) {
-                                Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), friendUsername, "REMOVE");
+                                Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, currentUser.getUsername(), "REMOVE", null, friendResponseConversationId);
                                 friendSession.getClientConnection().send(messageCodec.encode(removeMsg));
                             }
                             
-                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已删除好友 " + friendUsername);
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", "已删除好友 " + friendUsername, null);
                             send(messageCodec.encode(successMsg));
                         }
                     } catch (SQLException e) {
                         System.err.println("处理好友请求响应失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "操作失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "操作失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -773,12 +794,12 @@ public class ClientConnection implements Runnable {
                             friendsList.append(friendName).append("||");
                         }
                         
-                        Message friendListMsg = new Message(MessageType.FRIEND_LIST, "server", currentUser.getUsername(), friendsList.toString());
+                        Message friendListMsg = new Message(MessageType.FRIEND_LIST, "server", friendsList.toString(), null);
                         send(messageCodec.encode(friendListMsg));
                     } catch (SQLException e) {
                         System.err.println("获取好友列表失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取好友列表失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友列表失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -798,12 +819,12 @@ public class ClientConnection implements Runnable {
                             requestsList.append(otherUser).append(":").append(request.status).append("||");
                         }
                         
-                        Message requestsMsg = new Message(MessageType.ALL_FRIEND_REQUESTS, "server", currentUser.getUsername(), requestsList.toString());
+                        Message requestsMsg = new Message(MessageType.ALL_FRIEND_REQUESTS, "server", requestsList.toString(), null);
                         send(messageCodec.encode(requestsMsg));
                     } catch (SQLException e) {
                         System.err.println("获取好友请求列表失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取好友请求列表失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友请求列表失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -833,12 +854,12 @@ public class ClientConnection implements Runnable {
                             usersList.append("未找到匹配的用户");
                         }
                         
-                        Message searchResultMsg = new Message(MessageType.USERS_SEARCH_RESULT, "server", currentUser.getUsername(), usersList.toString());
+                        Message searchResultMsg = new Message(MessageType.USERS_SEARCH_RESULT, "server", usersList.toString(), null);
                         send(messageCodec.encode(searchResultMsg));
                     } catch (SQLException e) {
                         System.err.println("搜索用户失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "搜索用户失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索用户失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -867,12 +888,12 @@ public class ClientConnection implements Runnable {
                             roomsList.append("未找到匹配的房间");
                         }
                         
-                        Message searchResultMsg = new Message(MessageType.ROOMS_SEARCH_RESULT, "server", currentUser.getUsername(), roomsList.toString());
+                        Message searchResultMsg = new Message(MessageType.ROOMS_SEARCH_RESULT, "server", roomsList.toString(), null);
                         send(messageCodec.encode(searchResultMsg));
                     } catch (SQLException e) {
                         System.err.println("搜索房间失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "搜索房间失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索房间失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -883,17 +904,18 @@ public class ClientConnection implements Runnable {
                     }
                     System.out.println("处理房间加入请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String roomName = message.getTo();
+                        Integer roomJoinConversationId = message.getConversationId();
+                        String roomName = "";
                         Room room = roomDAO.getRoomByName(roomName, connection);
                         
                         if (room == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间" + roomName + "不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间" + roomName + "不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         if (room instanceof PublicRoom) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "公共房间可以直接加入，使用 /join " + roomName);
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "公共房间可以直接加入，使用 /join " + roomName, null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -901,26 +923,26 @@ public class ClientConnection implements Runnable {
                         PrivateRoom privateRoom = (PrivateRoom) room;
                         String ownerId = privateRoom.getOwnerId();
                         if (ownerId != null && ownerId.equals(String.valueOf(currentUser.getId()))) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "您是房主，无需申请加入");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "您是房主，无需申请加入", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         Session ownerSession = messageRouter.getSession(ownerId);
                         if (ownerSession != null && ownerSession.isActive()) {
-                            Message joinRequestMsg = new Message(MessageType.ROOM_JOIN_REQUEST, currentUser.getUsername(), roomName, "");
+                            Message joinRequestMsg = new Message(MessageType.ROOM_JOIN_REQUEST, currentUser.getUsername(), "", null, roomJoinConversationId);
                             ownerSession.getClientConnection().send(messageCodec.encode(joinRequestMsg));
                             
-                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "已发送加入房间请求给房主");
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", "已发送加入房间请求给房主", null);
                             send(messageCodec.encode(successMsg));
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房主不在线，无法处理加入请求");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房主不在线，无法处理加入请求", null);
                             send(messageCodec.encode(errorMsg));
                         }
                     } catch (SQLException e) {
                         System.err.println("处理房间加入请求失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "处理房间加入请求失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "处理房间加入请求失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -945,12 +967,12 @@ public class ClientConnection implements Runnable {
                                 currentUser.getCreatedAt() != null ? currentUser.getCreatedAt().toString() : "未知",
                                 currentUser.getStatus() != null ? currentUser.getStatus() : "未知");
                         
-                        Message statsMsg = new Message(MessageType.USER_STATS_RESPONSE, "server", currentUser.getUsername(), stats);
+                        Message statsMsg = new Message(MessageType.USER_STATS_RESPONSE, "server", stats, null);
                         send(messageCodec.encode(statsMsg));
                     } catch (SQLException e) {
                         System.err.println("获取用户统计失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取用户统计失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取用户统计失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -962,22 +984,23 @@ public class ClientConnection implements Runnable {
                     System.out.println("处理消息撤回请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
                         String messageId = message.getContent();
+                        Integer recallConversationId = message.getConversationId();
                         MessageDAO messageDAO = new MessageDAO();
                         
                         if (messageDAO.deleteMessage(messageId, connection)) {
-                            Message recallMsg = new Message(MessageType.RECALL_MESSAGE, currentUser.getUsername(), message.getTo(), "");
-                            messageRouter.broadcastToRoom(message.getTo(), messageCodec.encode(recallMsg));
+                            Message recallMsg = new Message(MessageType.RECALL_MESSAGE, currentUser.getUsername(), "", null, recallConversationId);
+                            messageRouter.broadcastToRoom(String.valueOf(recallConversationId), messageCodec.encode(recallMsg));
                             
-                            Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "消息已撤回");
+                            Message successMsg = new Message(MessageType.SYSTEM, "server", "消息已撤回", null);
                             send(messageCodec.encode(successMsg));
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "撤回消息失败，消息不存在或无权限");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "撤回消息失败，消息不存在或无权限", null);
                             send(messageCodec.encode(errorMsg));
                         }
                     } catch (SQLException e) {
                         System.err.println("撤回消息失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "撤回消息失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "撤回消息失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -990,65 +1013,66 @@ public class ClientConnection implements Runnable {
                     try (Connection connection = dbManager.getConnection()) {
                         String[] parts = message.getContent().split("\\|");
                         if (parts.length < 2) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "设置格式错误");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "设置格式错误", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
-                        String roomName = parts[0];
+                        // 去除前缀获取实际房间名
+                        String roomName = MessageRouter.extractActualName(parts[0]);
                         String settingType = parts[1];
                         
                         RoomDAO roomDAO = new RoomDAO(messageRouter);
                         Room room = roomDAO.getRoomByName(roomName, connection);
                         
                         if (room == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
-                        String roomId = room.getId();
+                        String updateRoomId = room.getId();
                         
                         if ("display_name".equals(settingType)) {
                             String displayName = parts.length > 2 ? parts[2] : null;
                             
                             if (displayName != null && !displayName.trim().isEmpty()) {
-                                if (!roomDAO.isRoomDisplayNameAvailable(roomId, displayName, connection)) {
-                                    Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "该显示名已被占用");
+                                if (!roomDAO.isRoomDisplayNameAvailable(updateRoomId, displayName, connection)) {
+                                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "该显示名已被占用", null);
                                     send(messageCodec.encode(errorMsg));
                                     break;
                                 }
                             }
                             
-                            if (roomDAO.updateUserRoomDisplayName(roomId, String.valueOf(currentUser.getId()), displayName, connection)) {
-                                Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间显示名已更新");
+                            if (roomDAO.updateUserRoomDisplayName(updateRoomId, String.valueOf(currentUser.getId()), displayName, connection)) {
+                                Message successMsg = new Message(MessageType.SYSTEM, "server", "房间显示名已更新", null);
                                 send(messageCodec.encode(successMsg));
                                 
                                 // Broadcast display name update to room members
                                 String updateContent = String.valueOf(currentUser.getId()) + ":" + (displayName != null ? displayName : "") + ":" + currentUser.getUsername();
-                                Message updateMsg = new Message(MessageType.ROOM_DISPLAY_NAME_UPDATED, "server", roomName, updateContent);
-                                messageRouter.broadcastToRoom(roomId, messageCodec.encode(updateMsg));
+                                Message updateMsg = new Message(MessageType.ROOM_DISPLAY_NAME_UPDATED, "server", updateContent, null);
+                                messageRouter.broadcastToRoom(updateRoomId, messageCodec.encode(updateMsg));
                             } else {
-                                Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新显示名失败");
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", "更新显示名失败", null);
                                 send(messageCodec.encode(errorMsg));
                             }
                         } else if ("accept_temporary_chat".equals(settingType)) {
                             boolean accept = Boolean.parseBoolean(parts[2]);
-                            if (roomDAO.updateRoomAcceptTemporaryChat(roomId, String.valueOf(currentUser.getId()), accept, connection)) {
-                                Message successMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "临时聊天设置已更新");
+                            if (roomDAO.updateRoomAcceptTemporaryChat(updateRoomId, String.valueOf(currentUser.getId()), accept, connection)) {
+                                Message successMsg = new Message(MessageType.SYSTEM, "server", "临时聊天设置已更新", null);
                                 send(messageCodec.encode(successMsg));
                             } else {
-                                Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新临时聊天设置失败");
+                                Message errorMsg = new Message(MessageType.SYSTEM, "server", "更新临时聊天设置失败", null);
                                 send(messageCodec.encode(errorMsg));
                             }
                         } else {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "未知的设置类型");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "未知的设置类型", null);
                             send(messageCodec.encode(errorMsg));
                         }
                     } catch (SQLException e) {
                         System.err.println("更新房间设置失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "更新房间设置失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "更新房间设置失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;
@@ -1059,36 +1083,37 @@ public class ClientConnection implements Runnable {
                     }
                     System.out.println("处理房间显示名请求: " + currentUser.getUsername());
                     try (Connection connection = dbManager.getConnection()) {
-                        String roomName = message.getContent();
+                        // 去除前缀获取实际房间名
+                        String roomName = MessageRouter.extractActualName(message.getContent());
                         RoomDAO roomDAO = new RoomDAO(messageRouter);
                         Room room = roomDAO.getRoomByName(roomName, connection);
                         
                         if (room == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "房间不存在");
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间不存在", null);
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
-                        String roomId = room.getId();
-                        List<java.util.Map<String, Object>> members = roomDAO.getRoomMembersWithRoles(roomId, connection);
+                        String displayNamesRoomId = room.getId();
+                        List<java.util.Map<String, Object>> members = roomDAO.getRoomMembersWithRoles(displayNamesRoomId, connection);
                         
                         StringBuilder displayNamesContent = new StringBuilder();
                         for (java.util.Map<String, Object> member : members) {
                             int userId = (int) member.get("userId");
                             String username = (String) member.get("username");
-                            String displayName = roomDAO.getUserRoomDisplayName(roomId, String.valueOf(userId), connection);
+                            String displayName = roomDAO.getUserRoomDisplayName(displayNamesRoomId, String.valueOf(userId), connection);
                             
                             if (displayName != null && !displayName.trim().isEmpty()) {
                                 displayNamesContent.append(userId).append(":").append(displayName).append("||");
                             }
                         }
                         
-                        Message displayNamesMsg = new Message(MessageType.ROOM_DISPLAY_NAMES_RESPONSE, "server", currentUser.getUsername(), displayNamesContent.toString());
+                        Message displayNamesMsg = new Message(MessageType.ROOM_DISPLAY_NAMES_RESPONSE, "server", displayNamesContent.toString(), null);
                         send(messageCodec.encode(displayNamesMsg));
                     } catch (SQLException e) {
                         System.err.println("获取房间显示名失败: " + e.getMessage());
                         e.printStackTrace();
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", currentUser.getUsername(), "获取房间显示名失败: " + e.getMessage());
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取房间显示名失败: " + e.getMessage(), null);
                         send(messageCodec.encode(errorMsg));
                     }
                     break;

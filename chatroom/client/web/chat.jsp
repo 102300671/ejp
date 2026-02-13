@@ -31,28 +31,27 @@
             
             <div class="chat-content">
                 <!-- Rooms List -->
-                <div class="rooms-panel">
+                <div class="chats-panel">
                     <div class="panel-header">
-                        <h3>Chat</h3>
-                        <button id="create-room-btn">Create Room</button>
+                        <h3>聊天</h3>
+                        <button id="create-chat-btn">创建房间</button>
                     </div>
-                    <div id="rooms-list" class="rooms-list">
+                    <div id="chats-list" class="chats-list">
                         <!-- Rooms will be populated here -->
                     </div>
                     <div class="panel-footer">
-                        <button id="refresh-rooms-btn">Refresh</button>
+                        <button id="refresh-chats-btn">刷新</button>
                     </div>
                 </div>
                 
                 <!-- Messages Area -->
                 <div class="messages-panel">
                     <div class="panel-header">
-                        <h3 id="current-room-name">system</h3>
-                        <div class="room-controls">
-                                <button id="join-room-btn">Join</button>
-                                <button id="leave-room-btn">Leave</button>
-                                <button id="exit-room-btn">Exit</button>
-                                <button id="add-friend-btn">Add</button>
+                        <h3 id="current-chat-name">system</h3>
+                        <div class="chat-controls">
+                                <button id="join-room-btn">加入房间</button>
+                                <button id="leave-room-btn">离开房间</button>
+                                <button id="add-friend-btn">添加好友</button>
                             </div>
                     </div>
                     <div id="messages-area" class="messages-area">
@@ -75,21 +74,21 @@
             </div>
         </div>
         
-        <!-- Create Room Modal -->
-        <div id="create-room-modal" class="modal">
+        <!-- 创建会话 Modal -->
+        <div id="create-chat-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h3>Create New Room</h3>
-                <form id="create-room-form">
+                <form id="create-chat-form">
                     <div class="form-group">
-                        <label for="room-name">Room Name:</label>
-                        <input type="text" id="room-name" required>
+                        <label for="chat-name">会话名称:</label>
+                        <input type="text" id="chat-name" required>
                     </div>
                     <div class="form-group">
-                        <label for="room-type">Room Type:</label>
-                        <select id="room-type">
-                            <option value="PUBLIC">Public</option>
-                            <option value="PRIVATE">Private</option>
+                        <label for="chat-type">会话类型:</label>
+                        <select id="chat-type">
+                            <option value="PUBLIC">公开</option>
+                            <option value="PRIVATE">私密</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -99,18 +98,18 @@
             </div>
         </div>
         
-        <!-- Join Room Modal -->
-        <div id="join-room-modal" class="modal">
+        <!-- 加入会话 Modal -->
+        <div id="join-chat-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h3>Join Room</h3>
-                <form id="join-room-form">
+                <h3>加入会话</h3>
+                <form id="join-chat-form">
                     <div class="form-group">
-                        <label for="join-room-name">Room Name:</label>
-                        <input type="text" id="join-room-name" required placeholder="Enter room name to join">
+                        <label for="join-chat-name">会话名称:</label>
+                        <input type="text" id="join-chat-name" required placeholder="Enter room name to join">
                     </div>
                     <div class="form-group">
-                        <button type="submit">Join</button>
+                        <button type="submit">加入</button>
                     </div>
                 </form>
             </div>

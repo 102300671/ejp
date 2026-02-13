@@ -10,7 +10,7 @@
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>ChatRoom - <span id="current-room-name">Loading...</span></h2>
+                <h2>ChatRoom - <span id="current-chat-name">Loading...</span></h2>
                 <div class="user-info">
                     <span id="current-user"></span>
                     <button id="logout-btn" onclick="logout()">Logout</button>
@@ -22,8 +22,8 @@
                 <!-- Messages Area -->
                 <div class="messages-panel full-width">
                     <div class="panel-header">
-                        <h3 id="current-room-name-full">Loading...</h3>
-                        <div class="room-controls">
+                        <h3 id="current-chat-name-full">Loading...</h3>
+                        <div class="chat-controls">
                             <button id="return-to-room-btn" class="return-button" style="display: none;">Back to Room</button>
                         </div>
                     </div>

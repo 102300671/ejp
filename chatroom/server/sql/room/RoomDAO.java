@@ -95,19 +95,30 @@ public class RoomDAO {
      */
     public List<Room> getAllRooms(Connection conn) throws SQLException {
         List<Room> rooms = new ArrayList<>();
-        String sql = "select id, room_name, room_type from room";
+        String sql = "select r.id, r.room_name, r.room_type, c.id as conversation_id " +
+                     "from room r " +
+                     "left join conversation c on c.type = 'ROOM' and c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
+                    Integer conversationId = rs.getObject("conversation_id") != null ? rs.getInt("conversation_id") : null;
                     
+                    Room room;
                     if ("PUBLIC".equals(type)) {
-                        rooms.add(new PublicRoom(name, id, messageRouter));
+                        room = new PublicRoom(name, id, messageRouter);
                     } else {
-                        rooms.add(new PrivateRoom(name, id, messageRouter));
+                        room = new PrivateRoom(name, id, messageRouter);
                     }
+                    
+                    // 设置conversation_id
+                    if (conversationId != null) {
+                        room.setConversationId(conversationId);
+                    }
+                    
+                    rooms.add(room);
                 }
             }
         }

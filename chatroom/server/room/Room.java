@@ -13,6 +13,7 @@ public abstract class Room {
     private String createdAt; // 房间创建时间
     private String ownerId; // 房主ID
     private Set<String> adminIds; // 管理员ID集合
+    private Integer conversationId; // 会话ID
     
     /**
      * 构造房间对象
@@ -29,7 +30,24 @@ public abstract class Room {
         this.createdAt = null;
         this.ownerId = null;
         this.adminIds = new HashSet<>();
+        this.conversationId = null;
         System.out.println("创建新房间: " + name + " (ID: " + id + ")");
+    }
+    
+    /**
+     * 获取会话ID
+     * @return 会话ID
+     */
+    public Integer getConversationId() {
+        return conversationId;
+    }
+    
+    /**
+     * 设置会话ID
+     * @param conversationId 会话ID
+     */
+    public void setConversationId(Integer conversationId) {
+        this.conversationId = conversationId;
     }
     
     /**

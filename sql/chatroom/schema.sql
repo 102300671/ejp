@@ -143,8 +143,46 @@ CREATE TABLE IF NOT EXISTS `friendships` (
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 --
+-- Table structure for table `conversation`
+--
+
+
+DROP TABLE IF EXISTS `conversation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `conversation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `type` ENUM('ROOM', 'FRIEND', 'TEMP') NOT NULL COMMENT '会话类型',
+    `name` VARCHAR(100) DEFAULT NULL COMMENT '会话名称',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX `idx_type` (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `conversation_member`
+--
+
+
+DROP TABLE IF EXISTS `conversation_member`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `conversation_member` (
+    `conversation_id` INT NOT NULL COMMENT '会话ID',
+    `username` VARCHAR(50) NOT NULL COMMENT '用户名',
+    `role` ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '角色',
+    `joined_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+    PRIMARY KEY (`conversation_id`, `username`),
+    INDEX `idx_conversation_id` (`conversation_id`),
+    INDEX `idx_username` (`username`),
+    CONSTRAINT `fk_conversation_member_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `messages`
 --
+
 
 DROP TABLE IF EXISTS `messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -153,16 +191,17 @@ CREATE TABLE IF NOT EXISTS `messages` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `type` VARCHAR(20) NOT NULL COMMENT '消息类型 (TEXT, SYSTEM, JOIN, LEAVE等)',
     `from_username` VARCHAR(50) NOT NULL COMMENT '发送者用户名',
-    `to_username` VARCHAR(50) NOT NULL COMMENT '接收者用户名或房间名',
+    `conversation_id` INT NOT NULL COMMENT '会话ID',
     `content` TEXT NOT NULL COMMENT '消息内容',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
     `message_type` VARCHAR(20) NOT NULL COMMENT '消息类别 (ROOM:房间消息, PRIVATE:私人消息)',
     `is_nsfw` BOOLEAN DEFAULT FALSE COMMENT '是否为不适宜内容',
     `iv` VARCHAR(255) DEFAULT NULL COMMENT '加密初始化向量',
     INDEX `idx_from_username` (`from_username`),
-    INDEX `idx_to_username` (`to_username`),
+    INDEX `idx_conversation_id` (`conversation_id`),
     INDEX `idx_create_time` (`create_time`),
-    INDEX `idx_message_type` (`message_type`)
+    INDEX `idx_message_type` (`message_type`),
+    CONSTRAINT `fk_messages_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

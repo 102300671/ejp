@@ -8,7 +8,7 @@ const MessageStorage = {
     },
     // IndexedDB数据库名称和版本
     DB_NAME: 'ChatMessageDB',
-    DB_VERSION: 3,
+    DB_VERSION: 6,
     STORE_NAME: 'messages',
     LAST_SYNC_STORE: 'lastSync',
     
@@ -21,10 +21,10 @@ const MessageStorage = {
     // 当IndexedDB不可用时，使用localStorage作为备用存储
     
     // 获取备用存储中的所有消息
-    getBackupMessages: function(roomName) {
+    getBackupMessages: function(chatName) {
         try {
             const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
-            return allMessages[roomName] || [];
+            return allMessages[chatName] || [];
         } catch (e) {
             console.error('Error reading backup messages:', e);
             return [];
@@ -35,20 +35,19 @@ const MessageStorage = {
     saveBackupMessage: function(message) {
         try {
             const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
-            const roomName = message.roomName;
+            const chatName = message.chatName;
             
-            if (!allMessages[roomName]) {
-                allMessages[roomName] = [];
+            if (!allMessages[chatName]) {
+                allMessages[chatName] = [];
             }
             
             // 检查消息是否已存在
-            const exists = allMessages[roomName].some(m => m.id === message.id);
+            const exists = allMessages[chatName].some(m => m.id === message.id);
             if (!exists) {
-                allMessages[roomName].push({
+                allMessages[chatName].push({
                     id: message.id,
-                    roomName: message.roomName,
+                    chatName: message.chatName,
                     from: message.from,
-                    to: message.to,
                     content: message.content,
                     createTime: message.createTime,
                     type: message.type,
@@ -59,8 +58,8 @@ const MessageStorage = {
                 });
                 
                 // 限制每个房间最多保存200条消息
-                if (allMessages[roomName].length > 200) {
-                    allMessages[roomName] = allMessages[roomName].slice(-200);
+                if (allMessages[chatName].length > 200) {
+                    allMessages[chatName] = allMessages[chatName].slice(-200);
                 }
                 
                 localStorage.setItem('chat_messages_backup', JSON.stringify(allMessages));
@@ -71,11 +70,11 @@ const MessageStorage = {
     },
     
     // 清理备用存储中的旧消息
-    cleanupBackupMessages: function(roomName, keepCount = 200) {
+    cleanupBackupMessages: function(chatName, keepCount = 200) {
         try {
             const allMessages = JSON.parse(localStorage.getItem('chat_messages_backup') || '{}');
-            if (allMessages[roomName] && allMessages[roomName].length > keepCount) {
-                allMessages[roomName] = allMessages[roomName].slice(-keepCount);
+            if (allMessages[chatName] && allMessages[chatName].length > keepCount) {
+                allMessages[chatName] = allMessages[chatName].slice(-keepCount);
                 localStorage.setItem('chat_messages_backup', JSON.stringify(allMessages));
             }
         } catch (e) {
@@ -107,10 +106,14 @@ const MessageStorage = {
                 const db = event.target.result;
                 console.log('Database object:', db);
                 
-                // 如果旧版本小于3，需要重建消息存储对象（因为keyPath配置改变了）
-                if (event.oldVersion < 3 && db.objectStoreNames.contains(self.STORE_NAME)) {
-                    console.log('Deleting old message store to rebuild with new keyPath configuration');
-                    db.deleteObjectStore(self.STORE_NAME);
+                // 版本6：添加conversation_id字段支持
+                if (event.oldVersion < 6) {
+                    console.log('Upgrading to version 6 - adding conversation_id support');
+                    // 删除旧的消息存储，重新创建以包含新字段
+                    if (db.objectStoreNames.contains(self.STORE_NAME)) {
+                        db.deleteObjectStore(self.STORE_NAME);
+                        console.log('Deleted old message store for version 6 upgrade');
+                    }
                 }
                 
                 // 创建消息存储对象
@@ -122,19 +125,13 @@ const MessageStorage = {
                     
                     // 创建索引
                     console.log('Creating indexes for message store');
-                    messageStore.createIndex('byRoom', 'roomName', { unique: false });
+                    messageStore.createIndex('byChat', 'chatName', { unique: false });
                     messageStore.createIndex('bySender', 'from', { unique: false });
                     messageStore.createIndex('byTime', 'createTime', { unique: false });
                     messageStore.createIndex('byType', 'messageType', { unique: false });
                     messageStore.createIndex('byNSFW', 'isNSFW', { unique: false });
+                    messageStore.createIndex('byConversation', 'conversationId', { unique: false });
                     console.log('Message store and indexes created successfully');
-                } else {
-                    // 如果存储对象已存在，添加新的索引（用于数据库升级）
-                    const messageStore = event.target.transaction.objectStore(self.STORE_NAME);
-                    if (!messageStore.indexNames.contains('byNSFW')) {
-                        messageStore.createIndex('byNSFW', 'isNSFW', { unique: false });
-                        console.log('Added byNSFW index to existing message store');
-                    }
                 }
                 
                 // 创建最后同步时间存储对象
@@ -175,16 +172,16 @@ const MessageStorage = {
                 
                 const request = store.put({
                     id: message.id,
-                    roomName: message.roomName,
+                    chatName: message.chatName,
                     from: message.from,
-                    to: message.to,
                     content: message.content,
                     createTime: message.createTime,
                     type: message.type,
                     messageType: message.messageType,
                     isSystem: message.isSystem || false,
                     isNSFW: message.isNSFW || false,
-                    iv: message.iv || null
+                    iv: message.iv || null,
+                    conversationId: message.conversationId || null
                 });
                 
                 request.onsuccess = () => resolve(request.result);
@@ -204,16 +201,16 @@ const MessageStorage = {
                 messages.forEach(message => {
                     const request = store.put({
                         id: message.id,
-                        roomName: message.roomName,
+                        chatName: message.chatName,
                         from: message.from,
-                        to: message.to,
                         content: message.content,
                         createTime: message.createTime,
                         type: message.type,
                         messageType: message.messageType,
                         isSystem: message.isSystem || false,
                         isNSFW: message.isNSFW || false,
-                        iv: message.iv || null
+                        iv: message.iv || null,
+                        conversationId: message.conversationId || null
                     });
                     
                     request.onsuccess = () => {
@@ -228,14 +225,14 @@ const MessageStorage = {
     },
     
     // 获取指定房间的消息
-    getRoomMessages: function(roomName, limit = 100) {
+    getRoomMessages: function(chatName, limit = 100) {
         return this.openDB().then(db => {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(this.STORE_NAME, 'readonly');
                 const store = transaction.objectStore(this.STORE_NAME);
-                const index = store.index('byRoom');
+                const index = store.index('byChat');
                 
-                const request = index.getAll(IDBKeyRange.only(roomName));
+                const request = index.getAll(IDBKeyRange.only(chatName));
                 
                 request.onsuccess = () => {
                     // 按时间排序并限制数量
@@ -297,14 +294,14 @@ const MessageStorage = {
     },
     
     // 清理旧消息（保留最近N条）
-    cleanupOldMessages: function(roomName, keepCount = 200) {
+    cleanupOldMessages: function(chatName, keepCount = 200) {
         return this.openDB().then(db => {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(this.STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(this.STORE_NAME);
-                const index = store.index('byRoom');
+                const index = store.index('byChat');
                 
-                const request = index.getAll(IDBKeyRange.only(roomName));
+                const request = index.getAll(IDBKeyRange.only(chatName));
                 
                 request.onsuccess = () => {
                     const messages = request.result;
@@ -336,14 +333,14 @@ const MessageStorage = {
     },
     
     // 清空指定房间的消息
-    clearRoomMessages: function(roomName) {
+    clearRoomMessages: function(chatName) {
         return this.openDB().then(db => {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(this.STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(this.STORE_NAME);
-                const index = store.index('byRoom');
+                const index = store.index('byChat');
                 
-                const request = index.openCursor(IDBKeyRange.only(roomName));
+                const request = index.openCursor(IDBKeyRange.only(chatName));
                 
                 request.onsuccess = (event) => {
                     const cursor = event.target.result;
@@ -361,14 +358,14 @@ const MessageStorage = {
     },
     
     // 获取指定时间段内的消息
-    getMessagesByTimeRange: function(roomName, startTime, endTime) {
+    getMessagesByTimeRange: function(chatName, startTime, endTime) {
         return this.openDB().then(db => {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(this.STORE_NAME, 'readonly');
                 const store = transaction.objectStore(this.STORE_NAME);
-                const index = store.index('byRoom');
+                const index = store.index('byChat');
                 
-                const request = index.getAll(IDBKeyRange.only(roomName));
+                const request = index.getAll(IDBKeyRange.only(chatName));
                 
                 request.onsuccess = () => {
                     const messages = request.result.filter(message => {
@@ -390,7 +387,7 @@ const MessageStorage = {
             return new Promise((resolve, reject) => {
                 const transaction = db.transaction(this.STORE_NAME, 'readonly');
                 const store = transaction.objectStore(this.STORE_NAME);
-                const index = store.index('byRoom');
+                const index = store.index('byChat');
                 
                 const request = index.getAll(IDBKeyRange.only(roomName));
                 

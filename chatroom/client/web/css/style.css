@@ -82,7 +82,7 @@ body {
 }
 
 /* Rooms Panel */
-.rooms-panel {
+.chats-panel {
     width: 300px;
     background-color: #f8f9fa;
     border-right: 1px solid #e9ecef;
@@ -104,7 +104,7 @@ body {
     color: #495057;
 }
 
-#create-room-btn {
+#create-chat-btn {
     background-color: #28a745;
     color: white;
     border: none;
@@ -114,11 +114,11 @@ body {
     font-size: 12px;
 }
 
-#create-room-btn:hover {
+#create-chat-btn:hover {
     background-color: #218838;
 }
 
-.rooms-list {
+.chats-list {
     flex: 1;
     padding: 10px;
     overflow-y: auto;
@@ -133,7 +133,7 @@ body {
     text-align: center;
 }
 
-#refresh-rooms-btn {
+#refresh-chats-btn {
     background-color: #6c757d;
     color: white;
     border: none;
@@ -143,7 +143,7 @@ body {
     font-size: 12px;
 }
 
-#refresh-rooms-btn:hover {
+#refresh-chats-btn:hover {
     background-color: #5a6268;
 }
 
@@ -154,7 +154,7 @@ body {
     flex-direction: column;
 }
 
-.room-controls {
+.chat-controls {
     display: flex;
     gap: 10px;
 }
@@ -868,7 +868,7 @@ body {
         flex-direction: column;
     }
     
-    .rooms-panel {
+    .chats-panel {
         width: 100%;
         height: 200px;
     }
@@ -1145,7 +1145,7 @@ body {
     height: 100%;
 }
 
-.rooms-panel {
+.chats-panel {
     width: 250px;
     border-right: 1px solid #dee2e6;
 }

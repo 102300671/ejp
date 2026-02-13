@@ -10,7 +10,7 @@
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>ChatRoom - <span id="current-room-name">Loading...</span></h2>
+                <h2>ChatRoom - <span id="current-chat-name">Loading...</span></h2>
                 <div class="user-info">
                     <span id="current-user"></span>
                     <button id="logout-btn" onclick="logout()">Logout</button>
@@ -22,11 +22,11 @@
                 <!-- Messages Area -->
                 <div class="messages-panel full-width">
                     <div class="panel-header">
-                        <h3 id="current-room-name-full">Loading...</h3>
-                        <div class="room-controls">
-                            <button id="join-room-btn">Join</button>
-                            <button id="leave-room-btn">Leave</button>
-                            <button id="exit-room-btn">Exit</button>
+                        <h3 id="current-chat-name-full">Loading...</h3>
+                        <div class="chat-controls">
+                            <button id="join-room-btn">加入</button>
+                            <button id="leave-room-btn">离开</button>
+                            <button id="exit-room-btn">退出</button>
                         </div>
                     </div>
                     <div id="messages-area" class="messages-area">
@@ -67,11 +67,11 @@
         const roomType = urlParams.get('type');
         
         if (!roomName || !roomType) {
-            document.getElementById('current-room-name').textContent = 'Invalid Room';
-            document.getElementById('current-room-name-full').textContent = 'Invalid Room';
+            document.getElementById('current-chat-name').textContent = 'Invalid Room';
+            document.getElementById('current-chat-name-full').textContent = 'Invalid Room';
         } else {
-            document.getElementById('current-room-name').textContent = roomName;
-            document.getElementById('current-room-name-full').textContent = roomName;
+            document.getElementById('current-chat-name').textContent = roomName;
+            document.getElementById('current-chat-name-full').textContent = roomName;
         }
         
         // Initialize the chat client

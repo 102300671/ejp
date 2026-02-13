@@ -255,19 +255,6 @@
                                 </select>
                             </div>
                             
-                            <div class="settings-item">
-                                <div class="settings-item-info">
-                                    <h4>Auto Sync Interval</h4>
-                                    <p>How often to sync messages (seconds)</p>
-                                </div>
-                                <select id="sync-interval" class="settings-select">
-                                    <option value="15">15 seconds</option>
-                                    <option value="30" selected>30 seconds</option>
-                                    <option value="60">1 minute</option>
-                                    <option value="120">2 minutes</option>
-                                </select>
-                            </div>
-                            
                             <div class="settings-item danger">
                                 <div class="settings-item-info">
                                     <h4>Clear All Data</h4>

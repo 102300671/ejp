@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
+import server.sql.conversation.ConversationDAO;
+import server.sql.conversation.ConversationMember;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -112,6 +114,12 @@ public class MessageRouter {
         System.out.println("创建新房间: " + name + " (ID: " + id + ")");
         return room;
     }
+    
+    /**
+     * 添加房间
+     * @param room 房间对象
+     * @return 是否添加成功
+     */
 
     /**
      * 获取房间
@@ -209,8 +217,9 @@ public class MessageRouter {
                 Message joinMessage = new Message(
                     MessageType.JOIN,
                     session.getUsername(),
-                    room.getName(),
-                    session.getUsername() + " 加入了聊天室"
+                    session.getUsername() + " 加入了聊天室",
+                    null,
+                    room.getConversationId()
                 );
                 
                 // 编码并广播消息
@@ -293,6 +302,63 @@ public class MessageRouter {
             return true;
         } catch (Exception e) {
             System.err.println("发送私人消息失败: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * 根据会话ID发送消息
+     * @param conversationId 会话ID
+     * @param message 消息内容
+     * @param excludeUserId 排除的用户ID
+     * @return true表示发送成功，false表示失败
+     */
+    public boolean sendMessageByConversationId(int conversationId, String message, String excludeUserId) {
+        if (conversationId <= 0 || message == null || message.isEmpty()) {
+            System.err.println("无效的会话ID或消息参数");
+            return false;
+        }
+
+        try {
+            // 从数据库获取会话成员
+            List<String> memberUsernames = new ArrayList<>();
+            try (Connection connection = new DatabaseManager().getConnection()) {
+                ConversationDAO conversationDAO = new ConversationDAO();
+                List<ConversationMember> members = conversationDAO.getConversationMembers(conversationId, connection);
+                for (ConversationMember member : members) {
+                    memberUsernames.add(member.getUsername());
+                }
+            } catch (SQLException e) {
+                System.err.println("获取会话成员失败: " + e.getMessage());
+                e.printStackTrace();
+                return false;
+            }
+
+            // 向所有会话成员发送消息
+            int sentCount = 0;
+            for (String username : memberUsernames) {
+                // 查找用户会话
+                for (Map.Entry<String, Session> entry : sessions.entrySet()) {
+                    Session session = entry.getValue();
+                    if (session != null && session.isActive() && session.getUsername() != null && 
+                        session.getUsername().equals(username)) {
+                        // 排除指定用户
+                        if (excludeUserId != null && entry.getKey().equals(excludeUserId)) {
+                            continue;
+                        }
+                        
+                        session.getClientConnection().send(message);
+                        sentCount++;
+                        break;
+                    }
+                }
+            }
+
+            System.out.println("向会话 " + conversationId + " 的 " + sentCount + " 个成员发送消息成功");
+            return sentCount > 0;
+        } catch (Exception e) {
+            System.err.println("根据会话ID发送消息失败: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -443,7 +509,44 @@ public class MessageRouter {
         }
         
         rooms.put(room.getId(), room);
-        System.out.println("房间已添加到路由器: " + room.getName() + " (ID: " + room.getId() + ")");
+        System.out.println("房间已添加到路由器: " + room.getName() + " (ID: " + room.getId() + "), conversation_id: " + room.getConversationId());
         return true;
+    }
+    
+    /**
+     * 从会话ID中提取实际的房间名或用户名
+     * 客户端使用前缀区分会话类型：#表示房间，@表示好友/私聊
+     * @param sessionId 会话ID（可能带前缀）
+     * @return 实际的房间名或用户名（不带前缀）
+     */
+    public static String extractActualName(String sessionId) {
+        if (sessionId == null || sessionId.isEmpty()) {
+            return sessionId;
+        }
+        
+        // 去除前缀
+        if (sessionId.startsWith("#") || sessionId.startsWith("@")) {
+            return sessionId.substring(1);
+        }
+        
+        return sessionId;
+    }
+    
+    /**
+     * 判断会话ID是否为房间会话
+     * @param sessionId 会话ID
+     * @return true表示房间会话，false表示好友/私聊会话
+     */
+    public static boolean isRoomSession(String sessionId) {
+        return sessionId != null && sessionId.startsWith("#");
+    }
+    
+    /**
+     * 判断会话ID是否为好友/私聊会话
+     * @param sessionId 会话ID
+     * @return true表示好友/私聊会话，false表示房间会话
+     */
+    public static boolean isFriendSession(String sessionId) {
+        return sessionId != null && sessionId.startsWith("@");
     }
 }
