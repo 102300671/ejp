@@ -9,6 +9,8 @@ import server.room.PublicRoom;
 import server.room.Room;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
+import server.sql.conversation.ConversationDAO;
+import server.sql.conversation.Conversation;
 import server.config.ServiceConfig;
 
 public class ChatServer {
@@ -69,23 +71,39 @@ public class ChatServer {
         try {
             conn = databaseManager.getConnection();
             RoomDAO roomDAO = new RoomDAO(messageRouter);
+            ConversationDAO conversationDAO = new ConversationDAO();
             
-            // 检查system房间是否存在
-            if (!roomDAO.roomExists("system", conn)) {
-                System.out.println("system房间不存在，正在创建...");
+            // 检查system conversation是否存在
+            if (!conversationDAO.conversationExists("system", conn)) {
+                System.out.println("system conversation不存在，正在创建...");
+                // 创建system conversation
+                int conversationId = conversationDAO.createConversation("ROOM", "system", conn);
+                System.out.println("system conversation创建成功，ID: " + conversationId);
+                
                 // 创建system房间
                 PublicRoom systemRoom = new PublicRoom("system", null, messageRouter);
                 roomDAO.insertPublicRoom(systemRoom, conn);
+                
+                // 设置房间的conversation_id
+                systemRoom.setConversationId(conversationId);
+                
                 // 将房间添加到消息路由器中
-                messageRouter.createRoom("system", systemRoom.getId(), true);
-                System.out.println("system房间创建成功，ID: " + systemRoom.getId());
+                messageRouter.addRoom(systemRoom);
+                System.out.println("system房间创建成功，ID: " + systemRoom.getId() + ", conversation_id: " + conversationId);
             } else {
-                System.out.println("system房间已存在");
+                System.out.println("system conversation已存在");
                 // 从数据库获取system房间并添加到消息路由器
                 Room systemRoom = roomDAO.getRoomByName("system", conn);
                 if (systemRoom != null) {
-                    messageRouter.createRoom("system", systemRoom.getId(), true);
-                    System.out.println("已将system房间添加到消息路由器，ID: " + systemRoom.getId());
+                    // 获取conversation_id
+                    Conversation conversation = conversationDAO.getConversationByRoomName("system", conn);
+                    if (conversation != null) {
+                        systemRoom.setConversationId(conversation.getId());
+                        System.out.println("system conversation已存在，ID: " + conversation.getId());
+                    }
+                    
+                    messageRouter.addRoom(systemRoom);
+                    System.out.println("已将system房间添加到消息路由器，ID: " + systemRoom.getId() + ", conversation_id: " + systemRoom.getConversationId());
                 }
             }
         } catch (Exception e) {

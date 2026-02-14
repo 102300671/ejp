@@ -14,6 +14,8 @@ import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
 import server.sql.user.uuid.UUIDGenerator;
 import server.sql.message.MessageDAO;
+import server.sql.conversation.ConversationDAO;
+import server.sql.conversation.Conversation;
 import server.room.PublicRoom;
 import server.room.PrivateRoom;
 import server.room.Room;
@@ -1538,6 +1540,23 @@ public class ClientConnection implements Runnable {
                     if ("system".equals(messageRouter.getRooms().get(roomId).getName())) {
                         // 加入system房间
                         messageRouter.joinRoom(userId, roomId);
+                        
+                        // 将用户加入system conversation
+                        Room systemRoom = messageRouter.getRooms().get(roomId);
+                        if (systemRoom.getConversationId() != null) {
+                            try (Connection connection = dbManager.getConnection()) {
+                                ConversationDAO conversationDAO = new ConversationDAO();
+                                // 检查用户是否已在conversation中
+                                if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), connection)) {
+                                    conversationDAO.addConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                                    System.out.println("用户已加入system conversation：" + currentUser.getUsername() + ", conversation_id: " + systemRoom.getConversationId());
+                                }
+                            } catch (SQLException e) {
+                                System.err.println("加入system conversation失败: " + e.getMessage());
+                                e.printStackTrace();
+                            }
+                        }
+                        
                         System.out.println("用户已加入system房间：" + currentUser.getUsername());
                         break;
                     }

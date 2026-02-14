@@ -45,7 +45,10 @@ const MessageType = {
     UPDATE_USER_SETTINGS: 'UPDATE_USER_SETTINGS',
     UPDATE_ROOM_SETTINGS: 'UPDATE_ROOM_SETTINGS',
     DELETE_MESSAGE: 'DELETE_MESSAGE',
-    RECALL_MESSAGE: 'RECALL_MESSAGE'
+    RECALL_MESSAGE: 'RECALL_MESSAGE',
+    REQUEST_ROOM_DISPLAY_NAMES: 'REQUEST_ROOM_DISPLAY_NAMES',
+    ROOM_DISPLAY_NAMES_RESPONSE: 'ROOM_DISPLAY_NAMES_RESPONSE',
+    ROOM_DISPLAY_NAME_UPDATED: 'ROOM_DISPLAY_NAME_UPDATED'
 };
 
 const AES_KEY = 'ChatChatNSFWKey2024!@#';
@@ -507,11 +510,12 @@ let chatClient = {
                     });
                     
                     this.log('info', `成功从localStorage加载${roomName}会话的${loadedMessageIds.size}条本地消息`);
-                    
-                    // 使用加载时的 currentChat 值来判断是否需要更新显示
-                    if (currentChatAtLoadTime === roomName) {
-                        this.updateMessagesArea(roomName);
-                    }
+                }
+                
+                // 无论是否有消息，都要更新显示，确保清空消息区域
+                // 使用加载时的 currentChat 值来判断是否需要更新显示
+                if (currentChatAtLoadTime === roomName) {
+                    this.updateMessagesArea(roomName);
                 }
                 resolve();
             } else {
@@ -565,11 +569,12 @@ let chatClient = {
                                 });
                                 
                                 this.log('info', `成功加载${roomName}会话的${loadedMessageIds.size}条本地消息`);
-                                
-                                // 使用加载时的 currentChat 值来判断是否需要更新显示
-                                if (currentChatAtLoadTime === roomName) {
-                                    this.updateMessagesArea(roomName);
-                                }
+                            }
+                            
+                            // 无论是否有消息，都要更新显示，确保清空消息区域
+                            // 使用加载时的 currentChat 值来判断是否需要更新显示
+                            if (currentChatAtLoadTime === roomName) {
+                                this.updateMessagesArea(roomName);
                             }
                         resolve();
                     }).catch(error => {
@@ -1594,6 +1599,27 @@ let chatClient = {
                 });
             }
             
+            // CREATE_ROOM消息使用JSON格式
+            if (type === MessageType.CREATE_ROOM && typeof content === 'string') {
+                messageContent = JSON.stringify({
+                    room_name: to,
+                    room_type: content
+                });
+            }
+            
+            // JOIN消息使用JSON格式，包含conversation_id
+            if (type === MessageType.JOIN && typeof to === 'string') {
+                let conversationId = this.sessionToConversationId[to];
+                if (conversationId) {
+                    messageContent = JSON.stringify({
+                        conversation_id: conversationId,
+                        room_name: to
+                    });
+                } else {
+                    messageContent = to;
+                }
+            }
+            
             // 构造标准消息对象
             message = {
                 type: type,
@@ -1602,6 +1628,14 @@ let chatClient = {
                 time: getLocalTime(),
                 id: this.generateMessageId(type, to)
             };
+            
+            // JOIN消息设置conversation_id在顶层
+            if (type === MessageType.JOIN && typeof to === 'string') {
+                let conversationId = this.sessionToConversationId[to];
+                if (conversationId) {
+                    message.conversationId = conversationId;
+                }
+            }
         }
         
         // Ensure message has a unique ID (只在ID不存在时生成)
@@ -1840,10 +1874,21 @@ let chatClient = {
     
     // Update messages area with stored messages for a specific room
     updateMessagesArea: function(roomName) {
+        console.log('updateMessagesArea called with roomName:', roomName);
+        console.log('this.messages keys:', Object.keys(this.messages));
+        console.log('this.messages[roomName]:', this.messages[roomName]);
+        console.log('this.currentChat:', this.currentChat);
+        
         const messagesArea = document.getElementById('messages-area');
+        console.log('messagesArea element:', messagesArea);
+        console.log('messagesArea.innerHTML before clear:', messagesArea ? messagesArea.innerHTML.substring(0, 100) : 'null');
+        
         if (messagesArea) {
             messagesArea.innerHTML = '';
+            console.log('messagesArea cleared, innerHTML after clear:', messagesArea.innerHTML);
+            
             if (this.messages[roomName]) {
+                console.log('Rendering', this.messages[roomName].length, 'messages for room:', roomName);
                 const currentUsername = this.username || sessionStorage.getItem('username') || localStorage.getItem('username') || 'unknown';
                 
                 this.messages[roomName].forEach(msg => {
@@ -3394,11 +3439,19 @@ let chatClient = {
         // 使用消息中的conversationId（如果存在）
         if (message.conversationId) {
             // 查找对应的会话名称
+            let found = false;
             for (const [sessionName, convId] of Object.entries(this.sessionToConversationId)) {
                 if (convId === message.conversationId) {
                     roomName = sessionName;
+                    found = true;
                     break;
                 }
+            }
+            
+            // 如果找不到对应的会话名称，跳过这条消息
+            if (!found) {
+                console.log('跳过未知conversationId的消息:', message.conversationId, message);
+                return;
             }
         }
         
@@ -3608,6 +3661,38 @@ let chatClient = {
         
         // Determine which room this message belongs to
         let roomName = 'system';
+        
+        // Check if this is a room creation success message
+        if (message.content.includes('创建成功，类型: ')) {
+            // Extract room name from message content
+            const roomMatch = message.content.match(/房间([^\s]+)创建成功/);
+            if (roomMatch && roomMatch[1]) {
+                roomName = roomMatch[1];
+                
+                // Save conversation_id if present
+                if (message.conversationId) {
+                    this.sessionToConversationId[roomName] = message.conversationId;
+                    console.log('保存conversation_id映射:', roomName, '->', message.conversationId);
+                }
+                
+                // Extract room type from message content
+                const typeMatch = message.content.match(/类型: ([^\s]+)/);
+                const roomType = typeMatch ? typeMatch[1] : 'PUBLIC';
+                
+                // Add room to rooms list
+                this.rooms.push({ name: roomName, type: roomType });
+                
+                // Update sessions list
+                this.updateSessionsList();
+                
+                // Update chats list UI
+                this.updateChatsList();
+                
+                // Show success message
+                this.showMessage(`[System] ${message.content}`, true, 'system');
+                return;
+            }
+        }
         
         // Check if this is a room-specific system message
         if (message.content.includes('加入了聊天室') || message.content.includes('离开了聊天室')) {
@@ -4453,8 +4538,8 @@ let chatClient = {
             messageInput.placeholder = 'Type your message...';
         }
         
-        // Send JOIN message to server to switch room (use actual room name without prefix)
-        this.sendMessage(MessageType.JOIN, roomName, roomName);
+        // 不再发送JOIN消息，因为服务器会在登录时自动加入用户到已加入的房间
+        // 只需要客户端层面切换房间
         
         // Request room display names
         this.requestChatDisplayNames(roomName);
@@ -4843,7 +4928,7 @@ let chatClient = {
         const message = {
             type: MessageType.FRIEND_REQUEST,
             from: this.username,
-            content: `Would you like to be friends?`,
+            content: `to:${toUsername};Would you like to be friends?`,
             time: getLocalTime(),
             id: this.generateMessageId('FRIEND_REQUEST', toUsername),
             conversationId: this.sessionToConversationId[toUsername] || null
@@ -4982,7 +5067,7 @@ let chatClient = {
         const message = {
             type: MessageType.FRIEND_REQUEST_RESPONSE,
             from: this.username,
-            content: `${response}:${this.username}`,
+            content: `${response}:${fromUsername}`,
             time: getLocalTime(),
             id: this.generateMessageId('FRIEND_REQUEST_RESPONSE', fromUsername),
             conversationId: this.sessionToConversationId[fromUsername] || null
@@ -5928,7 +6013,7 @@ let chatClient = {
         const message = {
             type: MessageType.ROOM_JOIN_RESPONSE,
             from: this.username,
-            content: `${response}:${roomName}`,
+            content: `${response}:${roomName}:${fromUsername}`,
             time: getLocalTime(),
             id: this.generateMessageId('ROOM_JOIN_RESPONSE', fromUsername)
         };

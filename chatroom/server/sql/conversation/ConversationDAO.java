@@ -813,4 +813,27 @@ public class ConversationDAO {
         
         return friendConversations;
     }
+    
+    /**
+     * 检查会话是否存在
+     * @param name 会话名称
+     * @param connection 数据库连接
+     * @return 是否存在
+     * @throws SQLException SQL异常
+     */
+    public boolean conversationExists(String name, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM conversation WHERE name = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        
+        return false;
+    }
 }

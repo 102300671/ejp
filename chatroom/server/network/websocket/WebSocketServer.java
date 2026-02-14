@@ -126,7 +126,7 @@ public class WebSocketServer extends org.java_websocket.server.WebSocketServer {
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("新WebSocket客户端已连接: " + conn.getRemoteSocketAddress());
         // 创建WebSocket连接处理对象
-        WebSocketConnection webSocketConnection = new WebSocketConnection(conn, messageRouter);
+        WebSocketConnection webSocketConnection = new WebSocketConnection(conn, messageRouter, this);
         connections.put(conn, webSocketConnection);
         webSocketConnection.onOpen();
     }
@@ -159,5 +159,27 @@ public class WebSocketServer extends org.java_websocket.server.WebSocketServer {
     
     public ConcurrentHashMap<WebSocket, WebSocketConnection> getWebSocketConnections() {
         return connections;
+    }
+    
+    /**
+     * 根据用户ID获取WebSocket连接
+     * @param userId 用户ID
+     * @return WebSocketConnection对象，如果不存在则返回null
+     */
+    public WebSocketConnection getConnectionByUserId(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return null;
+        }
+        
+        // 遍历所有连接，查找匹配的用户ID
+        for (WebSocketConnection connection : connections.values()) {
+            if (connection.isAuthenticated() && connection.getCurrentUser() != null) {
+                if (String.valueOf(connection.getCurrentUser().getId()).equals(userId)) {
+                    return connection;
+                }
+            }
+        }
+        
+        return null;
     }
 }

@@ -47,10 +47,15 @@ public class WebSocketConnection {
     private RoomDAO roomDAO;
     private Session currentSession;
     private server.sql.conversation.ConversationDAO conversationDAO;
+    private WebSocketServer webSocketServer;
     
     private static final java.time.ZoneId BEIJING_ZONE = java.time.ZoneId.of("Asia/Shanghai");
     
     public WebSocketConnection(WebSocket conn, MessageRouter messageRouter) {
+        this(conn, messageRouter, null);
+    }
+    
+    public WebSocketConnection(WebSocket conn, MessageRouter messageRouter, WebSocketServer webSocketServer) {
         this.conn = conn;
         this.clientAddress = conn.getRemoteSocketAddress().getAddress().getHostAddress();
         this.clientPort = conn.getRemoteSocketAddress().getPort();
@@ -62,6 +67,7 @@ public class WebSocketConnection {
         this.userDAO = new UserDAO();
         this.roomDAO = new RoomDAO(messageRouter);
         this.conversationDAO = new server.sql.conversation.ConversationDAO();
+        this.webSocketServer = webSocketServer;
     }
     
     public void onOpen() {
@@ -720,14 +726,18 @@ public class WebSocketConnection {
                     System.out.println("处理创建房间消息: " + currentUser.getUsername() + "创建" + createRoomName + "房间，类型: " + roomType);
                     
                     try (Connection connection = dbManager.getConnection()) {
-                        // 检查房间是否已存在（应用层检查）
-                        if (roomDAO.roomExists(createRoomName, connection)) {
+                        // 检查conversation是否已存在
+                        if (conversationDAO.conversationExists(createRoomName, connection)) {
                             Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "已存在", null);
                             send(messageCodec.encode(systemMessage));
                             break;
                         }
                         
                         try {
+                            // 创建新的conversation
+                            int newConversationId = conversationDAO.createConversation("ROOM", createRoomName, connection);
+                            System.out.println("创建conversation成功: ID=" + newConversationId + ", name=" + createRoomName);
+                            
                             // 创建新房间
                             Room newRoom;
                             if ("PRIVATE".equals(roomType)) {
@@ -738,6 +748,9 @@ public class WebSocketConnection {
                                 roomDAO.insertPublicRoom((PublicRoom) newRoom, connection);
                             }
                             
+                            // 设置房间的conversation_id
+                            newRoom.setConversationId(newConversationId);
+                            
                             // 添加房间到消息路由器
                             messageRouter.addRoom(newRoom);
                             
@@ -745,11 +758,14 @@ public class WebSocketConnection {
                             roomDAO.joinRoom(newRoom.getId(), String.valueOf(currentUser.getId()), "OWNER", connection);
                             messageRouter.joinRoom(String.valueOf(currentUser.getId()), newRoom.getId());
                             
+                            // 将创建者加入conversation
+                            conversationDAO.addConversationMember(newConversationId, currentUser.getUsername(), "OWNER", connection);
+                            
                             // 发送成功消息
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "创建成功，类型: " + roomType, null);
+                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "创建成功，类型: " + roomType, newConversationId);
                             send(messageCodec.encode(systemMessage));
                             
-                            System.out.println("房间创建成功: " + createRoomName + " (ID: " + newRoom.getId() + ", 类型: " + roomType + ")");
+                            System.out.println("房间创建成功: " + createRoomName + " (ID: " + newRoom.getId() + ", conversation_id: " + newConversationId + ", 类型: " + roomType + ")");
                         } catch (java.sql.SQLException e) {
                             // 检查是否是唯一性约束冲突（数据库层保护）
                             if (e.getMessage() != null && e.getMessage().contains("Duplicate entry")) {
@@ -1058,11 +1074,11 @@ public class WebSocketConnection {
             // 生成并插入UUID
             String uuid = UUIDGenerator.generateAndInsertUUID(userId, connection);
             
-            // 构造注册成功消息，to字段设置为实际的用户名
+            // 构造注册成功消息，content字段设置为实际的用户名
             Message authSuccessMessage = new Message(
                 MessageType.AUTH_SUCCESS,
                 "server",
-                username,  // 使用实际的用户名而不是message.getFrom()
+                username,  // 使用实际的用户名
                 uuid,
                 null
             );
@@ -1078,6 +1094,36 @@ public class WebSocketConnection {
             currentUser = userDAO.getUserByUsername(username, connection);
             
             System.out.println("用户注册成功: " + username + " (ID: " + userId + ")");
+            
+            // 将用户加入system房间
+            try {
+                // 查找system房间
+                Room systemRoom = null;
+                String systemRoomId = null;
+                for (String roomId : messageRouter.getRooms().keySet()) {
+                    Room room = messageRouter.getRooms().get(roomId);
+                    if ("system".equals(room.getName())) {
+                        systemRoom = room;
+                        systemRoomId = roomId;
+                        break;
+                    }
+                }
+                
+                if (systemRoom != null) {
+                    // 将用户加入system房间
+                    roomDAO.joinRoom(systemRoomId, String.valueOf(userId), "MEMBER", connection);
+                    System.out.println("用户已加入system房间: " + username + " (ID: " + userId + ")");
+                    
+                    // 将用户加入system conversation
+                    if (systemRoom.getConversationId() != null) {
+                        conversationDAO.addConversationMember(systemRoom.getConversationId(), username, "MEMBER", connection);
+                        System.out.println("用户已加入system conversation: " + username + ", conversation_id: " + systemRoom.getConversationId());
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("加入system房间失败: " + e.getMessage());
+                e.printStackTrace();
+            }
             
             // 创建并注册会话
             createAndRegisterSession();
@@ -1150,7 +1196,7 @@ public class WebSocketConnection {
             Message authSuccessMessage = new Message(
                 MessageType.AUTH_SUCCESS,
                 "server",
-                username,  // 使用正确的用户名作为to字段
+                username,  // 使用正确的用户名
                 uuid,
                 null
             );
@@ -1165,6 +1211,43 @@ public class WebSocketConnection {
             isAuthenticated = true;
             
             System.out.println("用户登录成功: " + username + " (ID: " + currentUser.getId() + ")");
+            
+            // 检查用户是否在system房间中，如果不在就加入
+            try {
+                // 查找system房间
+                Room systemRoom = null;
+                String systemRoomId = null;
+                for (String roomId : messageRouter.getRooms().keySet()) {
+                    Room room = messageRouter.getRooms().get(roomId);
+                    if ("system".equals(room.getName())) {
+                        systemRoom = room;
+                        systemRoomId = roomId;
+                        break;
+                    }
+                }
+                
+                if (systemRoom != null) {
+                    // 检查用户是否已在system房间中
+                    boolean userInSystemRoom = roomDAO.isUserInRoom(systemRoomId, String.valueOf(currentUser.getId()), connection);
+                    
+                    if (!userInSystemRoom) {
+                        // 将用户加入system房间
+                        roomDAO.joinRoom(systemRoomId, String.valueOf(currentUser.getId()), "MEMBER", connection);
+                        System.out.println("用户已加入system房间: " + username + " (ID: " + currentUser.getId() + ")");
+                        
+                        // 将用户加入system conversation
+                        if (systemRoom.getConversationId() != null) {
+                            if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), connection)) {
+                                conversationDAO.addConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                                System.out.println("用户已加入system conversation: " + username + ", conversation_id: " + systemRoom.getConversationId());
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("检查/加入system房间失败: " + e.getMessage());
+                e.printStackTrace();
+            }
             
             // 更新用户状态为ONLINE
             try {
@@ -1652,6 +1735,17 @@ public class WebSocketConnection {
                                 
                                 // 加入房间
                                 messageRouter.joinRoom(userId, roomId);
+                                
+                                // 将用户加入对应的conversation
+                                Room room = messageRouter.getRooms().get(roomId);
+                                if (room != null && room.getConversationId() != null) {
+                                    // 检查用户是否已在conversation中
+                                    if (!conversationDAO.isConversationMember(room.getConversationId(), currentUser.getUsername(), connection)) {
+                                        conversationDAO.addConversationMember(room.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                                        System.out.println("用户已加入conversation: " + currentUser.getUsername() + ", conversation_id: " + room.getConversationId() + ", room: " + roomName);
+                                    }
+                                }
+                                
                                 System.out.println("用户已加入房间: " + roomName + " (ID: " + roomId + ")");
                             }
                         }
@@ -1943,8 +2037,17 @@ public class WebSocketConnection {
     private void handleFriendRequest(Message message) {
         String fromUsername = currentUser.getUsername();
         Integer conversationId = message.getConversationId();
-        String toUsername = "";
         String content = message.getContent();
+        String toUsername = null;
+        
+        // 从消息内容中解析接收者
+        if (content.startsWith("to:")) {
+            int toEnd = content.indexOf(";");
+            if (toEnd > 0) {
+                toUsername = content.substring(3, toEnd);
+                content = content.substring(toEnd + 1);
+            }
+        }
         
         System.out.println("处理好友请求: " + fromUsername + " -> " + toUsername);
         
@@ -2013,13 +2116,18 @@ public class WebSocketConnection {
     private void handleFriendRequestResponse(Message message) {
         String username = currentUser.getUsername();
         Integer conversationId = message.getConversationId();
-        String toUsername = "";
         String content = message.getContent();
+        String toUsername = null;
+        
+        // 解析响应（accept/reject）
+        String[] parts = content.split(":");
+        String response = parts.length > 0 ? parts[0].trim().toLowerCase() : "";
+        toUsername = parts.length > 1 ? parts[1].trim() : null;
         
         System.out.println("处理好友请求响应: " + username + " <- " + toUsername + ", 内容: " + content);
         
         try (Connection connection = dbManager.getConnection()) {
-            // 获取原始发送者用户ID（to字段中的用户）
+            // 获取原始发送者用户ID（从消息内容中解析）
             int fromUserId = userDAO.getUserIdByUsername(toUsername, connection);
             if (fromUserId == -1) {
                 Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户 " + toUsername + " 不存在", null);
@@ -2036,10 +2144,6 @@ public class WebSocketConnection {
                 send(messageCodec.encode(errorMsg));
                 return;
             }
-            
-            // 解析响应（accept/reject）
-            String[] parts = content.split(":");
-            String response = parts.length > 0 ? parts[0].trim().toLowerCase() : "";
             
             if ("accept".equals(response)) {
                 // 接受好友请求
@@ -2323,9 +2427,12 @@ public class WebSocketConnection {
         
         // 查找房间
         String roomId = null;
+        Integer conversationId = null;
         for (String rId : messageRouter.getRooms().keySet()) {
-            if (roomName.equals(messageRouter.getRooms().get(rId).getName())) {
+            Room room = messageRouter.getRooms().get(rId);
+            if (roomName.equals(room.getName())) {
                 roomId = rId;
+                conversationId = room.getConversationId();
                 break;
             }
         }
@@ -2343,6 +2450,13 @@ public class WebSocketConnection {
             boolean alreadyInRoom = roomDAO.isUserInRoom(roomId, String.valueOf(currentUser.getId()), connection);
             if (alreadyInRoom) {
                 Message errorMsg = new Message(MessageType.SYSTEM, "server", "您已在房间 " + roomName + " 中", null);
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 检查用户是否已在conversation中
+            if (conversationId != null && conversationDAO.isConversationMember(conversationId, username, connection)) {
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "您已在会话 " + roomName + " 中", null);
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2369,9 +2483,40 @@ public class WebSocketConnection {
         
         if (notifyUserIds.isEmpty()) {
             // 如果没有房主和管理员，暂时自动接受请求
-            Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, "server", "accept:" + roomName, null);
+            // 将用户加入房间和conversation
+            try (Connection connection = dbManager.getConnection()) {
+                // 加入房间
+                roomDAO.joinRoom(roomId, String.valueOf(currentUser.getId()), connection);
+                messageRouter.joinRoom(String.valueOf(currentUser.getId()), roomId);
+                
+                // 加入conversation
+                if (conversationId != null) {
+                    conversationDAO.addConversationMember(conversationId, username, "MEMBER", connection);
+                    System.out.println("用户已加入conversation: " + username + ", conversation_id: " + conversationId);
+                }
+                
+                // 更新会话的当前房间
+                Session session = messageRouter.getSessions().get(String.valueOf(currentUser.getId()));
+                if (session != null) {
+                    session.setCurrentRoom(roomName);
+                }
+                
+                System.out.println("房间加入请求已自动接受: " + username + " 可以加入 " + roomName);
+            } catch (SQLException e) {
+                System.err.println("自动加入房间失败: " + e.getMessage());
+                e.printStackTrace();
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "自动加入房间失败", null);
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
+            // 发送包含conversation_id的响应
+            com.google.gson.JsonObject responseData = new com.google.gson.JsonObject();
+            responseData.addProperty("conversation_id", conversationId);
+            responseData.addProperty("room_name", roomName);
+            
+            Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, "server", "accept:" + roomName, conversationId);
             send(messageCodec.encode(responseMsg));
-            System.out.println("房间加入请求已自动接受: " + username + " 可以加入 " + roomName);
             return;
         }
         
@@ -2399,14 +2544,14 @@ public class WebSocketConnection {
         
         System.out.println("处理房间加入请求: 来自 " + fromUsername + " 的房间加入请求，房间: " + roomName);
         
-        // 暂时直接接受所有房间加入请求
-        // 未来应该添加房间管理员系统，由管理员决定是否接受
-        
         // 查找房间
         String roomId = null;
+        Integer conversationId = null;
         for (String rId : messageRouter.getRooms().keySet()) {
-            if (roomName.equals(messageRouter.getRooms().get(rId).getName())) {
+            Room room = messageRouter.getRooms().get(rId);
+            if (roomName.equals(room.getName())) {
                 roomId = rId;
+                conversationId = room.getConversationId();
                 break;
             }
         }
@@ -2416,12 +2561,29 @@ public class WebSocketConnection {
             return;
         }
         
-        // 直接接受请求，发送ROOM_JOIN_RESPONSE消息
-        // 暂时发送给请求者（未来应该发送给管理员）
-        Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, "server", "accept:" + roomName, null);
-        send(messageCodec.encode(responseMsg));
+        Room room = messageRouter.getRooms().get(roomId);
         
-        System.out.println("房间加入请求已接受: " + fromUsername + " 可以加入 " + roomName);
+        // 检查当前用户是否为房主或管理员
+        String currentUserId = String.valueOf(currentUser.getId());
+        String currentUserRole = null;
+        
+        try (Connection connection = dbManager.getConnection()) {
+            currentUserRole = roomDAO.getUserRole(roomId, currentUserId, connection);
+        } catch (SQLException e) {
+            System.err.println("获取用户角色失败: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+        
+        if (!"OWNER".equals(currentUserRole) && !"ADMIN".equals(currentUserRole)) {
+            System.out.println("当前用户不是房主或管理员，忽略房间加入请求");
+            return;
+        }
+        
+        // 将请求转发给房主/管理员（当前用户）
+        // 请求已经通过 sendPrivateMessage 发送过来了，这里不需要再次转发
+        // 只需要在前端显示请求即可
+        System.out.println("房间加入请求已转发给房主/管理员: " + currentUser.getUsername());
     }
     
     private void handleRoomJoinResponse(Message message) {
@@ -2440,8 +2602,165 @@ public class WebSocketConnection {
         String response = parts[0];
         String roomName = parts[1];
         
-        // 暂时不做任何处理，因为请求已经在前端处理了
-        // 未来可以在这里添加额外的逻辑，比如自动加入房间等
+        // 查找房间
+        String roomId = null;
+        Integer conversationId = null;
+        for (String rId : messageRouter.getRooms().keySet()) {
+            Room room = messageRouter.getRooms().get(rId);
+            if (roomName.equals(room.getName())) {
+                roomId = rId;
+                conversationId = room.getConversationId();
+                break;
+            }
+        }
+        
+        if (roomId == null) {
+            System.err.println("房间 " + roomName + " 不存在");
+            return;
+        }
+        
+        Room room = messageRouter.getRooms().get(roomId);
+        
+        // 检查当前用户是否为房主或管理员
+        String currentUserId = String.valueOf(currentUser.getId());
+        String currentUserRole = null;
+        
+        try (Connection connection = dbManager.getConnection()) {
+            currentUserRole = roomDAO.getUserRole(roomId, currentUserId, connection);
+        } catch (SQLException e) {
+            System.err.println("获取用户角色失败: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+        
+        if (!"OWNER".equals(currentUserRole) && !"ADMIN".equals(currentUserRole)) {
+            System.out.println("当前用户不是房主或管理员，忽略房间加入响应");
+            return;
+        }
+        
+        // 处理响应
+        if ("accept".equalsIgnoreCase(response)) {
+            // 接受请求：将请求者加入房间和conversation
+            try (Connection connection = dbManager.getConnection()) {
+                // 查找请求者的用户ID
+                String requesterId = null;
+                String requesterUsername = null;
+                
+                // 从消息的from字段获取请求者用户名
+                // 注意：这里需要从原始请求中获取请求者信息
+                // 由于当前实现中，handleRoomJoinResponse被房主/管理员调用
+                // 我们需要找到对应的请求者
+                
+                // 从消息内容中提取请求者信息（需要前端发送时包含请求者信息）
+                // 或者我们可以从recent requests中查找
+                
+                // 暂时从message的from字段获取（这可能不准确，需要前端配合）
+                // 实际上，我们应该在handleRequestRoomJoin时存储请求信息
+                
+                // 由于当前实现限制，我们假设前端会在content中包含请求者信息
+                // 格式: "accept:roomName:requesterUsername"
+                
+                String requester = null;
+                if (parts.length >= 3) {
+                    requester = parts[2];
+                }
+                
+                if (requester == null || requester.isEmpty()) {
+                    System.err.println("无法确定请求者信息");
+                    return;
+                }
+                
+                requesterUsername = requester;
+                
+                // 查找请求者的用户ID
+                for (Session session : messageRouter.getSessions().values()) {
+                    if (session.getUsername().equals(requesterUsername)) {
+                        requesterId = session.getUserId();
+                        break;
+                    }
+                }
+                
+                if (requesterId == null) {
+                    // 用户可能不在线，尝试从数据库查找
+                    Integer requesterIdInt = userDAO.getUserIdByUsername(requesterUsername, connection);
+                    if (requesterIdInt == null) {
+                        System.err.println("找不到用户: " + requesterUsername);
+                        return;
+                    }
+                    requesterId = String.valueOf(requesterIdInt);
+                }
+                
+                // 检查用户是否已在房间中
+                boolean alreadyInRoom = roomDAO.isUserInRoom(roomId, requesterId, connection);
+                
+                if (!alreadyInRoom) {
+                    // 加入房间
+                    roomDAO.joinRoom(roomId, requesterId, connection);
+                    
+                    // 如果用户在线，加入messageRouter
+                    if (messageRouter.getSessions().containsKey(requesterId)) {
+                        messageRouter.joinRoom(requesterId, roomId);
+                    }
+                    
+                    // 加入conversation
+                    if (conversationId != null) {
+                        conversationDAO.addConversationMember(conversationId, requesterUsername, "MEMBER", connection);
+                        System.out.println("用户已加入conversation: " + requesterUsername + ", conversation_id: " + conversationId);
+                    }
+                    
+                    System.out.println("房间加入请求已接受: " + requesterUsername + " 可以加入 " + roomName);
+                    
+                    // 发送响应给请求者
+                    Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, fromUsername, "accept:" + roomName, conversationId);
+                    if (webSocketServer != null) {
+                        WebSocketConnection requesterConnection = webSocketServer.getConnectionByUserId(requesterId);
+                        if (requesterConnection != null) {
+                            requesterConnection.send(messageCodec.encode(responseMsg));
+                        }
+                    }
+                } else {
+                    System.out.println("用户已在房间中: " + requesterUsername);
+                }
+            } catch (SQLException e) {
+                System.err.println("接受房间加入请求失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else if ("reject".equalsIgnoreCase(response)) {
+            // 拒绝请求：通知请求者
+            String requester = null;
+            if (parts.length >= 3) {
+                requester = parts[2];
+            }
+            
+            if (requester == null || requester.isEmpty()) {
+                System.err.println("无法确定请求者信息");
+                return;
+            }
+            
+            String requesterUsername = requester;
+            String requesterId = null;
+            
+            // 查找请求者的用户ID
+            for (Session session : messageRouter.getSessions().values()) {
+                if (session.getUsername().equals(requesterUsername)) {
+                    requesterId = session.getUserId();
+                    break;
+                }
+            }
+            
+            if (requesterId != null) {
+                // 发送拒绝响应给请求者
+                Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, fromUsername, "reject:" + roomName, conversationId);
+                if (webSocketServer != null) {
+                    WebSocketConnection requesterConnection = webSocketServer.getConnectionByUserId(requesterId);
+                    if (requesterConnection != null) {
+                        requesterConnection.send(messageCodec.encode(responseMsg));
+                    }
+                }
+            }
+            
+            System.out.println("房间加入请求已拒绝: " + requesterUsername + " 无法加入 " + roomName);
+        }
         
         System.out.println("房间加入响应已处理: " + fromUsername + " 对房间 " + roomName + " 的响应: " + response);
     }
