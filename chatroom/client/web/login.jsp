@@ -11,7 +11,7 @@
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>Welcome to ChatRoom</h2>
+                <h2>欢迎来到聊天室</h2>
             </div>
             
             <!-- Current Connection Info -->
@@ -19,28 +19,28 @@
                 <div class="connection-details">
                     <span id="server-ip-port"></span>
                 </div>
-                <button id="disconnect-btn" class="disconnect-btn">Disconnect</button>
+                <button id="disconnect-btn" class="disconnect-btn">断开连接</button>
             </div>
             
             <div class="auth-container">
                 <div class="auth-tabs">
-                    <button class="tab-btn active" onclick="switchTab('login')">Login</button>
-                    <button class="tab-btn" onclick="switchTab('register')">Register</button>
+                    <button class="tab-btn active" onclick="switchTab('login')">登录</button>
+                    <button class="tab-btn" onclick="switchTab('register')">注册</button>
                 </div>
                 
                 <!-- Login Form -->
                 <div id="login-tab" class="tab-content active">
                     <form id="login-form">
                         <div class="form-group">
-                            <label for="login-username">Username:</label>
+                            <label for="login-username">用户名:</label>
                             <input type="text" id="login-username" name="username" required>
                         </div>
                         <div class="form-group">
-                            <label for="login-password">Password:</label>
+                            <label for="login-password">密码:</label>
                             <input type="password" id="login-password" name="password" required>
                         </div>
                         <div class="form-group">
-                            <button type="submit">Login</button>
+                            <button type="submit">登录</button>
                         </div>
                     </form>
                 </div>
@@ -49,32 +49,32 @@
                 <div id="register-tab" class="tab-content">
                     <form id="register-form">
                         <div class="form-group avatar-upload-group">
-                            <label>Avatar (Optional):</label>
+                            <label>头像 (可选):</label>
                             <div class="avatar-upload-container">
                                 <div class="avatar-preview-wrapper">
                                     <img id="register-avatar-preview" src="" alt="Avatar Preview" class="avatar-preview">
                                     <div class="avatar-placeholder">+</div>
                                 </div>
-                                <button type="button" id="upload-avatar-btn" class="upload-avatar-btn">Upload Avatar</button>
-                                <button type="button" id="remove-avatar-btn" class="remove-avatar-btn" style="display: none;">Remove</button>
+                                <button type="button" id="upload-avatar-btn" class="upload-avatar-btn">上传头像</button>
+                                <button type="button" id="remove-avatar-btn" class="remove-avatar-btn" style="display: none;">移除</button>
                                 <input type="file" id="register-avatar-input" accept="image/*" style="display: none;">
                             </div>
-                            <p class="avatar-hint">Click to upload an avatar image (optional)</p>
+                            <p class="avatar-hint">点击上传头像文件 (可选)</p>
                         </div>
                         <div class="form-group">
-                            <label for="register-username">Username:</label>
+                            <label for="register-username">用户名:</label>
                             <input type="text" id="register-username" name="username" required>
                         </div>
                         <div class="form-group">
-                            <label for="register-password">Password:</label>
+                            <label for="register-password">密码:</label>
                             <input type="password" id="register-password" name="password" required>
                         </div>
                         <div class="form-group">
-                            <label for="register-confirm">Confirm Password:</label>
+                            <label for="register-confirm">确认密码:</label>
                             <input type="password" id="register-confirm" name="confirm" required>
                         </div>
                         <div class="form-group">
-                            <button type="submit">Register</button>
+                            <button type="submit">注册</button>
                         </div>
                     </form>
                 </div>

@@ -65,22 +65,22 @@
     <div class="container">
         <div class="connect-container">
             <div class="logo">
-                <h1>ChatRoom</h1>
+                <h1>聊天室</h1>
             </div>
-            <h2>Connect to Chat Server</h2>
-            <p>Please enter the server address and port to connect:</p>
+            <h2>连接到聊天服务器</h2>
+            <p>请输入服务器地址和端口连接:</p>
             
             <form class="connect-form">
                 <div class="form-group">
-                    <label for="server-ip">Server IP:</label>
+                    <label for="server-ip">服务器IP:</label>
                     <input type="text" id="server-ip" name="serverIp" value="localhost" required>
                 </div>
                 <div class="form-group">
-                    <label for="ws-port">WebSocket Port:</label>
+                    <label for="ws-port">WebSocket端口:</label>
                     <input type="number" id="ws-port" name="wsPort" value="8889" min="1" max="65535" required>
                 </div>
                 <div class="form-group">
-                    <label for="ws-protocol">WebSocket Protocol:</label>
+                    <label for="ws-protocol">WebSocket协议:</label>
                     <select id="ws-protocol" name="wsProtocol" required>
                         <option value="ws">ws:// (For HTTP pages)</option>
                         <option value="wss">wss:// (For HTTPS pages)</option>
@@ -88,12 +88,12 @@
                     <small style="display: block; margin-top: 5px; color: #666;">Auto-detected based on current page protocol</small>
                 </div>
                 <div class="form-group">
-                    <button type="submit" id="connect-btn">Connect</button>
+                    <button type="submit" id="connect-btn">连接</button>
                 </div>
             </form>
             
             <div id="status" class="status info">
-                Ready to connect...
+                准备连接...
             </div>
         </div>
     </div>
