@@ -76,6 +76,23 @@ public class Message {
         this.conversationId = conversationId;
     }
     
+    /**
+     * 构造消息对象，自动生成当前时间（不带会话ID）
+     * @param type 消息类型
+     * @param from 发送者
+     * @param content 消息内容
+     */
+    public Message(MessageType type, String from, String content) {
+        this.type = type;
+        this.from = from;
+        this.content = content;
+        this.time = ZonedDateTime.now(ASIA_SHANGHAI).format(BEIJING_ZONE);
+        this.isNSFW = false;
+        this.iv = null;
+        this.id = null;
+        this.conversationId = null;
+    }
+    
     // Getter方法
     public MessageType getType() {
         return type;

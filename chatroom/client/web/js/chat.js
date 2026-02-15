@@ -471,8 +471,26 @@ let chatClient = {
                 
                 if (messages && messages.length > 0) {
                     messages.forEach(msg => {
+                        let content = msg.content;
+                        
+                        // 解析私聊消息的JSON格式
+                        if (msg.type === 'PRIVATE_CHAT' && typeof content === 'string' && content.startsWith('{')) {
+                            try {
+                                const jsonContent = JSON.parse(content);
+                                if (jsonContent.conversation_id && jsonContent.content) {
+                                    content = jsonContent.content;
+                                    // 保存conversation_id映射
+                                    this.sessionToConversationId[msg.from] = jsonContent.conversation_id;
+                                    this.sessionToConversationId[this.username] = jsonContent.conversation_id;
+                                    console.log('从localStorage加载私聊消息，保存conversation_id映射:', msg.from, '->', jsonContent.conversation_id);
+                                }
+                            } catch (e) {
+                                // 不是JSON格式，使用原始内容
+                            }
+                        }
+                        
                         const internalMsg = {
-                            content: msg.content,
+                            content: content,
                             from: msg.from,
                             time: msg.createTime,
                             isSystem: msg.isSystem || false,
@@ -530,8 +548,26 @@ let chatClient = {
                         if (messages && messages.length > 0) {
                                 // 将本地消息添加到内存中
                                 messages.forEach(msg => {
+                                    let content = msg.content;
+                                    
+                                    // 解析私聊消息的JSON格式
+                                    if (msg.type === 'PRIVATE_CHAT' && typeof content === 'string' && content.startsWith('{')) {
+                                        try {
+                                            const jsonContent = JSON.parse(content);
+                                            if (jsonContent.conversation_id && jsonContent.content) {
+                                                content = jsonContent.content;
+                                                // 保存conversation_id映射
+                                                this.sessionToConversationId[msg.from] = jsonContent.conversation_id;
+                                                this.sessionToConversationId[this.username] = jsonContent.conversation_id;
+                                                console.log('从本地加载私聊消息，保存conversation_id映射:', msg.from, '->', jsonContent.conversation_id);
+                                            }
+                                        } catch (e) {
+                                            // 不是JSON格式，使用原始内容
+                                        }
+                                    }
+                                    
                                     const internalMsg = {
-                                        content: msg.content,
+                                        content: content,
                                         from: msg.from,
                                         time: msg.createTime,
                                         isSystem: msg.isSystem || false,
@@ -846,9 +882,27 @@ let chatClient = {
         let newMessages = 0;
         
         messages.forEach(msg => {
+            let content = msg.content;
+            
+            // 解析私聊消息的JSON格式
+            if (msg.type === 'PRIVATE_CHAT' && typeof content === 'string' && content.startsWith('{')) {
+                try {
+                    const jsonContent = JSON.parse(content);
+                    if (jsonContent.conversation_id && jsonContent.content) {
+                        content = jsonContent.content;
+                        // 保存conversation_id映射
+                        this.sessionToConversationId[msg.from] = jsonContent.conversation_id;
+                        this.sessionToConversationId[this.username] = jsonContent.conversation_id;
+                        console.log('从历史消息加载私聊消息，保存conversation_id映射:', msg.from, '->', jsonContent.conversation_id);
+                    }
+                } catch (e) {
+                    // 不是JSON格式，使用原始内容
+                }
+            }
+            
             // 转换为内部消息格式
             const internalMsg = {
-                content: msg.content,
+                content: content,
                 from: msg.from,
                 time: msg.time,
                 isSystem: msg.type === 'SYSTEM',
@@ -1120,18 +1174,41 @@ let chatClient = {
             this.messages[roomName] = [];
         }
         
+        // 解析私聊消息的JSON格式
+        let content = message.content;
+        if (message.type === 'PRIVATE_CHAT' && typeof content === 'string' && content.startsWith('{')) {
+            try {
+                const jsonContent = JSON.parse(content);
+                if (jsonContent.conversation_id && jsonContent.content) {
+                    content = jsonContent.content;
+                    // 保存conversation_id映射
+                    this.sessionToConversationId[message.from] = jsonContent.conversation_id;
+                    this.sessionToConversationId[this.username] = jsonContent.conversation_id;
+                    console.log('从processIncomingMessage加载私聊消息，保存conversation_id映射:', message.from, '->', jsonContent.conversation_id);
+                }
+            } catch (e) {
+                // 不是JSON格式，使用原始内容
+            }
+        }
+        
+        // 创建消息副本，使用解析后的内容
+        const messageToStore = {
+            ...message,
+            content: content
+        };
+        
         // 检查是否已存在相同消息 - 使用消息ID优先，然后使用内容+时间+发送者
         const isDuplicate = this.messages[roomName].some(m => 
-            (message.id && m.id === message.id) || 
-            (!message.id && m.content === message.content && 
-             m.from === message.from && 
-             m.time === message.time)
+            (messageToStore.id && m.id === messageToStore.id) || 
+            (!messageToStore.id && m.content === messageToStore.content && 
+             m.from === messageToStore.from && 
+             m.time === messageToStore.time)
         );
         
         if (!isDuplicate) {
-            this.messages[roomName].push(message);
+            this.messages[roomName].push(messageToStore);
             
-            // 保存消息到本地存储
+            // 保存消息到本地存储（使用原始消息内容）
             if (this.messageStorage) {
                 this.saveMessageToLocal(roomName, message);
             }
@@ -1141,7 +1218,7 @@ let chatClient = {
                 this.updateMessagesArea(roomName);
             }
             
-            this.log('debug', `已处理新消息到会话 ${roomName}: ${message.content.substring(0, 50)}`);
+            this.log('debug', `已处理新消息到会话 ${roomName}: ${messageToStore.content.substring(0, 50)}`);
         }
     },
     
@@ -1281,15 +1358,38 @@ let chatClient = {
                             this.messages[this.currentChat] = [];
                         }
                         
+                        // 解析私聊消息的JSON格式
+                        let content = message.content;
+                        if (message.type === 'PRIVATE_CHAT' && typeof content === 'string' && content.startsWith('{')) {
+                            try {
+                                const jsonContent = JSON.parse(content);
+                                if (jsonContent.conversation_id && jsonContent.content) {
+                                    content = jsonContent.content;
+                                    // 保存conversation_id映射
+                                    this.sessionToConversationId[message.from] = jsonContent.conversation_id;
+                                    this.sessionToConversationId[this.username] = jsonContent.conversation_id;
+                                    console.log('从子窗口NEW_MESSAGE加载私聊消息，保存conversation_id映射:', message.from, '->', jsonContent.conversation_id);
+                                }
+                            } catch (e) {
+                                // 不是JSON格式，使用原始内容
+                            }
+                        }
+                        
+                        // 创建消息副本，使用解析后的内容
+                        const messageToStore = {
+                            ...message,
+                            content: content
+                        };
+                        
                         // 去重检查
                         const isDuplicate = this.messages[this.currentChat].some(m => 
-                            m.content === message.content && 
-                            m.from === message.from && 
-                            m.time === message.time
+                            m.content === messageToStore.content && 
+                            m.from === messageToStore.from && 
+                            m.time === messageToStore.time
                         );
                         
                         if (!isDuplicate) {
-                            this.messages[this.currentChat].push(message);
+                            this.messages[this.currentChat].push(messageToStore);
                             this.updateMessagesArea(this.currentChat);
                         }
                     }
@@ -7608,6 +7708,7 @@ function initChat() {
     
     document.getElementById('refresh-chats-btn').addEventListener('click', function() {
         chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
+        chatClient.requestFriendList();
     });
     
     // Mobile: Back to chats button functionality

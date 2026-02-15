@@ -84,3 +84,6 @@ build/
 
 # Mac
 .DS_Store
+
+chatroom/server/log/
+chatroom/client/web/log/

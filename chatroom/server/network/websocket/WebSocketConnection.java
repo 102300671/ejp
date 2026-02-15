@@ -212,7 +212,7 @@ public class WebSocketConnection {
                     
                     if (conversationId == -1) {
                         // 没有提供 conversation_id
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息缺少 conversation_id", null);
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息缺少 conversation_id");
                         send(messageCodec.encode(errorMsg));
                         break;
                     }
@@ -223,14 +223,14 @@ public class WebSocketConnection {
                         // 获取会话信息
                         server.sql.conversation.Conversation conversation = conversationDAO.getConversation(conversationId, connection);
                         if (conversation == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "会话不存在", null);
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "会话不存在");
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
                         
                         // 检查用户是否是会话成员
                         if (!conversationDAO.isConversationMember(conversationId, from, connection)) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "您不是该会话的成员", null);
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "您不是该会话的成员");
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -397,8 +397,8 @@ public class WebSocketConnection {
                         privateMessageContent.addProperty("conversation_id", privateConversationId);
                         privateMessageContent.addProperty("content", privateContent);
                         
-                        // 保存私聊消息到数据库
-                        Message privateChatMsg = new Message(MessageType.PRIVATE_CHAT, privateFrom, new com.google.gson.Gson().toJson(privateMessageContent), null, privateConversationId);
+                        // 保存私聊消息到数据库，使用客户端发送的时间
+                        Message privateChatMsg = new Message(MessageType.PRIVATE_CHAT, privateFrom, new com.google.gson.Gson().toJson(privateMessageContent), message.getTime(), privateConversationId);
                         MessageDAO messageDAO = new MessageDAO();
                         messageDAO.saveMessage(privateChatMsg, "PRIVATE", privateConversationId, connection);
                         System.out.println("私聊消息已保存到数据库: 从" + privateFrom + "到会话" + privateConversationId + "的消息: " + privateContent);
@@ -424,12 +424,12 @@ public class WebSocketConnection {
                 } catch (SQLException e) {
                     System.err.println("处理私聊消息失败 (SQLException): " + e.getMessage());
                     e.printStackTrace();
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误");
                     send(messageCodec.encode(errorMsg));
                 } catch (Exception e) {
                     System.err.println("处理私聊消息失败 (Exception): " + e.getMessage());
                     e.printStackTrace();
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误");
                     send(messageCodec.encode(errorMsg));
                 }
                 break;
@@ -767,7 +767,7 @@ public class WebSocketConnection {
                     }
                     
                     if (createRoomName == null || roomType == null) {
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "创建房间失败: 缺少房间名称或类型", null);
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "创建房间失败: 缺少房间名称或类型");
                         send(messageCodec.encode(errorMsg));
                         break;
                     }
@@ -855,7 +855,7 @@ public class WebSocketConnection {
                     }
                     
                     if (exitRoomId == null || exitRoomName == null) {
-                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "退出房间失败: 房间不存在", null);
+                        Message errorMsg = new Message(MessageType.SYSTEM, "server", "退出房间失败: 房间不存在");
                         send(messageCodec.encode(errorMsg));
                         break;
                     }
@@ -977,7 +977,7 @@ public class WebSocketConnection {
                         }
                         
                         if (listUsersRoomName == null) {
-                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取房间用户列表失败: 房间不存在", null);
+                            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取房间用户列表失败: 房间不存在");
                             send(messageCodec.encode(errorMsg));
                             break;
                         }
@@ -1891,12 +1891,12 @@ public class WebSocketConnection {
         } catch (java.sql.SQLException e) {
             System.err.println("获取历史消息失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取历史消息失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取历史消息失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         } catch (Exception e) {
             System.err.println("处理历史消息请求失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取历史消息失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取历史消息失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -1993,7 +1993,7 @@ public class WebSocketConnection {
         } catch (java.sql.SQLException e) {
             System.err.println("获取最新时间戳失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取最新时间戳失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取最新时间戳失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2024,7 +2024,7 @@ public class WebSocketConnection {
         } catch (java.sql.SQLException e) {
             System.err.println("获取私聊用户列表失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取私聊用户列表失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取私聊用户列表失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2078,7 +2078,7 @@ public class WebSocketConnection {
         } catch (java.sql.SQLException e) {
             System.err.println("获取用户统计数据失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取用户统计数据失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取用户统计数据失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2129,7 +2129,7 @@ public class WebSocketConnection {
                 // 发送新的好友请求
                 boolean success = friendRequestDAO.sendFriendRequest(currentUser.getId(), toUserId, connection);
                 if (!success) {
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送好友请求失败", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送好友请求失败");
                     send(messageCodec.encode(errorMsg));
                     return;
                 }
@@ -2157,7 +2157,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("处理好友请求失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送好友请求失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送好友请求失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2256,7 +2256,7 @@ public class WebSocketConnection {
                     Message successMsg = new Message(MessageType.SYSTEM, "server", "您已接受 " + toUsername + " 的好友请求", null);
                     send(messageCodec.encode(successMsg));
                 } else {
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "接受好友请求失败", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "接受好友请求失败");
                     send(messageCodec.encode(errorMsg));
                 }
             } else if ("reject".equals(response)) {
@@ -2282,17 +2282,17 @@ public class WebSocketConnection {
                     Message successMsg = new Message(MessageType.SYSTEM, "server", "您已拒绝 " + toUsername + " 的好友请求", null);
                     send(messageCodec.encode(successMsg));
                 } else {
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "拒绝好友请求失败", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "拒绝好友请求失败");
                     send(messageCodec.encode(errorMsg));
                 }
             } else {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "无效的好友请求响应", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "无效的好友请求响应");
                 send(messageCodec.encode(errorMsg));
             }
         } catch (SQLException e) {
             System.err.println("处理好友请求响应失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "处理好友请求响应失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "处理好友请求响应失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2334,7 +2334,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("获取好友列表失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友列表失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友列表失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2346,7 +2346,7 @@ public class WebSocketConnection {
         System.out.println("处理用户搜索请求: 用户 " + username + "，搜索词: " + searchTerm);
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索词不能为空", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索词不能为空");
             send(messageCodec.encode(errorMsg));
             return;
         }
@@ -2377,7 +2377,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("搜索用户失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索用户失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索用户失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2424,7 +2424,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("获取所有好友请求失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友请求失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取好友请求失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2436,7 +2436,7 @@ public class WebSocketConnection {
         System.out.println("处理房间搜索请求: 用户 " + username + "，搜索词: " + searchTerm);
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索词不能为空", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索词不能为空");
             send(messageCodec.encode(errorMsg));
             return;
         }
@@ -2469,7 +2469,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("搜索房间失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索房间失败: 服务器内部错误", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "搜索房间失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2518,7 +2518,7 @@ public class WebSocketConnection {
         } catch (SQLException e) {
             System.err.println("检查用户是否在房间中失败: " + e.getMessage());
             e.printStackTrace();
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "检查房间状态失败", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "检查房间状态失败");
             send(messageCodec.encode(errorMsg));
             return;
         }
@@ -2560,7 +2560,7 @@ public class WebSocketConnection {
             } catch (SQLException e) {
                 System.err.println("自动加入房间失败: " + e.getMessage());
                 e.printStackTrace();
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "自动加入房间失败", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "自动加入房间失败");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2588,7 +2588,7 @@ public class WebSocketConnection {
         if (sentCount > 0) {
             System.out.println("房间加入请求已发送: " + username + " 请求加入 " + roomName + "，已发送给 " + sentCount + " 个房主/管理员");
         } else {
-            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间加入请求发送失败，房主/管理员可能不在线", null);
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间加入请求发送失败，房主/管理员可能不在线");
             send(messageCodec.encode(errorMsg));
         }
     }
@@ -2840,14 +2840,14 @@ public class WebSocketConnection {
             // 检查当前用户是否为房主
             String currentUserRole = roomDAO.getUserRole(room.getId(), String.valueOf(currentUser.getId()), connection);
             if (!"OWNER".equals(currentUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以设置管理员", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以设置管理员");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
             
             // 检查目标用户是否在房间中
             if (!roomDAO.isUserInRoom(room.getId(), targetUserId, connection)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户不在房间中", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户不在房间中");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2855,13 +2855,13 @@ public class WebSocketConnection {
             // 检查目标用户当前角色
             String targetUserRole = roomDAO.getUserRole(room.getId(), targetUserId, connection);
             if ("OWNER".equals(targetUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "不能将房主设置为管理员", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "不能将房主设置为管理员");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
             
             if ("ADMIN".equals(targetUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "该用户已经是管理员", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "该用户已经是管理员");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2869,7 +2869,7 @@ public class WebSocketConnection {
             // 更新用户角色为管理员
             boolean success = roomDAO.updateUserRole(room.getId(), targetUserId, "ADMIN", connection);
             if (success) {
-                Message successMsg = new Message(MessageType.SYSTEM, "server", "已成功设置管理员", null);
+                Message successMsg = new Message(MessageType.SYSTEM, "server", "已成功设置管理员");
                 send(messageCodec.encode(successMsg));
                 
                 // 通知房间中的所有用户刷新成员列表
@@ -2877,7 +2877,7 @@ public class WebSocketConnection {
                 
                 System.out.println("设置管理员成功: " + targetUserId + " 成为房间 " + roomName + " 的管理员");
             } else {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "设置管理员失败", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "设置管理员失败");
                 send(messageCodec.encode(errorMsg));
             }
         } catch (SQLException e) {
@@ -2908,7 +2908,7 @@ public class WebSocketConnection {
             // 检查当前用户是否为房主
             String currentUserRole = roomDAO.getUserRole(room.getId(), String.valueOf(currentUser.getId()), connection);
             if (!"OWNER".equals(currentUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以移除管理员", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以移除管理员");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2916,7 +2916,7 @@ public class WebSocketConnection {
             // 检查目标用户当前角色
             String targetUserRole = roomDAO.getUserRole(room.getId(), targetUserId, connection);
             if (!"ADMIN".equals(targetUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "该用户不是管理员", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "该用户不是管理员");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -2924,7 +2924,7 @@ public class WebSocketConnection {
             // 更新用户角色为普通成员
             boolean success = roomDAO.updateUserRole(room.getId(), targetUserId, "MEMBER", connection);
             if (success) {
-                Message successMsg = new Message(MessageType.SYSTEM, "server", "已成功移除管理员", null);
+                Message successMsg = new Message(MessageType.SYSTEM, "server", "已成功移除管理员");
                 send(messageCodec.encode(successMsg));
                 
                 // 通知房间中的所有用户刷新成员列表
@@ -2932,7 +2932,7 @@ public class WebSocketConnection {
                 
                 System.out.println("移除管理员成功: " + targetUserId + " 不再是房间 " + roomName + " 的管理员");
             } else {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "移除管理员失败", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "移除管理员失败");
                 send(messageCodec.encode(errorMsg));
             }
         } catch (SQLException e) {
@@ -2967,11 +2967,11 @@ public class WebSocketConnection {
                 boolean success = userDAO.updateAcceptTemporaryChat(currentUser.getId(), acceptTemporaryChat, connection);
                 
                 if (success) {
-                    Message successMsg = new Message(MessageType.SYSTEM, "server", "用户设置更新成功", null);
+                    Message successMsg = new Message(MessageType.SYSTEM, "server", "用户设置更新成功");
                     send(messageCodec.encode(successMsg));
                     System.out.println("用户设置更新成功: " + username + " acceptTemporaryChat=" + acceptTemporaryChat);
                 } else {
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户设置更新失败", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "用户设置更新失败");
                     send(messageCodec.encode(errorMsg));
                 }
             }
@@ -3008,7 +3008,7 @@ public class WebSocketConnection {
             // 检查当前用户是否为房主
             String currentUserRole = roomDAO.getUserRole(room.getId(), String.valueOf(currentUser.getId()), dbManager.getConnection());
             if (!"OWNER".equals(currentUserRole)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以修改房间设置", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只有房主可以修改房间设置");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -3027,7 +3027,7 @@ public class WebSocketConnection {
                     roomDAO.updateRoomType(room.getId(), roomType, connection);
                 }
                 
-                Message successMsg = new Message(MessageType.SYSTEM, "server", "房间设置更新成功", null);
+                Message successMsg = new Message(MessageType.SYSTEM, "server", "房间设置更新成功");
                 send(messageCodec.encode(successMsg));
                 System.out.println("房间设置更新成功: " + roomName);
             }
@@ -3054,21 +3054,21 @@ public class WebSocketConnection {
             String roomName = (String) data.get("roomName");
             
             if (messageId == null || roomName == null) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息ID或房间名不能为空", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息ID或房间名不能为空");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
             
             // 检查消息是否属于当前用户
             if (!isMessageOwner(messageId, username)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只能撤回自己发送的消息", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "只能撤回自己发送的消息");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
             
             // 检查消息是否在可撤回时间内（2分钟）
             if (!isMessageWithinRecallTime(messageId)) {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息已超过撤回时间限制（2分钟）", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息已超过撤回时间限制（2分钟）");
                 send(messageCodec.encode(errorMsg));
                 return;
             }
@@ -3091,11 +3091,11 @@ public class WebSocketConnection {
                     messageRouter.broadcastToRoom(roomId, messageCodec.encode(successMsg));
                     System.out.println("消息撤回成功: " + messageId);
                 } else {
-                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间不存在", null);
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "房间不存在");
                     send(messageCodec.encode(errorMsg));
                 }
             } else {
-                Message errorMsg = new Message(MessageType.SYSTEM, "server", "撤回消息失败", null);
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "撤回消息失败");
                 send(messageCodec.encode(errorMsg));
             }
         } catch (Exception e) {
