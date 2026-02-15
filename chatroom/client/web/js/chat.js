@@ -6875,6 +6875,14 @@ function initChat() {
     // Initialize message persistence
     chatClient.initMessagePersistence();
     
+    // Initialize mobile sidebar state
+    const chatsPanel = document.querySelector('.chats-panel');
+    const messagesPanel = document.querySelector('.messages-panel');
+    if (chatsPanel && messagesPanel && window.innerWidth <= 768) {
+        chatsPanel.classList.add('hidden');
+        messagesPanel.classList.add('active');
+    }
+    
     // Initialize connection
     chatClient.connect();
     // Chat list will be requested after UUID authentication
@@ -7720,6 +7728,19 @@ function initChat() {
             if (chatsPanel && messagesPanel) {
                 chatsPanel.classList.remove('hidden');
                 messagesPanel.classList.remove('active');
+            }
+        });
+    }
+    
+    // Mobile: Sidebar toggle button functionality
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', function() {
+            const chatsPanel = document.querySelector('.chats-panel');
+            const messagesPanel = document.querySelector('.messages-panel');
+            if (chatsPanel && messagesPanel) {
+                chatsPanel.classList.toggle('hidden');
+                messagesPanel.classList.toggle('active');
             }
         });
     }

@@ -13,6 +13,7 @@
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
+                <button id="sidebar-toggle-btn" class="sidebar-toggle-btn">☰</button>
                 <h2>聊天室</h2>
                 <div class="user-info">
                     <span id="current-user"></span>
