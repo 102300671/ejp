@@ -3,18 +3,19 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ChatRoom - Friend Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>聊天室 - 好友聊天</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>ChatRoom - <span id="current-chat-name">Loading...</span></h2>
+                <h2>聊天室 - <span id="current-chat-name">加载中...</span></h2>
                 <div class="user-info">
                     <span id="current-user"></span>
-                    <button id="logout-btn" onclick="logout()">Logout</button>
-                    <button id="close-window-btn" onclick="window.close()">Close Window</button>
+                    <button id="logout-btn" onclick="logout()">退出登录</button>
+                    <button id="close-window-btn" onclick="window.close()">关闭窗口</button>
                 </div>
             </div>
             
@@ -22,9 +23,9 @@
                 <!-- Messages Area -->
                 <div class="messages-panel full-width">
                     <div class="panel-header">
-                        <h3 id="current-chat-name-full">Loading...</h3>
+                        <h3 id="current-chat-name-full">加载中...</h3>
                         <div class="chat-controls">
-                            <button id="return-to-room-btn" class="return-button" style="display: none;">Back to Room</button>
+                            <button id="return-to-room-btn" class="return-button" style="display: none;">返回房间</button>
                         </div>
                     </div>
                     <div id="messages-area" class="messages-area">
@@ -34,12 +35,12 @@
                         <input type="file" id="image-input" accept="image/*" style="display: none;">
                         <input type="file" id="file-input" style="display: none;">
                         <div class="message-input-buttons">
-                            <button id="image-btn" title="Send Image">Image</button>
-                            <button id="file-btn" title="Send File">File</button>
+                            <button id="image-btn" title="发送图片">图片</button>
+                            <button id="file-btn" title="发送文件">文件</button>
                         </div>
                         <div class="message-input-main">
-                            <input type="text" id="message-input" placeholder="Type your message...">
-                            <button id="send-btn">Send</button>
+                            <input type="text" id="message-input" placeholder="输入您的消息...">
+                            <button id="send-btn">发送</button>
                         </div>
                     </div>
                 </div>
@@ -54,11 +55,11 @@
                     <img id="modal-image" src="" alt="图片预览">
                     <div id="nsfw-warning" class="nsfw-warning" style="display: none;">
                         <div class="nsfw-warning-content">
-                            <h3>⚠️ NSFW Content Detected</h3>
-                            <p>This image contains potentially inappropriate content.</p>
+                            <h3>⚠️ 检测到NSFW内容</h3>
+                            <p>此图片包含可能不适当的内容。</p>
                             <div class="nsfw-actions">
-                                <button id="send-nsfw-btn">Send Anyway</button>
-                                <button id="cancel-nsfw-btn">Cancel</button>
+                                <button id="send-nsfw-btn">仍然发送</button>
+                                <button id="cancel-nsfw-btn">取消</button>
                             </div>
                         </div>
                     </div>

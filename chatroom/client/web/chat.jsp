@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title>ChatRoom - Main</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
@@ -13,7 +13,7 @@
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>ChatRoom</h2>
+                <h2>聊天室</h2>
                 <div class="user-info">
                     <span id="current-user"></span>
                     <div class="user-menu">
@@ -21,9 +21,9 @@
                             <img id="user-avatar" src="" alt="User Avatar" class="user-avatar-small">
                         </button>
                         <div id="user-menu-dropdown" class="user-menu-dropdown">
-                            <button id="view-profile-btn">👤 Profile</button>
-                            <button id="view-settings-btn">⚙️ Settings</button>
-                            <button id="logout-btn">🚪 Logout</button>
+                            <button id="view-profile-btn">👤 个人资料</button>
+                            <button id="view-settings-btn">⚙️ 设置</button>
+                            <button id="logout-btn">🚪 退出登录</button>
                         </div>
                     </div>
                 </div>
@@ -47,6 +47,7 @@
                 <!-- Messages Area -->
                 <div class="messages-panel">
                     <div class="panel-header">
+                        <button id="back-to-chats-btn" class="return-button">← 返回</button>
                         <h3 id="current-chat-name">system</h3>
                         <div class="chat-controls">
                                 <button id="join-room-btn">加入房间</button>
@@ -61,13 +62,13 @@
                         <input type="file" id="image-input" accept="image/*" style="display: none;">
                         <input type="file" id="file-input" style="display: none;">
                         <div class="message-input-buttons">
-                            <button id="image-btn" title="Send Image">Image</button>
-                            <button id="file-btn" title="Send File">File</button>
+                            <button id="image-btn" title="发送图片">图片</button>
+                            <button id="file-btn" title="发送文件">文件</button>
                         </div>
                         <div class="message-input-main">
-                            <input type="text" id="message-input" placeholder="Type your message...">
-                            <button id="send-btn">Send</button>
-                            <button id="private-msg-btn">Members</button>
+                            <input type="text" id="message-input" placeholder="输入您的消息...">
+                            <button id="send-btn">发送</button>
+                            <button id="private-msg-btn">成员</button>
                         </div>
                     </div>
                 </div>
@@ -78,7 +79,7 @@
         <div id="create-chat-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h3>Create New Room</h3>
+                <h3>创建新房间</h3>
                 <form id="create-chat-form">
                     <div class="form-group">
                         <label for="chat-name">会话名称:</label>
@@ -92,7 +93,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <button type="submit">Create</button>
+                        <button type="submit">创建</button>
                     </div>
                 </form>
             </div>
@@ -106,7 +107,7 @@
                 <form id="join-chat-form">
                     <div class="form-group">
                         <label for="join-chat-name">会话名称:</label>
-                        <input type="text" id="join-chat-name" required placeholder="Enter room name to join">
+                        <input type="text" id="join-chat-name" required placeholder="输入要加入的房间名称">
                     </div>
                     <div class="form-group">
                         <button type="submit">加入</button>
@@ -176,14 +177,14 @@
         <div id="user-search-modal" class="modal">
             <div class="modal-content user-search-modal-content">
                 <span class="close" onclick="document.getElementById('user-search-modal').style.display='none'">&times;</span>
-                <h3>Search Users</h3>
+                <h3>搜索用户</h3>
                 <div class="search-input-container">
-                    <input type="text" id="user-search-input" placeholder="Enter username to search...">
-                    <button id="search-users-btn">Search</button>
+                    <input type="text" id="user-search-input" placeholder="输入用户名进行搜索...">
+                    <button id="search-users-btn">搜索</button>
                 </div>
                 <div class="modal-tabs">
-                    <button class="tab-btn active" data-tab="search">Search Results</button>
-                    <button class="tab-btn" data-tab="requests">Friend Requests</button>
+                    <button class="tab-btn active" data-tab="search">搜索结果</button>
+                    <button class="tab-btn" data-tab="requests">好友请求</button>
                 </div>
                 <div id="search-results" class="user-search-results">
                     <!-- Search results will be displayed here -->
@@ -198,14 +199,14 @@
         <div id="room-search-modal" class="modal">
             <div class="modal-content room-search-modal-content">
                 <span class="close" onclick="document.getElementById('room-search-modal').style.display='none'">&times;</span>
-                <h3>Search Rooms</h3>
+                <h3>搜索房间</h3>
                 <div class="search-input-container">
-                    <input type="text" id="room-search-input" placeholder="Enter room name to search...">
-                    <button id="search-rooms-btn">Search</button>
+                    <input type="text" id="room-search-input" placeholder="输入房间名称进行搜索...">
+                    <button id="search-rooms-btn">搜索</button>
                 </div>
                 <div class="modal-tabs">
-                    <button class="tab-btn active" data-tab="search">Search Results</button>
-                    <button class="tab-btn" data-tab="requests">Room Requests</button>
+                    <button class="tab-btn active" data-tab="search">搜索结果</button>
+                    <button class="tab-btn" data-tab="requests">房间请求</button>
                 </div>
                 <div id="room-search-results" class="room-search-results">
                     <!-- Search results will be displayed here -->

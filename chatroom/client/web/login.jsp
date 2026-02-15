@@ -3,8 +3,8 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChatRoom - Login/Register</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>聊天室 - 登录/注册</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -49,17 +49,17 @@
                 <div id="register-tab" class="tab-content">
                     <form id="register-form">
                         <div class="form-group avatar-upload-group">
-                            <label>头像 (可选):</label>
+                            <label>头像（可选）:</label>
                             <div class="avatar-upload-container">
                                 <div class="avatar-preview-wrapper">
-                                    <img id="register-avatar-preview" src="" alt="Avatar Preview" class="avatar-preview">
+                                    <img id="register-avatar-preview" src="" alt="头像预览" class="avatar-preview">
                                     <div class="avatar-placeholder">+</div>
                                 </div>
                                 <button type="button" id="upload-avatar-btn" class="upload-avatar-btn">上传头像</button>
                                 <button type="button" id="remove-avatar-btn" class="remove-avatar-btn" style="display: none;">移除</button>
                                 <input type="file" id="register-avatar-input" accept="image/*" style="display: none;">
                             </div>
-                            <p class="avatar-hint">点击上传头像文件 (可选)</p>
+                            <p class="avatar-hint">点击上传头像文件（可选）</p>
                         </div>
                         <div class="form-group">
                             <label for="register-username">用户名:</label>

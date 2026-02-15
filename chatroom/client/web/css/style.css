@@ -3,6 +3,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -10,6 +11,8 @@ body {
     background-color: #f0f0f0;
     color: #333;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
@@ -19,7 +22,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Chat Box */
@@ -68,10 +73,17 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #logout-btn:hover {
     background-color: #ff3742;
+}
+
+#logout-btn:active {
+    transform: scale(0.95);
 }
 
 /* Chat Content */
@@ -112,10 +124,17 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #create-chat-btn:hover {
     background-color: #218838;
+}
+
+#create-chat-btn:active {
+    transform: scale(0.95);
 }
 
 .chats-list {
@@ -141,10 +160,17 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #refresh-chats-btn:hover {
     background-color: #5a6268;
+}
+
+#refresh-chats-btn:active {
+    transform: scale(0.95);
 }
 
 /* Messages Panel */
@@ -167,10 +193,17 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #join-room-btn:hover, #leave-room-btn:hover, #exit-room-btn:hover {
     background-color: #0069d9;
+}
+
+#join-room-btn:active, #leave-room-btn:active, #exit-room-btn:active {
+    transform: scale(0.95);
 }
 
 #add-friend-btn {
@@ -181,10 +214,17 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #add-friend-btn:hover {
     background-color: #218838;
+}
+
+#add-friend-btn:active {
+    transform: scale(0.95);
 }
 
 #leave-room-btn {
@@ -340,6 +380,8 @@ body {
     border: 1px solid #dee2e6;
     border-radius: 5px;
     font-size: 14px;
+    touch-action: manipulation;
+    -webkit-appearance: none;
 }
 
 #image-btn {
@@ -350,10 +392,17 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #image-btn:hover {
     background-color: #5a6268;
+}
+
+#image-btn:active {
+    transform: scale(0.95);
 }
 
 #send-btn, #private-msg-btn {
@@ -364,10 +413,17 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #send-btn:hover, #private-msg-btn:hover {
     background-color: #0069d9;
+}
+
+#send-btn:active, #private-msg-btn:active {
+    transform: scale(0.95);
 }
 
 #private-msg-btn {
@@ -384,6 +440,9 @@ body {
     max-width: 400px;
     margin: 0 auto;
     width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 200px);
 }
 
 .auth-tabs {
@@ -570,6 +629,7 @@ body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-content {
@@ -580,6 +640,7 @@ body {
     width: 400px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    -webkit-overflow-scrolling: touch;
 }
 
 .close {
@@ -588,12 +649,19 @@ body {
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
 }
 
 .close:hover, .close:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
+}
+
+.close:active {
+    transform: scale(0.95);
 }
 
 .image-modal-content {
@@ -862,83 +930,459 @@ body {
     font-size: 13px;
 }
 
-/* Responsive Design */
+/* Mobile Layout */
 @media (max-width: 768px) {
+    body {
+        font-size: 16px;
+        overflow-x: hidden;
+    }
+    
+    .container {
+        padding: 0;
+        height: 100vh;
+        height: 100dvh;
+        max-width: 100%;
+    }
+    
+    .chat-box {
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    
+    .chat-header {
+        padding: 12px 16px;
+        min-height: 60px;
+    }
+    
+    .chat-header h2 {
+        font-size: 18px;
+        margin: 0;
+    }
+    
+    .user-info {
+        gap: 10px;
+    }
+    
+    .user-info span {
+        font-size: 14px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    #logout-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
     .chat-content {
-        flex-direction: column;
+        position: relative;
+        overflow: hidden;
     }
     
     .chats-panel {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
-        height: 200px;
+        height: 100%;
+        z-index: 10;
+        transform: translateX(0);
+        transition: transform 0.3s ease;
     }
     
-    .modal-content {
-        width: 90%;
-        margin: 20% auto;
+    .chats-panel.hidden {
+        transform: translateX(-100%);
     }
     
-    /* Mobile Font Sizes */
-    body {
-        font-size: 16px;
+    .messages-panel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
     }
     
-    h2 {
-        font-size: 20px;
-    }
-    
-    h3 {
-        font-size: 18px;
-    }
-    
-    /* Mobile Button Sizes */
-    button {
-        font-size: 16px !important;
-        padding: 10px 16px !important;
-    }
-    
-    /* Mobile Input Sizes */
-    input {
-        font-size: 16px !important;
-        padding: 12px !important;
-    }
-    
-    /* Mobile Spacing */
-    .chat-header {
-        padding: 16px;
+    .messages-panel.active {
+        transform: translateX(0);
+        z-index: 15;
     }
     
     .panel-header {
-        padding: 12px;
+        padding: 12px 16px;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
     
-    .message-input {
-        padding: 12px;
+    .panel-header h3 {
+        font-size: 16px;
+        margin: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .chat-controls {
+        display: flex;
         gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    
+    #join-room-btn, #leave-room-btn, #exit-room-btn, #add-friend-btn {
+        padding: 8px 12px;
+        font-size: 12px;
     }
     
     .messages-area {
         padding: 16px;
+        height: calc(100% - 180px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .sent-message, .received-message {
-        padding: 12px 16px;
+        padding: 12px 14px;
         margin-bottom: 12px;
+        max-width: 85%;
+    }
+    
+    .sent-message {
+        margin-left: auto;
+        margin-right: 0;
+    }
+    
+    .received-message {
+        margin-right: auto;
+        margin-left: 0;
+    }
+    
+    .message-input {
+        padding: 12px 16px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        gap: 8px;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 20;
+    }
+    
+    .message-input-buttons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .message-input-main {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    #message-input {
+        flex: 1;
+        padding: 12px 16px;
+        font-size: 16px;
+        border-radius: 24px;
+        min-height: 44px;
+    }
+    
+    #image-btn, #file-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    #send-btn, #private-msg-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+        min-height: 44px;
+        border-radius: 24px;
+    }
+    
+    /* Mobile Button Sizes */
+    button {
+        font-size: 14px !important;
+        padding: 10px 16px !important;
+        min-height: 44px;
+        min-width: 44px;
+        touch-action: manipulation;
+    }
+    
+    /* Mobile Input Sizes */
+    input, select {
+        font-size: 16px !important;
+        padding: 12px 16px !important;
+        min-height: 44px;
+        border-radius: 8px;
     }
     
     /* Mobile Form Adjustments */
     .auth-container {
-        padding: 20px;
+        padding: 20px 16px;
+        max-width: 100%;
+        margin: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        max-height: calc(100vh - 180px);
     }
     
     .form-group {
         margin-bottom: 16px;
     }
     
-    /* Mobile Connect Container */
-    .connect-container {
-        width: 90% !important;
-        padding: 20px !important;
+    .form-group label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    .form-group button {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 16px;
+        border-radius: 8px;
+    }
+    
+    /* Mobile Modal */
+    .modal {
+        padding: 20px 16px;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+    
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+    }
+    
+    .close {
+        font-size: 32px;
+        padding: 10px;
+    }
+    
+    /* Mobile Avatar */
+    .avatar-preview-wrapper {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .avatar-placeholder {
+        font-size: 36px;
+    }
+    
+    /* Mobile Connection Info */
+    .connection-info {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .connection-details {
+        font-size: 12px;
+        text-align: center;
+    }
+    
+    .disconnect-btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    /* Mobile Room Item */
+    .room-item {
+        padding: 12px 16px;
+        min-height: 60px;
+    }
+    
+    /* Mobile User Item */
+    .user-item {
+        padding: 12px 16px;
+        min-height: 56px;
+    }
+    
+    /* Mobile Tabs */
+    .auth-tabs {
+        margin-bottom: 20px;
+    }
+    
+    .tab-btn {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+    
+    /* Mobile Message */
+    .message {
+        padding: 12px 16px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+    
+    /* Mobile NSFW Toggle */
+    .nsfw-toggle-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    /* Mobile Search Input */
+    .search-input-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .search-input-container input {
+        flex: 1;
+    }
+    
+    /* Mobile Modal Tabs */
+    .modal-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+    }
+    
+    .modal-tabs .tab-btn {
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 13px;
+    }
+    
+    /* Mobile User Menu */
+    .user-menu-btn {
+        padding: 8px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+    
+    .user-avatar-small {
+        width: 32px;
+        height: 32px;
+    }
+    
+    /* Mobile Panel Footer */
+    .panel-footer {
+        padding: 12px 16px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    
+    /* Mobile Create Chat Button */
+    #create-chat-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+    
+    /* Mobile Refresh Button */
+    #refresh-chats-btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    /* Mobile Image Preview */
+    .image-preview-container {
+        max-height: 300px;
+        padding: 8px;
+    }
+    
+    /* Mobile NSFW Warning */
+    .nsfw-warning {
+        padding: 12px;
+        font-size: 13px;
+    }
+    
+    .warning-icon {
+        font-size: 24px;
+    }
+    
+    .warning-content strong {
+        font-size: 14px;
+    }
+    
+    .warning-content p {
+        font-size: 12px;
+    }
+    
+    /* Mobile File Modal */
+    .file-modal-content {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+        max-height: 90vh;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+    }
+    
+    .file-content-display {
+        font-size: 12px;
+        padding: 12px;
+        overflow-x: auto;
+    }
+    
+    /* Mobile Return Button */
+    .return-button {
+        padding: 8px 16px;
+        font-size: 14px;
+        min-height: 36px;
+    }
+    
+    /* Mobile Disabled Buttons */
+    #private-msg-btn.disabled,
+    #image-btn.disabled,
+    #file-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* Mobile Scrollbar */
+    ::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Mobile Safe Area Support */
+    @supports (padding: max(0px)) {
+        .chat-header {
+            padding-top: max(12px, env(safe-area-inset-top));
+        }
+        
+        .message-input {
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+        
+        .modal-content {
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+        }
     }
 }
 
@@ -1179,6 +1623,7 @@ body {
     cursor: pointer;
     font-size: 14px;
     font-weight: bold;
+    display: none;
 }
 
 .return-button:hover {
@@ -1187,6 +1632,16 @@ body {
 
 .return-button:active {
     background-color: #e65100;
+}
+
+/* Mobile Return Button */
+@media (max-width: 768px) {
+    .return-button {
+        display: inline-block;
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 32px;
+    }
 }
 
 /* Friend Request Styles */

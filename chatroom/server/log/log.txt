@@ -1,0 +1,1123 @@
+正在初始化聊天服务器...
+服务配置加载成功: config/service.properties
+ZFile服务器地址: http://localhost:8081
+数据库配置加载成功
+MySQL数据库驱动加载成功
+数据库管理器已初始化
+消息路由器已初始化
+服务器已成功创建，将监听端口: 8888
+WebSocket服务器已创建（普通模式），将监听端口: 8889
+正在检查并创建system房间...
+成功建立数据库连接
+system conversation已存在
+创建新房间: system (ID: 3)
+system conversation已存在，ID: 4
+房间已添加到路由器: system (ID: 3), conversation_id: 4
+已将system房间添加到消息路由器，ID: 3, conversation_id: 4
+数据库连接已成功关闭
+正在从数据库加载所有房间...
+成功建立数据库连接
+创建新房间: system (ID: 3)
+创建新房间: try (ID: 4)
+创建新房间: try1 (ID: 6)
+创建新房间: try2 (ID: 7)
+创建新房间: try3 (ID: 8)
+创建新房间: try4 (ID: 9)
+创建新房间: 2 (ID: 10)
+创建新房间: t1 (ID: 11)
+房间已添加到路由器: try (ID: 4), conversation_id: 1
+已加载公共房间: try (ID: 4)
+房间已添加到路由器: try1 (ID: 6), conversation_id: 5
+已加载公共房间: try1 (ID: 6)
+房间已添加到路由器: try2 (ID: 7), conversation_id: 6
+已加载私人房间: try2 (ID: 7)
+房间已添加到路由器: try3 (ID: 8), conversation_id: 7
+已加载公共房间: try3 (ID: 8)
+房间已添加到路由器: try4 (ID: 9), conversation_id: 11
+已加载公共房间: try4 (ID: 9)
+房间已添加到路由器: 2 (ID: 10), conversation_id: 12
+已加载公共房间: 2 (ID: 10)
+房间已添加到路由器: t1 (ID: 11), conversation_id: 13
+已加载公共房间: t1 (ID: 11)
+所有房间加载完成
+数据库连接已成功关闭
+聊天服务器初始化完成
+=== 服务器状态 ===
+运行状态: 运行中
+TCP服务器端口: 8888
+WebSocket服务器端口: 8889
+活动会话数: 0
+房间数: 8
+================
+正在启动聊天服务器...
+服务器正在监听端口: 8888
+聊天服务器已成功启动
+输入 'stop' 或 'quit' 停止服务器
+WebSocket服务器已启动，监听端口: 8889
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:49050
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:49050
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:49050，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:49050, 代码: 1001, 原因: 
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:49056
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:49056
+收到WebSocket消息: {"type":"LOGIN","from":"unknown","content":"test:test","time":"2026-02-15 11:13:11","id":"LOGIN_server_1771125191496_7lghaqtfr"}
+消息解码成功: Message{type=LOGIN, from='unknown', content='test:test', time='2026-02-15 11:13:11', isNSFW=false, iv='null', id='LOGIN_server_1771125191496_7lghaqtfr', conversationId=null}
+成功建立数据库连接
+用户验证结果 (test): 成功
+消息编码成功: {"type":"AUTH_SUCCESS","from":"server","content":"test","time":"26a2b200-ed87-4298-a7e9-393007f5dcf2","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"AUTH_SUCCESS","from":"server","content":"test","time":"26a2b200-ed87-4298-a7e9-393007f5dcf2","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+用户登录成功: test (ID: 1)
+更新用户状态: 用户ID=1, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test
+创建新会话: 用户ID=1, 用户名=test
+会话已注册: 用户ID=1, 用户名=test
+成功建立数据库连接
+用户添加成功: test (1) 加入房间: system
+用户test(ID: 1) 加入房间: system
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":4}
+向所有客户端广播system消息: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":4}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":4}
+用户已加入房间: system (ID: 3)
+用户添加成功: test (1) 加入房间: t1
+用户test(ID: 1) 加入房间: t1
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":13}
+向房间t1 (ID: 11) 广播消息，用户数量: 1
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":13}
+用户已加入房间: t1 (ID: 11)
+用户添加成功: test (1) 加入房间: try
+用户test(ID: 1) 加入房间: try
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":1}
+向房间try (ID: 4) 广播消息，用户数量: 1
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":1}
+用户已加入房间: try (ID: 4)
+用户添加成功: test (1) 加入房间: try1
+用户test(ID: 1) 加入房间: try1
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":5}
+向房间try1 (ID: 6) 广播消息，用户数量: 1
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":5}
+用户已加入房间: try1 (ID: 6)
+用户添加成功: test (1) 加入房间: try2
+用户test(ID: 1) 加入房间: try2
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":6}
+向房间try2 (ID: 7) 广播消息，用户数量: 1
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":6}
+用户已加入房间: try2 (ID: 7)
+用户添加成功: test (1) 加入房间: try3
+用户test(ID: 1) 加入房间: try3
+消息编码成功: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":7}
+向房间try3 (ID: 8) 广播消息，用户数量: 1
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49056: {"type":"JOIN","from":"test","content":"test 加入了聊天室","isNSFW":false,"conversationId":7}
+用户已加入房间: try3 (ID: 8)
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:49056，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:49056, 代码: 1006, 原因: 
+会话已禁用: 用户ID=1
+会话已注销: 用户ID=1
+成功建立数据库连接
+更新用户状态: 用户ID=1, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:49064
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:49064
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test","content":"26a2b200-ed87-4298-a7e9-393007f5dcf2","time":"2026-02-15 11:13:12","id":"UUID_AUTH_test_1771125192189_7xedis90i"}
+消息解码成功: Message{type=UUID_AUTH, from='test', content='26a2b200-ed87-4298-a7e9-393007f5dcf2', time='2026-02-15 11:13:12', isNSFW=false, iv='null', id='UUID_AUTH_test_1771125192189_7xedis90i', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=1, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test
+用户UUID认证成功: test (ID: 1)
+创建新会话: 用户ID=1, 用户名=test
+会话已注册: 用户ID=1, 用户名=test
+成功建立数据库连接
+用户已存在于房间中: 1 - test
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 1 - test
+用户已加入房间: t1 (ID: 11)
+用户已存在于房间中: 1 - test
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 1 - test
+用户已加入房间: try1 (ID: 6)
+用户已存在于房间中: 1 - test
+用户已加入房间: try2 (ID: 7)
+用户已存在于房间中: 1 - test
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test","content":"","time":"2026-02-15 11:13:12","id":"LIST_ROOMS_server_1771125192208_53jn6rm3h"}
+消息解码成功: Message{type=LIST_ROOMS, from='test', content='', time='2026-02-15 11:13:12', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125192208_53jn6rm3h', conversationId=null}
+处理房间列表请求: test
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7},{\"name\":\"t1\",\"type\":\"PUBLIC\",\"conversation_id\":13}]}","time":"2026-02-15 11:13:12","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7},{\"name\":\"t1\",\"type\":\"PUBLIC\",\"conversation_id\":13}]}","time":"2026-02-15 11:13:12","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test","content":"","time":"2026-02-15 19:13:12","id":"REQUEST_PRIVATE_USERS_undefined_1771125192210_5oz4zo07d"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test', content='', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125192210_5oz4zo07d', conversationId=null}
+处理私聊用户列表请求: 用户test
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test3\",\"test1\"]","time":"2026-02-15 11:13:12","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test3\",\"test1\"]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送私聊用户列表响应: test的私聊用户数量: 2
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test","content":"","time":"2026-02-15 11:13:12","id":"REQUEST_FRIEND_LIST_server_1771125192210_sdsd8f3j9"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test', content='', time='2026-02-15 11:13:12', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125192210_sdsd8f3j9', conversationId=null}
+处理好友列表请求: 用户 test
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-14 22:28:55.0\",\"username\":\"test2\"},{\"createdAt\":\"2026-02-11 20:47:47.0\",\"username\":\"test3\"},{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test1\"}]","time":"2026-02-15 11:13:12","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-14 22:28:55.0\",\"username\":\"test2\"},{\"createdAt\":\"2026-02-11 20:47:47.0\",\"username\":\"test3\"},{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test1\"}]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送好友列表响应: test - 好友数: 3
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125192338_zcn9iifq0"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192338_zcn9iifq0', conversationId=null}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125192367_vw6s5fatq"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192367_vw6s5fatq', conversationId=null}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"2026-02-14 22:28:55","time":"2026-02-15 19:13:12","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125192449_dz4fxcyax"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='2026-02-14 22:28:55', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192449_dz4fxcyax', conversationId=4}
+处理历史消息请求: 从test到的消息，最后时间戳: 2026-02-14 22:28:55
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-14 22:28:55之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"2026-02-13 21:26:34","time":"2026-02-15 19:13:12","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125192449_uqke68c42"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='2026-02-13 21:26:34', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192449_uqke68c42', conversationId=1}
+处理历史消息请求: 从test到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"2026-02-14 23:33:24","time":"2026-02-15 19:13:12","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125192450_slzu92m10"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='2026-02-14 23:33:24', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192450_slzu92m10', conversationId=5}
+处理历史消息请求: 从test到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125192450_dk1ggwou2"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192450_dk1ggwou2', conversationId=6}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 6
+获取历史消息: 会话6的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125192450_jxoxh7zi9"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192450_jxoxh7zi9', conversationId=7}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":13,"id":"REQUEST_HISTORY_undefined_1771125192451_3trarxjkb"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192451_3trarxjkb', conversationId=13}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 13
+获取历史消息: 会话13的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false,"conversationId":13}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125192451_cf5qoedg0"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192451_cf5qoedg0', conversationId=null}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125192452_rlte6n3ua"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192452_rlte6n3ua', conversationId=null}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"0","time":"2026-02-15 19:13:12","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125192452_rw9a6k4da"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='0', time='2026-02-15 19:13:12', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125192452_rw9a6k4da', conversationId=null}
+处理历史消息请求: 从test到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:12"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:12","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try","time":"2026-02-15 11:13:18","id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125198096_w5k7rmvwk"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try', time='2026-02-15 11:13:18', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try_1771125198096_w5k7rmvwk', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try","time":"2026-02-15 11:13:18","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125198096_w5k7rmvwk"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try","time":"2026-02-15 11:13:18","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125198096_w5k7rmvwk"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:13:21","id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125201305_giv868rt7"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try1', time='2026-02-15 11:13:21', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try1_1771125201305_giv868rt7', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:13:21","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125201305_giv868rt7"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:13:21","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125201305_giv868rt7"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:13:23","id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125203028_520n6bfjf"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try2', time='2026-02-15 11:13:23', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try2_1771125203028_520n6bfjf', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:13:23","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125203028_520n6bfjf"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:13:23","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125203028_520n6bfjf"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try3","time":"2026-02-15 11:13:24","id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125204704_cknis1fld"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try3', time='2026-02-15 11:13:24', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try3_1771125204704_cknis1fld', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try3","time":"2026-02-15 11:13:24","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125204704_cknis1fld"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try3","time":"2026-02-15 11:13:24","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125204704_cknis1fld"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"t1","time":"2026-02-15 11:13:25","id":"REQUEST_ROOM_DISPLAY_NAMES_t1_1771125205208_01usgvkkj"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='t1', time='2026-02-15 11:13:25', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_t1_1771125205208_01usgvkkj', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"t1","time":"2026-02-15 11:13:25","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_t1_1771125205208_01usgvkkj"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"t1","time":"2026-02-15 11:13:25","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_t1_1771125205208_01usgvkkj"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"system","time":"2026-02-15 11:13:26","id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125206223_whzir36bb"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='system', time='2026-02-15 11:13:26', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_system_1771125206223_whzir36bb', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"system","time":"2026-02-15 11:13:26","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125206223_whzir36bb"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"system","time":"2026-02-15 11:13:26","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125206223_whzir36bb"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test","content":"2026-02-14 22:28:55","time":"2026-02-15 19:13:26","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125206239_wwtgopb4s"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test', content='2026-02-14 22:28:55', time='2026-02-15 19:13:26', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125206239_wwtgopb4s', conversationId=4}
+处理历史消息请求: 从test到的消息，最后时间戳: 2026-02-14 22:28:55
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-14 22:28:55之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:13:26"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:13:26","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+新客户端已连接: 0:0:0:0:0:0:0:1:52572
+客户端连接初始化完成: 0:0:0:0:0:0:0:1:52572
+开始处理客户端连接: 0:0:0:0:0:0:0:1:52572
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): GET / HTTP/1.1
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Host: localhost:8888
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Connection: keep-alive
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Upgrade-Insecure-Requests: 1
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) TraeCN/1.107.1 Chrome/142.0.7444.235 Electron/39.2.7 Safari/537.36
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Sec-Fetch-Site: none
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Sec-Fetch-Mode: navigate
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Sec-Fetch-User: ?1
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Sec-Fetch-Dest: document
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Accept-Encoding: gzip, deflate, br, zstd
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Accept-Language: zh-CN
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): Cookie: zfile-token=90be2fa1-52cf-4fbf-bc2d-629749000830
+收到客户端消息 (0:0:0:0:0:0:0:1:52572): 
+客户端已断开连接: 0:0:0:0:0:0:0:1:52572
+正在关闭客户端连接: 0:0:0:0:0:0:0:1:52572
+客户端连接已完全关闭: 0:0:0:0:0:0:0:1:52572
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:60108
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:60108
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:60108，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:60108, 代码: 1006, 原因: 
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:60118
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:60118
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:60118，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:60118, 代码: 1000, 原因: 
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:34178
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:34178
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:34178，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:34178, 代码: 1006, 原因: 
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:34182
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:34182
+收到WebSocket消息: {"type":"LOGIN","from":"unknown","content":"test1:test1","time":"2026-02-15 11:14:23","id":"LOGIN_server_1771125263273_uaaw4ah42"}
+消息解码成功: Message{type=LOGIN, from='unknown', content='test1:test1', time='2026-02-15 11:14:23', isNSFW=false, iv='null', id='LOGIN_server_1771125263273_uaaw4ah42', conversationId=null}
+成功建立数据库连接
+用户验证结果 (test1): 成功
+消息编码成功: {"type":"AUTH_SUCCESS","from":"server","content":"test1","time":"6fcba505-30ef-4c99-9d09-5936ba56cb37","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34182: {"type":"AUTH_SUCCESS","from":"server","content":"test1","time":"6fcba505-30ef-4c99-9d09-5936ba56cb37","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34182: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+用户登录成功: test1 (ID: 2)
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户添加成功: test1 (2) 加入房间: system
+用户test1(ID: 2) 加入房间: system
+消息编码成功: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":4}
+向所有客户端广播system消息: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":4}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":4}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34182: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":4}
+用户已加入房间: system (ID: 3)
+用户添加成功: test1 (2) 加入房间: try
+用户test1(ID: 2) 加入房间: try
+消息编码成功: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":1}
+向房间try (ID: 4) 广播消息，用户数量: 2
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":1}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34182: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":1}
+用户已加入房间: try (ID: 4)
+用户添加成功: test1 (2) 加入房间: try1
+用户test1(ID: 2) 加入房间: try1
+消息编码成功: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":5}
+向房间try1 (ID: 6) 广播消息，用户数量: 2
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":5}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34182: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":5}
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:34182，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:34182, 代码: 1006, 原因: 
+会话已禁用: 用户ID=2
+会话已注销: 用户ID=2
+用户已加入conversation: test1, conversation_id: 5, room: try1
+用户已加入房间: try1 (ID: 6)
+成功建立数据库连接
+用户已加入conversation: test1, conversation_id: 6, room: try2
+用户已加入房间: try2 (ID: 7)
+更新用户状态: 用户ID=2, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test1
+用户已加入conversation: test1, conversation_id: 7, room: try3
+用户已加入房间: try3 (ID: 8)
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:34184
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:34184
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test1","content":"6fcba505-30ef-4c99-9d09-5936ba56cb37","time":"2026-02-15 11:14:23","id":"UUID_AUTH_test1_1771125263630_kzb5r5dbz"}
+消息解码成功: Message{type=UUID_AUTH, from='test1', content='6fcba505-30ef-4c99-9d09-5936ba56cb37', time='2026-02-15 11:14:23', isNSFW=false, iv='null', id='UUID_AUTH_test1_1771125263630_kzb5r5dbz', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+用户UUID认证成功: test1 (ID: 2)
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户已存在于房间中: 2 - test1
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try1 (ID: 6)
+用户添加成功: test1 (2) 加入房间: try2
+用户test1(ID: 2) 加入房间: try2
+消息编码成功: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":6}
+向房间try2 (ID: 7) 广播消息，用户数量: 2
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":6}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":6}
+用户已加入房间: try2 (ID: 7)
+用户添加成功: test1 (2) 加入房间: try3
+用户test1(ID: 2) 加入房间: try3
+消息编码成功: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":7}
+向房间try3 (ID: 8) 广播消息，用户数量: 2
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":7}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"JOIN","from":"test1","content":"test1 加入了聊天室","isNSFW":false,"conversationId":7}
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test1","content":"","time":"2026-02-15 11:14:23","id":"LIST_ROOMS_server_1771125263636_de7kof4tc"}
+消息解码成功: Message{type=LIST_ROOMS, from='test1', content='', time='2026-02-15 11:14:23', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125263636_de7kof4tc', conversationId=null}
+处理房间列表请求: test1
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:14:23","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:14:23","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test1","content":"","time":"2026-02-15 19:14:23","id":"REQUEST_PRIVATE_USERS_undefined_1771125263637_3zolzru1g"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test1', content='', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125263637_3zolzru1g', conversationId=null}
+处理私聊用户列表请求: 用户test1
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:14:23","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:14:23","isNSFW":false}
+发送私聊用户列表响应: test1的私聊用户数量: 1
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test1","content":"","time":"2026-02-15 11:14:23","id":"REQUEST_FRIEND_LIST_server_1771125263637_ymzuwt2ge"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test1', content='', time='2026-02-15 11:14:23', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125263637_ymzuwt2ge', conversationId=null}
+处理好友列表请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:14:23","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:14:23","isNSFW":false}
+发送好友列表响应: test1 - 好友数: 1
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:14:23","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125263711_wtwbatnew"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263711_wtwbatnew', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:14:23","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 16:25:11","time":"2026-02-15 19:14:23","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125263712_x3q8o96nf"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 16:25:11', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263712_x3q8o96nf', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 16:25:11
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 16:25:11之后的8条消息
+消息列表编码成功: [{"type":"TEXT","from":"test1","content":"7","time":"2026-02-13 17:25:30","isNSFW":false,"id":"TEXT_conversation_4_310","conversationId":4},{"type":"TEXT","from":"test","content":"8","time":"2026-02-13 18:23:21","isNSFW":false,"id":"TEXT_conversation_4_311","conversationId":4},{"type":"TEXT","from":"test","content":"9","time":"2026-02-13 18:23:55","isNSFW":false,"id":"TEXT_conversation_4_312","conversationId":4},{"type":"TEXT","from":"test","content":"10","time":"2026-02-13 18:44:15","isNSFW":false,"id":"TEXT_conversation_4_313","conversationId":4},{"type":"TEXT","from":"test","content":"11","time":"2026-02-13 18:44:42","isNSFW":false,"id":"TEXT_conversation_4_314","conversationId":4},{"type":"TEXT","from":"test","content":"12","time":"2026-02-13 18:44:57","isNSFW":false,"id":"TEXT_conversation_4_315","conversationId":4},{"type":"TEXT","from":"test","content":"13","time":"2026-02-13 19:00:43","isNSFW":false,"id":"TEXT_conversation_4_316","conversationId":4},{"type":"TEXT","from":"test1","content":"14","time":"2026-02-13 20:17:17","isNSFW":false,"id":"TEXT_conversation_4_319","conversationId":4}]
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 8 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[{\"type\":\"TEXT\",\"from\":\"test1\",\"content\":\"7\",\"time\":\"2026-02-13 17:25:30\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_310\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"8\",\"time\":\"2026-02-13 18:23:21\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_311\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"9\",\"time\":\"2026-02-13 18:23:55\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_312\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"10\",\"time\":\"2026-02-13 18:44:15\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_313\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"11\",\"time\":\"2026-02-13 18:44:42\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_314\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"12\",\"time\":\"2026-02-13 18:44:57\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_315\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"13\",\"time\":\"2026-02-13 19:00:43\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_316\",\"conversationId\":4},{\"type\":\"TEXT\",\"from\":\"test1\",\"content\":\"14\",\"time\":\"2026-02-13 20:17:17\",\"isNSFW\":false,\"id\":\"TEXT_conversation_4_319\",\"conversationId\":4}]","time":"2026-02-15 11:14:23","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的8条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 15:10:27","time":"2026-02-15 19:14:23","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125263712_6yhnl7its"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 15:10:27', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263712_6yhnl7its', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 15:10:27
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 15:10:27之后的8条消息
+消息列表编码成功: [{"type":"TEXT","from":"test","content":"4","time":"2026-02-13 19:00:53","isNSFW":false,"id":"TEXT_conversation_1_317","conversationId":1},{"type":"TEXT","from":"test1","content":"5","time":"2026-02-13 19:01:01","isNSFW":false,"id":"TEXT_conversation_1_318","conversationId":1},{"type":"IMAGE","from":"test","content":"/images/group/public/try/2026/02/13/20241116193508_1770987492474_aj7yju.png","time":"2026-02-13 20:58:12","isNSFW":false,"id":"IMAGE_conversation_1_320","conversationId":1},{"type":"TEXT","from":"test","content":"1","time":"2026-02-13 21:00:44","isNSFW":false,"id":"TEXT_conversation_1_321","conversationId":1},{"type":"IMAGE","from":"test","content":"/images/group/public/try/2026/02/13/20241116194237_1770987651683_xvhvze.png","time":"2026-02-13 21:00:52","isNSFW":false,"id":"IMAGE_conversation_1_322","conversationId":1},{"type":"TEXT","from":"test","content":"2","time":"2026-02-13 21:08:25","isNSFW":false,"id":"TEXT_conversation_1_323","conversationId":1},{"type":"TEXT","from":"test","content":"1","time":"2026-02-13 21:26:18","isNSFW":false,"id":"TEXT_conversation_1_324","conversationId":1},{"type":"IMAGE","from":"test","content":"/images/group/public/try/2026/02/13/20241117172516_1770989193568_p0chzr.png","time":"2026-02-13 21:26:34","isNSFW":false,"id":"IMAGE_conversation_1_325","conversationId":1}]
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 8 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"4\",\"time\":\"2026-02-13 19:00:53\",\"isNSFW\":false,\"id\":\"TEXT_conversation_1_317\",\"conversationId\":1},{\"type\":\"TEXT\",\"from\":\"test1\",\"content\":\"5\",\"time\":\"2026-02-13 19:01:01\",\"isNSFW\":false,\"id\":\"TEXT_conversation_1_318\",\"conversationId\":1},{\"type\":\"IMAGE\",\"from\":\"test\",\"content\":\"/images/group/public/try/2026/02/13/20241116193508_1770987492474_aj7yju.png\",\"time\":\"2026-02-13 20:58:12\",\"isNSFW\":false,\"id\":\"IMAGE_conversation_1_320\",\"conversationId\":1},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"1\",\"time\":\"2026-02-13 21:00:44\",\"isNSFW\":false,\"id\":\"TEXT_conversation_1_321\",\"conversationId\":1},{\"type\":\"IMAGE\",\"from\":\"test\",\"content\":\"/images/group/public/try/2026/02/13/20241116194237_1770987651683_xvhvze.png\",\"time\":\"2026-02-13 21:00:52\",\"isNSFW\":false,\"id\":\"IMAGE_conversation_1_322\",\"conversationId\":1},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"2\",\"time\":\"2026-02-13 21:08:25\",\"isNSFW\":false,\"id\":\"TEXT_conversation_1_323\",\"conversationId\":1},{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"1\",\"time\":\"2026-02-13 21:26:18\",\"isNSFW\":false,\"id\":\"TEXT_conversation_1_324\",\"conversationId\":1},{\"type\":\"IMAGE\",\"from\":\"test\",\"content\":\"/images/group/public/try/2026/02/13/20241117172516_1770989193568_p0chzr.png\",\"time\":\"2026-02-13 21:26:34\",\"isNSFW\":false,\"id\":\"IMAGE_conversation_1_325\",\"conversationId\":1}]","time":"2026-02-15 11:14:23","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的8条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:14:23","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125263713_04miby6dd"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263713_04miby6dd', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 5
+获取历史消息: 会话5的1条消息
+消息列表编码成功: [{"type":"TEXT","from":"test","content":"2","time":"2026-02-14 23:33:24","isNSFW":false,"id":"TEXT_conversation_5_326","conversationId":5}]
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 1 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[{\"type\":\"TEXT\",\"from\":\"test\",\"content\":\"2\",\"time\":\"2026-02-14 23:33:24\",\"isNSFW\":false,\"id\":\"TEXT_conversation_5_326\",\"conversationId\":5}]","time":"2026-02-15 11:14:23","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的1条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:14:23","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125263713_h43l0yfos"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263713_h43l0yfos', conversationId=6}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 6
+获取历史消息: 会话6的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:14:23","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:14:23","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125263714_fbes89jb4"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263714_fbes89jb4', conversationId=7}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:14:23","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:14:23","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125263714_htwwzl24h"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:14:23', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125263714_htwwzl24h', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:14:23"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:14:23","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ALL_FRIEND_REQUESTS","from":"test1","content":"","time":"2026-02-15 11:16:11","id":"REQUEST_ALL_FRIEND_REQUESTS_server_1771125371530_gi4xy4vzf"}
+消息解码成功: Message{type=REQUEST_ALL_FRIEND_REQUESTS, from='test1', content='', time='2026-02-15 11:16:11', isNSFW=false, iv='null', id='REQUEST_ALL_FRIEND_REQUESTS_server_1771125371530_gi4xy4vzf', conversationId=null}
+处理所有好友请求请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:16:11","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:16:11","isNSFW":false}
+发送所有好友请求响应: test1 - 请求数: 1
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:48","id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125408595_vwgoq2b0j"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try1', time='2026-02-15 11:16:48', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try1_1771125408595_vwgoq2b0j', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:48","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125408595_vwgoq2b0j"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:48","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125408595_vwgoq2b0j"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:16:48","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125408599_n9g4czw2l"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:16:48', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125408599_n9g4czw2l', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:16:48"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:16:48","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:16:50","id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125410723_9sfgyhxaw"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try', time='2026-02-15 11:16:50', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try_1771125410723_9sfgyhxaw', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:16:50","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125410723_9sfgyhxaw"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:16:50","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125410723_9sfgyhxaw"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 21:26:34","time":"2026-02-15 19:16:50","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125410729_ut0jq4oma"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 21:26:34', time='2026-02-15 19:16:50', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125410729_ut0jq4oma', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:16:50"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:16:50","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:51","id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125411700_cqee0bn5i"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try2', time='2026-02-15 11:16:51', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try2_1771125411700_cqee0bn5i', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:51","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125411700_cqee0bn5i"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:51","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125411700_cqee0bn5i"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try3","time":"2026-02-15 11:16:52","id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125412542_ghe463bsz"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try3', time='2026-02-15 11:16:52', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try3_1771125412542_ghe463bsz', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try3","time":"2026-02-15 11:16:52","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125412542_ghe463bsz"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try3","time":"2026-02-15 11:16:52","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try3_1771125412542_ghe463bsz"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:16:54","id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125414572_jt4qbyfb0"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='system', time='2026-02-15 11:16:54', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_system_1771125414572_jt4qbyfb0', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:16:54","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125414572_jt4qbyfb0"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:16:54","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125414572_jt4qbyfb0"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:16:54","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125414578_0ur15dneh"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:16:54', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125414578_0ur15dneh', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:16:54"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:16:54","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:55","id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125415929_6z5gv1fac"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try1', time='2026-02-15 11:16:55', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try1_1771125415929_6z5gv1fac', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:55","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125415929_6z5gv1fac"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try1","time":"2026-02-15 11:16:55","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125415929_6z5gv1fac"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:16:55","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125415942_raeqt2vc5"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:16:55', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125415942_raeqt2vc5', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:16:55"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:16:55","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:57","id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125417331_z5k0pgua5"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try2', time='2026-02-15 11:16:57', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try2_1771125417331_z5k0pgua5', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:57","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125417331_z5k0pgua5"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try2","time":"2026-02-15 11:16:57","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125417331_z5k0pgua5"}
+收到WebSocket消息: {"type":"TEXT","from":"test1","content":"{\"conversation_id\":6,\"content\":\"1\"}","time":"2026-02-15 11:16:59","id":"TEXT_try2_1771125419600_ki2s01q8w"}
+消息解码成功: Message{type=TEXT, from='test1', content='{"conversation_id":6,"content":"1"}', time='2026-02-15 11:16:59', isNSFW=false, iv='null', id='TEXT_try2_1771125419600_ki2s01q8w', conversationId=null}
+处理文本消息: 从test1到会话6的消息: 1
+成功建立数据库连接
+消息编码成功: {"type":"TEXT","from":"test1","content":"1","time":"2026-02-15 11:16:59","isNSFW":false,"conversationId":6}
+成功建立数据库连接
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"TEXT","from":"test1","content":"1","time":"2026-02-15 11:16:59","isNSFW":false,"conversationId":6}
+向会话 6 的 1 个成员发送消息成功
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:17:04","id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125424925_9mynyz81y"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try1', time='2026-02-15 11:17:04', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try1_1771125424925_9mynyz81y', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:17:04","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125424925_9mynyz81y"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try1","time":"2026-02-15 11:17:04","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try1_1771125424925_9mynyz81y"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:17:07","id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125427594_4dazjdja3"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test', content='try2', time='2026-02-15 11:17:07', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try2_1771125427594_4dazjdja3', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:17:07","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125427594_4dazjdja3"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:49064: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test","content":"try2","time":"2026-02-15 11:17:07","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try2_1771125427594_4dazjdja3"}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:19:42","id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125582459_1qtswyqhc"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='system', time='2026-02-15 11:19:42', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_system_1771125582459_1qtswyqhc', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:19:42","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125582459_1qtswyqhc"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:19:42","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125582459_1qtswyqhc"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:19:42","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125582465_n5u0a6hgp"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:19:42', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125582465_n5u0a6hgp', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:19:42"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34184: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:19:42","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:34184，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:34184, 代码: 1006, 原因: 
+会话已禁用: 用户ID=2
+会话已注销: 用户ID=2
+成功建立数据库连接
+更新用户状态: 用户ID=2, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test1
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:42008
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:42008
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test1","content":"6fcba505-30ef-4c99-9d09-5936ba56cb37","time":"2026-02-15 11:20:09","id":"UUID_AUTH_test1_1771125609618_61girig2o"}
+消息解码成功: Message{type=UUID_AUTH, from='test1', content='6fcba505-30ef-4c99-9d09-5936ba56cb37', time='2026-02-15 11:20:09', isNSFW=false, iv='null', id='UUID_AUTH_test1_1771125609618_61girig2o', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+用户UUID认证成功: test1 (ID: 2)
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户已存在于房间中: 2 - test1
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try1 (ID: 6)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try2 (ID: 7)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test1","content":"","time":"2026-02-15 11:20:09","id":"LIST_ROOMS_server_1771125609624_t60nn8bcg"}
+消息解码成功: Message{type=LIST_ROOMS, from='test1', content='', time='2026-02-15 11:20:09', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125609624_t60nn8bcg', conversationId=null}
+处理房间列表请求: test1
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:20:09","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:20:09","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test1","content":"","time":"2026-02-15 19:20:09","id":"REQUEST_PRIVATE_USERS_undefined_1771125609626_99mlegb8d"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test1', content='', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125609626_99mlegb8d', conversationId=null}
+处理私聊用户列表请求: 用户test1
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:20:09","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:20:09","isNSFW":false}
+发送私聊用户列表响应: test1的私聊用户数量: 1
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test1","content":"","time":"2026-02-15 11:20:09","id":"REQUEST_FRIEND_LIST_server_1771125609626_fu13ttvtx"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test1', content='', time='2026-02-15 11:20:09', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125609626_fu13ttvtx', conversationId=null}
+处理好友列表请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:20:09","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:20:09","isNSFW":false}
+发送好友列表响应: test1 - 好友数: 1
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:09","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125609644_0xmebmqs6"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609644_0xmebmqs6', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:20:09","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125609655_f55mgqlel"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609655_f55mgqlel', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 21:26:34","time":"2026-02-15 19:20:09","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125609656_z7bvt6ll7"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 21:26:34', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609656_z7bvt6ll7', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:20:09","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125609657_20g9895mk"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609657_20g9895mk', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-15 11:16:59","time":"2026-02-15 19:20:09","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125609658_x9mr8cqev"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-15 11:16:59', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609658_x9mr8cqev', conversationId=6}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-15 11:16:59
+成功建立数据库连接
+使用会话ID: 6
+获取增量消息: 会话6中2026-02-15 11:16:59之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:09","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125609658_wl6na4th4"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609658_wl6na4th4', conversationId=7}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:09","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125609658_pieq0gzn6"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:09', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125609658_pieq0gzn6', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:09"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:09","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ALL_FRIEND_REQUESTS","from":"test1","content":"","time":"2026-02-15 11:20:14","id":"REQUEST_ALL_FRIEND_REQUESTS_server_1771125614944_7mjx01g3p"}
+消息解码成功: Message{type=REQUEST_ALL_FRIEND_REQUESTS, from='test1', content='', time='2026-02-15 11:20:14', isNSFW=false, iv='null', id='REQUEST_ALL_FRIEND_REQUESTS_server_1771125614944_7mjx01g3p', conversationId=null}
+处理所有好友请求请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:20:14","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:42008: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:20:14","isNSFW":false}
+发送所有好友请求响应: test1 - 请求数: 1
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:42008，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:42008, 代码: 1006, 原因: 
+会话已禁用: 用户ID=2
+会话已注销: 用户ID=2
+成功建立数据库连接
+更新用户状态: 用户ID=2, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test1
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:47604
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:47604
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test1","content":"6fcba505-30ef-4c99-9d09-5936ba56cb37","time":"2026-02-15 11:20:19","id":"UUID_AUTH_test1_1771125619936_dyqxu8ri7"}
+消息解码成功: Message{type=UUID_AUTH, from='test1', content='6fcba505-30ef-4c99-9d09-5936ba56cb37', time='2026-02-15 11:20:19', isNSFW=false, iv='null', id='UUID_AUTH_test1_1771125619936_dyqxu8ri7', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+用户UUID认证成功: test1 (ID: 2)
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户已存在于房间中: 2 - test1
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try1 (ID: 6)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try2 (ID: 7)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test1","content":"","time":"2026-02-15 11:20:19","id":"LIST_ROOMS_server_1771125619941_xvjyfuz45"}
+消息解码成功: Message{type=LIST_ROOMS, from='test1', content='', time='2026-02-15 11:20:19', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125619941_xvjyfuz45', conversationId=null}
+处理房间列表请求: test1
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:20:19","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:20:19","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test1","content":"","time":"2026-02-15 19:20:19","id":"REQUEST_PRIVATE_USERS_undefined_1771125619943_2o7qc94ml"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test1', content='', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125619943_2o7qc94ml', conversationId=null}
+处理私聊用户列表请求: 用户test1
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:20:19","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:20:19","isNSFW":false}
+发送私聊用户列表响应: test1的私聊用户数量: 1
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test1","content":"","time":"2026-02-15 11:20:19","id":"REQUEST_FRIEND_LIST_server_1771125619943_xbawv7uw3"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test1', content='', time='2026-02-15 11:20:19', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125619943_xbawv7uw3', conversationId=null}
+处理好友列表请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:20:19","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:20:19","isNSFW":false}
+发送好友列表响应: test1 - 好友数: 1
+收到WebSocket消息: {"type":"REQUEST_USER_STATS","from":"test1","content":"","time":"2026-02-15 19:20:19","id":"REQUEST_USER_STATS_undefined_1771125619944_92yy3b81s"}
+消息解码成功: Message{type=REQUEST_USER_STATS, from='test1', content='', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_USER_STATS_undefined_1771125619944_92yy3b81s', conversationId=null}
+处理用户统计数据请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"USER_STATS_RESPONSE","from":"server","content":"{\"imageCount\":0,\"roomCount\":5,\"messageCount\":5,\"joinTime\":\"2026/01/11\",\"fileCount\":0,\"status\":\"OFFLINE\"}","time":"2026-02-15 11:20:19","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"USER_STATS_RESPONSE","from":"server","content":"{\"imageCount\":0,\"roomCount\":5,\"messageCount\":5,\"joinTime\":\"2026/01/11\",\"fileCount\":0,\"status\":\"OFFLINE\"}","time":"2026-02-15 11:20:19","isNSFW":false}
+发送用户统计数据响应: test1 - 消息数: 5, 图片数: 0, 文件数: 0, 房间数: 5, 加入时间: 2026/01/11, 状态: OFFLINE
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:19","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125619961_pxktvjp7n"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619961_pxktvjp7n', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:19"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:19","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:20:19","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125619969_99xukhe31"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619969_99xukhe31', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:19"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:19","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 21:26:34","time":"2026-02-15 19:20:19","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125619970_0r3p7puqb"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 21:26:34', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619970_0r3p7puqb', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:19"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:19","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:20:19","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125619971_lu0uxf56p"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619971_lu0uxf56p', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:19"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:19","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-15 11:16:59","time":"2026-02-15 19:20:19","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125619972_8ponneoqk"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-15 11:16:59', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619972_8ponneoqk', conversationId=6}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-15 11:16:59
+成功建立数据库连接
+使用会话ID: 6
+获取增量消息: 会话6中2026-02-15 11:16:59之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:20"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:20","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:19","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125619973_v3ud7bte1"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619973_v3ud7bte1', conversationId=7}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:20"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:20","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:20:19","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125619973_bzssikibp"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:20:19', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125619973_bzssikibp', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:20:20"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:47604: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:20:20","isNSFW":false}
+发送历史消息响应: 的0条消息
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:47604，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:47604, 代码: 1006, 原因: 
+会话已禁用: 用户ID=2
+会话已注销: 用户ID=2
+成功建立数据库连接
+更新用户状态: 用户ID=2, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test1
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:34596
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:34596
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test1","content":"6fcba505-30ef-4c99-9d09-5936ba56cb37","time":"2026-02-15 11:21:05","id":"UUID_AUTH_test1_1771125665394_zht8wh3fp"}
+消息解码成功: Message{type=UUID_AUTH, from='test1', content='6fcba505-30ef-4c99-9d09-5936ba56cb37', time='2026-02-15 11:21:05', isNSFW=false, iv='null', id='UUID_AUTH_test1_1771125665394_zht8wh3fp', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+用户UUID认证成功: test1 (ID: 2)
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户已存在于房间中: 2 - test1
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try1 (ID: 6)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try2 (ID: 7)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test1","content":"","time":"2026-02-15 11:21:05","id":"LIST_ROOMS_server_1771125665402_d4haigq95"}
+消息解码成功: Message{type=LIST_ROOMS, from='test1', content='', time='2026-02-15 11:21:05', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125665402_d4haigq95', conversationId=null}
+处理房间列表请求: test1
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:21:05","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:21:05","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test1","content":"","time":"2026-02-15 19:21:05","id":"REQUEST_PRIVATE_USERS_undefined_1771125665405_lrv3fxs8r"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test1', content='', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125665405_lrv3fxs8r', conversationId=null}
+处理私聊用户列表请求: 用户test1
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:21:05","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:21:05","isNSFW":false}
+发送私聊用户列表响应: test1的私聊用户数量: 1
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test1","content":"","time":"2026-02-15 11:21:05","id":"REQUEST_FRIEND_LIST_server_1771125665405_bvcl6ne06"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test1', content='', time='2026-02-15 11:21:05', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125665405_bvcl6ne06', conversationId=null}
+处理好友列表请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:21:05","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:21:05","isNSFW":false}
+发送好友列表响应: test1 - 好友数: 1
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:21:05","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125665427_0ve9z5pzu"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665427_0ve9z5pzu', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:21:05","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125665445_z4vro4fgm"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665445_z4vro4fgm', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 21:26:34","time":"2026-02-15 19:21:05","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125665446_g26e1rwkf"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 21:26:34', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665446_g26e1rwkf', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:21:05","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125665448_cxjn9i4so"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665448_cxjn9i4so', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-15 11:16:59","time":"2026-02-15 19:21:05","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125665449_q2hdipkum"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-15 11:16:59', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665449_q2hdipkum', conversationId=6}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-15 11:16:59
+成功建立数据库连接
+使用会话ID: 6
+获取增量消息: 会话6中2026-02-15 11:16:59之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:21:05","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125665450_y4e8lcv9h"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665450_y4e8lcv9h', conversationId=7}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:21:05","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125665450_neq7fawer"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:21:05', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125665450_neq7fawer', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:21:05"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:21:05","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ALL_FRIEND_REQUESTS","from":"test1","content":"","time":"2026-02-15 11:21:31","id":"REQUEST_ALL_FRIEND_REQUESTS_server_1771125691478_8i8wby85c"}
+消息解码成功: Message{type=REQUEST_ALL_FRIEND_REQUESTS, from='test1', content='', time='2026-02-15 11:21:31', isNSFW=false, iv='null', id='REQUEST_ALL_FRIEND_REQUESTS_server_1771125691478_8i8wby85c', conversationId=null}
+处理所有好友请求请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:21:31","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:34596: {"type":"ALL_FRIEND_REQUESTS","from":"server","content":"[{\"createdAt\":\"2026-02-08 22:46:28.0\",\"fromUserId\":1,\"toUsername\":\"test1\",\"isReceived\":true,\"id\":1,\"toUserId\":2,\"fromUsername\":\"test\",\"status\":\"ACCEPTED\",\"updatedAt\":\"2026-02-09 11:45:25.0\"}]","time":"2026-02-15 11:21:31","isNSFW":false}
+发送所有好友请求响应: test1 - 请求数: 1
+WebSocket客户端已断开连接: /[0:0:0:0:0:0:0:1]:34596，原因: 
+WebSocket连接已关闭: 0:0:0:0:0:0:0:1:34596, 代码: 1006, 原因: 
+会话已禁用: 用户ID=2
+会话已注销: 用户ID=2
+成功建立数据库连接
+更新用户状态: 用户ID=2, status=OFFLINE, 影响行数: 1
+用户状态已更新为OFFLINE: test1
+新WebSocket客户端已连接: /[0:0:0:0:0:0:0:1]:60210
+WebSocket连接已打开: 0:0:0:0:0:0:0:1:60210
+收到WebSocket消息: {"type":"UUID_AUTH","from":"test1","content":"6fcba505-30ef-4c99-9d09-5936ba56cb37","time":"2026-02-15 11:24:38","id":"UUID_AUTH_test1_1771125878166_df8r5d45w"}
+消息解码成功: Message{type=UUID_AUTH, from='test1', content='6fcba505-30ef-4c99-9d09-5936ba56cb37', time='2026-02-15 11:24:38', isNSFW=false, iv='null', id='UUID_AUTH_test1_1771125878166_df8r5d45w', conversationId=null}
+成功建立数据库连接
+消息编码成功: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"UUID_AUTH_SUCCESS","from":"server","content":"test1","time":"认证成功","isNSFW":false}
+消息编码成功: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"SERVICE_CONFIG","from":"server","content":"{\"zfileServerUrl\":\"http://localhost:8081\"}","isNSFW":false}
+服务配置已发送到客户端
+更新用户状态: 用户ID=2, status=ONLINE, 影响行数: 1
+用户状态已更新为ONLINE: test1
+用户UUID认证成功: test1 (ID: 2)
+创建新会话: 用户ID=2, 用户名=test1
+会话已注册: 用户ID=2, 用户名=test1
+成功建立数据库连接
+用户已存在于房间中: 2 - test1
+用户已加入房间: system (ID: 3)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try (ID: 4)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try1 (ID: 6)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try2 (ID: 7)
+用户已存在于房间中: 2 - test1
+用户已加入房间: try3 (ID: 8)
+收到WebSocket消息: {"type":"LIST_ROOMS","from":"test1","content":"","time":"2026-02-15 11:24:38","id":"LIST_ROOMS_server_1771125878172_bs1dn2fay"}
+消息解码成功: Message{type=LIST_ROOMS, from='test1', content='', time='2026-02-15 11:24:38', isNSFW=false, iv='null', id='LIST_ROOMS_server_1771125878172_bs1dn2fay', conversationId=null}
+处理房间列表请求: test1
+成功建立数据库连接
+消息编码成功: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:24:38","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"SYSTEM","from":"server","content":"{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7}]}","time":"2026-02-15 11:24:38","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_PRIVATE_USERS","from":"test1","content":"","time":"2026-02-15 19:24:38","id":"REQUEST_PRIVATE_USERS_undefined_1771125878173_ctrng4gxn"}
+消息解码成功: Message{type=REQUEST_PRIVATE_USERS, from='test1', content='', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_PRIVATE_USERS_undefined_1771125878173_ctrng4gxn', conversationId=null}
+处理私聊用户列表请求: 用户test1
+成功建立数据库连接
+消息编码成功: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:24:38","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"PRIVATE_USERS_RESPONSE","from":"server","content":"[\"test\"]","time":"2026-02-15 11:24:38","isNSFW":false}
+发送私聊用户列表响应: test1的私聊用户数量: 1
+收到WebSocket消息: {"type":"REQUEST_FRIEND_LIST","from":"test1","content":"","time":"2026-02-15 11:24:38","id":"REQUEST_FRIEND_LIST_server_1771125878173_4oellg499"}
+消息解码成功: Message{type=REQUEST_FRIEND_LIST, from='test1', content='', time='2026-02-15 11:24:38', isNSFW=false, iv='null', id='REQUEST_FRIEND_LIST_server_1771125878173_4oellg499', conversationId=null}
+处理好友列表请求: 用户 test1
+成功建立数据库连接
+消息编码成功: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:24:38","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"FRIEND_LIST","from":"server","content":"[{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test\"}]","time":"2026-02-15 11:24:38","isNSFW":false}
+发送好友列表响应: test1 - 好友数: 1
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:24:38","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125878194_ocabfqbf5"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878194_ocabfqbf5', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:24:38","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125878209_77cpu4t3z"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878209_77cpu4t3z', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 21:26:34","time":"2026-02-15 19:24:38","conversationId":1,"id":"REQUEST_HISTORY_undefined_1771125878210_dtlxd6zsb"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 21:26:34', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878210_dtlxd6zsb', conversationId=1}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 21:26:34
+成功建立数据库连接
+使用会话ID: 1
+获取增量消息: 会话1中2026-02-13 21:26:34之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false,"conversationId":1}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-14 23:33:24","time":"2026-02-15 19:24:38","conversationId":5,"id":"REQUEST_HISTORY_undefined_1771125878212_3q2efebaa"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-14 23:33:24', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878212_3q2efebaa', conversationId=5}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-14 23:33:24
+成功建立数据库连接
+使用会话ID: 5
+获取增量消息: 会话5中2026-02-14 23:33:24之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false,"conversationId":5}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-15 11:16:59","time":"2026-02-15 19:24:38","conversationId":6,"id":"REQUEST_HISTORY_undefined_1771125878212_f2pnww5uo"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-15 11:16:59', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878212_f2pnww5uo', conversationId=6}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-15 11:16:59
+成功建立数据库连接
+使用会话ID: 6
+获取增量消息: 会话6中2026-02-15 11:16:59之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false,"conversationId":6}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:24:38","conversationId":7,"id":"REQUEST_HISTORY_undefined_1771125878213_vjj2y6ywb"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878213_vjj2y6ywb', conversationId=7}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+使用会话ID: 7
+获取历史消息: 会话7的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false,"conversationId":7}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"0","time":"2026-02-15 19:24:38","conversationId":null,"id":"REQUEST_HISTORY_undefined_1771125878214_eyoyzzle7"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='0', time='2026-02-15 19:24:38', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125878214_eyoyzzle7', conversationId=null}
+处理历史消息请求: 从test1到的消息，最后时间戳: 0
+成功建立数据库连接
+会话ID为null，返回空消息列表
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:38"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:38","isNSFW":false}
+发送历史消息响应: 的0条消息
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:24:44","id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125884914_zcmhpxh2t"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='try', time='2026-02-15 11:24:44', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_try_1771125884914_zcmhpxh2t', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:24:44","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125884914_zcmhpxh2t"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"try","time":"2026-02-15 11:24:44","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_try_1771125884914_zcmhpxh2t"}
+收到WebSocket消息: {"type":"LIST_ROOM_USERS","from":"test1","content":"{\"conversation_id\":1,\"content\":\"\"}","time":"2026-02-15 11:24:47","id":"LIST_ROOM_USERS_try_1771125887378_agdqc71tn"}
+消息解码成功: Message{type=LIST_ROOM_USERS, from='test1', content='{"conversation_id":1,"content":""}', time='2026-02-15 11:24:47', isNSFW=false, iv='null', id='LIST_ROOM_USERS_try_1771125887378_agdqc71tn', conversationId=null}
+处理房间用户列表请求: test1
+成功建立数据库连接
+查找房间，conversation_id: 1
+当前房间列表: [11, 3, 4, 6, 7, 8, 9, 10]
+检查房间: 11, conversation_id: 13
+检查房间: 3, conversation_id: 4
+检查房间: 4, conversation_id: 1
+找到房间: try, ID: 4
+创建新房间: try (ID: 4)
+成功建立数据库连接
+消息编码成功: {"type":"LIST_ROOM_USERS","from":"server","content":"{\"users\":[{\"userId\":1,\"username\":\"test\",\"role\":\"MEMBER\",\"isOnline\":true,\"status\":\"ONLINE\",\"joinedAt\":\"2026-01-11 22:41:41.0\"},{\"userId\":4,\"username\":\"test3\",\"role\":\"MEMBER\",\"isOnline\":false,\"status\":\"OFFLINE\",\"joinedAt\":\"2026-01-11 22:47:44.0\"},{\"userId\":2,\"username\":\"test1\",\"role\":\"MEMBER\",\"isOnline\":true,\"status\":\"ONLINE\",\"joinedAt\":\"2026-01-12 00:38:20.0\"}],\"currentUserRole\":\"MEMBER\",\"ownerId\":\"null\",\"adminIds\":[]}","time":"2026-02-15 11:24:47","isNSFW":false}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"LIST_ROOM_USERS","from":"server","content":"{\"users\":[{\"userId\":1,\"username\":\"test\",\"role\":\"MEMBER\",\"isOnline\":true,\"status\":\"ONLINE\",\"joinedAt\":\"2026-01-11 22:41:41.0\"},{\"userId\":4,\"username\":\"test3\",\"role\":\"MEMBER\",\"isOnline\":false,\"status\":\"OFFLINE\",\"joinedAt\":\"2026-01-11 22:47:44.0\"},{\"userId\":2,\"username\":\"test1\",\"role\":\"MEMBER\",\"isOnline\":true,\"status\":\"ONLINE\",\"joinedAt\":\"2026-01-12 00:38:20.0\"}],\"currentUserRole\":\"MEMBER\",\"ownerId\":\"null\",\"adminIds\":[]}","time":"2026-02-15 11:24:47","isNSFW":false}
+收到WebSocket消息: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:24:51","id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125891951_kuy3b5hhr"}
+消息解码成功: Message{type=REQUEST_ROOM_DISPLAY_NAMES, from='test1', content='system', time='2026-02-15 11:24:51', isNSFW=false, iv='null', id='REQUEST_ROOM_DISPLAY_NAMES_system_1771125891951_kuy3b5hhr', conversationId=null}
+处理其他消息类型: REQUEST_ROOM_DISPLAY_NAMES
+消息编码成功: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:24:51","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125891951_kuy3b5hhr"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"REQUEST_ROOM_DISPLAY_NAMES","from":"test1","content":"system","time":"2026-02-15 11:24:51","isNSFW":false,"id":"REQUEST_ROOM_DISPLAY_NAMES_system_1771125891951_kuy3b5hhr"}
+收到WebSocket消息: {"type":"REQUEST_HISTORY","from":"test1","content":"2026-02-13 20:17:17","time":"2026-02-15 19:24:51","conversationId":4,"id":"REQUEST_HISTORY_undefined_1771125891956_k9d5e7vf5"}
+消息解码成功: Message{type=REQUEST_HISTORY, from='test1', content='2026-02-13 20:17:17', time='2026-02-15 19:24:51', isNSFW=false, iv='null', id='REQUEST_HISTORY_undefined_1771125891956_k9d5e7vf5', conversationId=4}
+处理历史消息请求: 从test1到的消息，最后时间戳: 2026-02-13 20:17:17
+成功建立数据库连接
+使用会话ID: 4
+获取增量消息: 会话4中2026-02-13 20:17:17之后的0条消息
+消息编码成功: {"type":"HISTORY_RESPONSE","from":"server","content":[... 0 messages ...],"time":"2026-02-15 11:24:51"}
+消息已发送到WebSocket客户端: 0:0:0:0:0:0:0:1:60210: {"type":"HISTORY_RESPONSE","from":"server","content":"[]","time":"2026-02-15 11:24:51","isNSFW":false,"conversationId":4}
+发送历史消息响应: 的0条消息

@@ -3,16 +3,42 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title>ChatRoom - Connect to Server</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .connect-container {
             width: 400px;
+            max-width: 90vw;
             padding: 40px;
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            max-height: 90vh;
+        }
+        
+        @media (max-width: 768px) {
+            .connect-container {
+                width: 90vw;
+                max-width: 90vw;
+                padding: 20px;
+                max-height: 85vh;
+                border-radius: 8px;
+            }
+            
+            .logo h1 {
+                font-size: 24px;
+            }
+            
+            h2 {
+                font-size: 18px;
+            }
+            
+            p {
+                font-size: 14px;
+            }
         }
         
         .connect-form {
@@ -68,7 +94,7 @@
                 <h1>聊天室</h1>
             </div>
             <h2>连接到聊天服务器</h2>
-            <p>请输入服务器地址和端口连接:</p>
+            <p>请输入服务器地址和端口进行连接:</p>
             
             <form class="connect-form">
                 <div class="form-group">
@@ -82,10 +108,10 @@
                 <div class="form-group">
                     <label for="ws-protocol">WebSocket协议:</label>
                     <select id="ws-protocol" name="wsProtocol" required>
-                        <option value="ws">ws:// (For HTTP pages)</option>
-                        <option value="wss">wss:// (For HTTPS pages)</option>
+                        <option value="ws">ws:// (用于HTTP页面)</option>
+                        <option value="wss">wss:// (用于HTTPS页面)</option>
                     </select>
-                    <small style="display: block; margin-top: 5px; color: #666;">Auto-detected based on current page protocol</small>
+                    <small style="display: block; margin-top: 5px; color: #666;">根据当前页面协议自动检测</small>
                 </div>
                 <div class="form-group">
                     <button type="submit" id="connect-btn">连接</button>

@@ -3,17 +3,17 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChatRoom - User Profile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>聊天室 - 用户资料</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>User Profile</h2>
+                <h2>用户资料</h2>
                 <div class="header-actions">
-                    <button id="back-to-chat-btn">Back to Chat</button>
+                    <button id="back-to-chat-btn">返回聊天</button>
                 </div>
             </div>
             
@@ -21,16 +21,16 @@
                 <div class="profile-header">
                     <div class="avatar-section">
                         <div class="avatar-wrapper">
-                            <img id="profile-avatar" src="" alt="User Avatar" class="avatar-large">
-                            <button id="change-avatar-btn" class="change-avatar-btn">Change</button>
+                            <img id="profile-avatar" src="" alt="用户头像" class="avatar-large">
+                            <button id="change-avatar-btn" class="change-avatar-btn">更换</button>
                         </div>
                         <div class="status-indicator" id="profile-status"></div>
                     </div>
                     
                     <div class="profile-info">
-                        <h3 id="profile-username">Username</h3>
-                        <p id="profile-display-name" class="display-name">Display Name</p>
-                        <p id="profile-status-text" class="status-text">Online</p>
+                        <h3 id="profile-username">用户名</h3>
+                        <p id="profile-display-name" class="display-name">显示名称</p>
+                        <p id="profile-status-text" class="status-text">在线</p>
                     </div>
                 </div>
                 
@@ -39,71 +39,71 @@
                 <div class="profile-stats">
                     <div class="stat-item">
                         <div class="stat-value" id="stat-messages">0</div>
-                        <div class="stat-label">Messages</div>
+                        <div class="stat-label">消息</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-value" id="stat-rooms">0</div>
-                        <div class="stat-label">Rooms</div>
+                        <div class="stat-label">房间</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-value" id="stat-online-time">0h</div>
-                        <div class="stat-label">Online Time</div>
+                        <div class="stat-label">在线时长</div>
                     </div>
                 </div>
                 
                 <div class="profile-details">
                     <div class="detail-section">
-                        <h4>Account Information</h4>
+                        <h4>账户信息</h4>
                         <div class="detail-row">
-                            <span class="detail-label">Username:</span>
+                            <span class="detail-label">用户名:</span>
                             <span class="detail-value" id="detail-username">-</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Display Name:</span>
+                            <span class="detail-label">显示名称:</span>
                             <span class="detail-value" id="detail-display-name">-</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Email:</span>
+                            <span class="detail-label">邮箱:</span>
                             <span class="detail-value" id="detail-email">-</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Member Since:</span>
+                            <span class="detail-label">注册时间:</span>
                             <span class="detail-value" id="detail-joined">-</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Last Active:</span>
+                            <span class="detail-label">最后活跃:</span>
                             <span class="detail-value" id="detail-last-active">-</span>
                         </div>
                     </div>
                     
                     <div class="detail-section">
-                        <h4>Activity</h4>
+                        <h4>活动</h4>
                         <div class="detail-row">
-                            <span class="detail-label">Status:</span>
+                            <span class="detail-label">状态:</span>
                             <span class="detail-value" id="detail-status">-</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Total Messages:</span>
+                            <span class="detail-label">总消息数:</span>
                             <span class="detail-value" id="detail-total-messages">0</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Rooms Joined:</span>
+                            <span class="detail-label">加入的房间:</span>
                             <span class="detail-value" id="detail-rooms-joined">0</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Images Sent:</span>
+                            <span class="detail-label">发送的图片:</span>
                             <span class="detail-value" id="detail-images-sent">0</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Files Shared:</span>
+                            <span class="detail-label">分享的文件:</span>
                             <span class="detail-value" id="detail-files-shared">0</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="profile-actions">
-                    <button id="edit-profile-btn" class="action-btn primary">Edit Profile</button>
-                    <button id="view-settings-btn" class="action-btn secondary">Settings</button>
+                    <button id="edit-profile-btn" class="action-btn primary">编辑资料</button>
+                    <button id="view-settings-btn" class="action-btn secondary">设置</button>
                 </div>
             </div>
         </div>

@@ -4524,6 +4524,14 @@ let chatClient = {
             }
         }
         
+        // Mobile: Hide chats panel and show messages panel
+        const chatsPanel = document.querySelector('.chats-panel');
+        const messagesPanel = document.querySelector('.messages-panel');
+        if (chatsPanel && messagesPanel) {
+            chatsPanel.classList.add('hidden');
+            messagesPanel.classList.add('active');
+        }
+        
         // 不再去除前缀，直接使用原始会话ID
         const roomName = sessionId;
         
@@ -7593,6 +7601,19 @@ function initChat() {
     document.getElementById('refresh-chats-btn').addEventListener('click', function() {
         chatClient.sendMessage(MessageType.LIST_ROOMS, 'server', '');
     });
+    
+    // Mobile: Back to chats button functionality
+    const backToChatsBtn = document.getElementById('back-to-chats-btn');
+    if (backToChatsBtn) {
+        backToChatsBtn.addEventListener('click', function() {
+            const chatsPanel = document.querySelector('.chats-panel');
+            const messagesPanel = document.querySelector('.messages-panel');
+            if (chatsPanel && messagesPanel) {
+                chatsPanel.classList.remove('hidden');
+                messagesPanel.classList.remove('active');
+            }
+        });
+    }
 }
 
 // Tab switching for login/register

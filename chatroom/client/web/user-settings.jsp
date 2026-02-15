@@ -3,101 +3,101 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChatRoom - Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>聊天室 - 设置</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <div class="chat-box">
             <div class="chat-header">
-                <h2>Settings</h2>
+                <h2>设置</h2>
                 <div class="header-actions">
-                    <button id="back-to-chat-btn">Back to Chat</button>
+                    <button id="back-to-chat-btn">返回聊天</button>
                 </div>
             </div>
             
             <div class="settings-container">
-                <div class="settings-tabs">
-                    <button class="settings-tab-btn active" data-tab="account">Account</button>
-                    <button class="settings-tab-btn" data-tab="appearance">Appearance</button>
-                    <button class="settings-tab-btn" data-tab="notifications">Notifications</button>
-                    <button class="settings-tab-btn" data-tab="privacy">Privacy</button>
-                    <button class="settings-tab-btn" data-tab="storage">Storage</button>
-                </div>
+                    <div class="settings-tabs">
+                        <button class="settings-tab-btn active" data-tab="account">账户</button>
+                        <button class="settings-tab-btn" data-tab="appearance">外观</button>
+                        <button class="settings-tab-btn" data-tab="notifications">通知</button>
+                        <button class="settings-tab-btn" data-tab="privacy">隐私</button>
+                        <button class="settings-tab-btn" data-tab="storage">存储</button>
+                    </div>
                 
                 <div class="settings-content">
                     <div id="tab-account" class="settings-tab-content active">
                         <div class="settings-section">
-                            <h3>Account Settings</h3>
+                            <h3>账户设置</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Change Password</h4>
-                                    <p>Update your password to keep your account secure</p>
+                                    <h4>修改密码</h4>
+                                    <p>更新密码以保护账户安全</p>
                                 </div>
-                                <button id="change-password-btn" class="settings-btn">Change</button>
+                                <button id="change-password-btn" class="settings-btn">修改</button>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Email Address</h4>
-                                    <p>Update your email for account recovery</p>
+                                    <h4>邮箱地址</h4>
+                                    <p>更新邮箱用于账户恢复</p>
                                 </div>
-                                <button id="change-email-btn" class="settings-btn">Edit</button>
+                                <button id="change-email-btn" class="settings-btn">编辑</button>
                             </div>
                             
                             <div class="settings-item danger">
                                 <div class="settings-item-info">
-                                    <h4>Delete Account</h4>
-                                    <p>Permanently delete your account and all data</p>
+                                    <h4>删除账户</h4>
+                                    <p>永久删除账户和所有数据</p>
                                 </div>
-                                <button id="delete-account-btn" class="settings-btn danger-btn">Delete</button>
+                                <button id="delete-account-btn" class="settings-btn danger-btn">删除</button>
                             </div>
                         </div>
                     </div>
                     
                     <div id="tab-appearance" class="settings-tab-content">
                         <div class="settings-section">
-                            <h3>Appearance Settings</h3>
+                            <h3>外观设置</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Theme</h4>
-                                    <p>Choose your preferred color theme</p>
+                                    <h4>主题</h4>
+                                    <p>选择您喜欢的颜色主题</p>
                                 </div>
                                 <select id="theme-select" class="settings-select">
-                                    <option value="light">Light</option>
-                                    <option value="dark">Dark</option>
-                                    <option value="auto">Auto (System)</option>
+                                    <option value="light">浅色</option>
+                                    <option value="dark">深色</option>
+                                    <option value="auto">自动（跟随系统）</option>
                                 </select>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Font Size</h4>
-                                    <p>Adjust the text size for better readability</p>
+                                    <h4>字体大小</h4>
+                                    <p>调整文本大小以提高可读性</p>
                                 </div>
                                 <select id="font-size-select" class="settings-select">
-                                    <option value="small">Small</option>
-                                    <option value="medium" selected>Medium</option>
-                                    <option value="large">Large</option>
+                                    <option value="small">小</option>
+                                    <option value="medium" selected>中</option>
+                                    <option value="large">大</option>
                                 </select>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Message Bubbles</h4>
-                                    <p>Choose message bubble style</p>
+                                    <h4>消息气泡</h4>
+                                    <p>选择消息气泡样式</p>
                                 </div>
                                 <select id="bubble-style-select" class="settings-select">
-                                    <option value="rounded">Rounded</option>
-                                    <option value="square">Square</option>
+                                    <option value="rounded">圆角</option>
+                                    <option value="square">方形</option>
                                 </select>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Show Timestamps</h4>
-                                    <p>Display timestamps on messages</p>
+                                    <h4>显示时间戳</h4>
+                                    <p>在消息上显示时间戳</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="show-timestamps" checked>
@@ -109,11 +109,11 @@
                     
                     <div id="tab-notifications" class="settings-tab-content">
                         <div class="settings-section">
-                            <h3>Notification Settings</h3>
+                            <h3>通知设置</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Desktop Notifications</h4>
-                                    <p>Receive notifications when you're not in the app</p>
+                                    <h4>桌面通知</h4>
+                                    <p>当您不在应用中时接收通知</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="desktop-notifications">
@@ -123,8 +123,8 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Sound Notifications</h4>
-                                    <p>Play sound when receiving new messages</p>
+                                    <h4>声音通知</h4>
+                                    <p>收到新消息时播放声音</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="sound-notifications" checked>
@@ -134,8 +134,8 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Message Preview</h4>
-                                    <p>Show message content in notifications</p>
+                                    <h4>消息预览</h4>
+                                    <p>在通知中显示消息内容</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="message-preview" checked>
@@ -145,8 +145,8 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Mute All Notifications</h4>
-                                    <p>Temporarily disable all notifications</p>
+                                    <h4>静音所有通知</h4>
+                                    <p>临时禁用所有通知</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="mute-all">
@@ -158,11 +158,11 @@
                     
                     <div id="tab-privacy" class="settings-tab-content">
                         <div class="settings-section">
-                            <h3>Privacy Settings</h3>
+                            <h3>隐私设置</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Accept Temporary Chat</h4>
-                                    <p>Allow non-friends to send you temporary chat messages</p>
+                                    <h4>接受临时聊天</h4>
+                                    <p>允许非好友向您发送临时聊天消息</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="accept-temporary-chat" checked>
@@ -172,8 +172,8 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Online Status</h4>
-                                    <p>Show when you're online to other users</p>
+                                    <h4>在线状态</h4>
+                                    <p>向其他用户显示您的在线状态</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="show-online-status" checked>
@@ -183,8 +183,8 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Read Receipts</h4>
-                                    <p>Let others know when you've read their messages</p>
+                                    <h4>已读回执</h4>
+                                    <p>让其他人知道您已阅读他们的消息</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="read-receipts" checked>
@@ -194,20 +194,20 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Profile Visibility</h4>
-                                    <p>Control who can see your profile</p>
+                                    <h4>资料可见性</h4>
+                                    <p>控制谁可以看到您的资料</p>
                                 </div>
                                 <select id="profile-visibility" class="settings-select">
-                                    <option value="everyone">Everyone</option>
-                                    <option value="contacts">Contacts Only</option>
-                                    <option value="private">Private</option>
+                                    <option value="everyone">所有人</option>
+                                    <option value="contacts">仅联系人</option>
+                                    <option value="private">私密</option>
                                 </select>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>NSFW Content</h4>
-                                    <p>Allow viewing NSFW content</p>
+                                    <h4>NSFW内容</h4>
+                                    <p>允许查看NSFW内容</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="allow-nsfw">
@@ -219,11 +219,11 @@
                     
                     <div id="tab-storage" class="settings-tab-content">
                         <div class="settings-section">
-                            <h3>Storage Settings</h3>
+                            <h3>存储设置</h3>
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Message Storage</h4>
-                                    <p>Store messages locally for offline access</p>
+                                    <h4>消息存储</h4>
+                                    <p>本地存储消息以便离线访问</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="message-storage" checked>
@@ -233,19 +233,19 @@
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Storage Type</h4>
-                                    <p>Choose storage method for messages</p>
+                                    <h4>存储类型</h4>
+                                    <p>选择消息的存储方式</p>
                                 </div>
                                 <select id="storage-type" class="settings-select">
-                                    <option value="indexeddb">IndexedDB (Recommended)</option>
+                                    <option value="indexeddb">IndexedDB（推荐）</option>
                                     <option value="localstorage">localStorage</option>
                                 </select>
                             </div>
                             
                             <div class="settings-item">
                                 <div class="settings-item-info">
-                                    <h4>Max Messages per Room</h4>
-                                    <p>Limit the number of messages stored per room</p>
+                                    <h4>每个房间最大消息数</h4>
+                                    <p>限制每个房间存储的消息数量</p>
                                 </div>
                                 <select id="max-messages" class="settings-select">
                                     <option value="100">100</option>
@@ -257,18 +257,18 @@
                             
                             <div class="settings-item danger">
                                 <div class="settings-item-info">
-                                    <h4>Clear All Data</h4>
-                                    <p>Delete all locally stored messages and settings</p>
+                                    <h4>清除所有数据</h4>
+                                    <p>删除所有本地存储的消息和设置</p>
                                 </div>
-                                <button id="clear-data-btn" class="settings-btn danger-btn">Clear</button>
+                                <button id="clear-data-btn" class="settings-btn danger-btn">清除</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="settings-footer">
-                    <button id="save-settings-btn" class="action-btn primary">Save Settings</button>
-                    <button id="reset-settings-btn" class="action-btn secondary">Reset to Default</button>
+                    <button id="save-settings-btn" class="action-btn primary">保存设置</button>
+                    <button id="reset-settings-btn" class="action-btn secondary">重置为默认</button>
                 </div>
             </div>
         </div>
