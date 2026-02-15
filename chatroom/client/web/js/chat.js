@@ -5144,6 +5144,14 @@ let chatClient = {
             this.friends = friendList;
             this.log('info', `Received friend list: ${friendList.length} friends`);
             
+            // 保存每个好友的conversation_id映射
+            friendList.forEach(friend => {
+                if (friend.conversation_id) {
+                    this.sessionToConversationId[friend.username] = friend.conversation_id;
+                    console.log('保存好友conversation_id映射:', friend.username, '->', friend.conversation_id);
+                }
+            });
+            
             // 初始化会话列表
             this.initSessions();
             
@@ -6134,10 +6142,10 @@ let chatClient = {
         // 构造消息内容，包含conversation_id
         let messageContent = content;
         if (conversationId) {
-            messageContent = {
+            messageContent = JSON.stringify({
                 conversation_id: conversationId,
                 content: content
-            };
+            });
         }
         
         // 使用新的PRIVATE_CHAT消息类型，直接发送私聊消息

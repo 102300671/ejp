@@ -278,38 +278,71 @@ public class WebSocketConnection {
                     String privateContent = message.getContent();
                     String privateTo = null;
                     
-                    // 从消息内容中解析接收者
-                    if (privateContent.startsWith("to:")) {
-                        int toEnd = privateContent.indexOf(";" );
-                        if (toEnd > 0) {
-                            privateTo = privateContent.substring(3, toEnd);
-                            privateContent = privateContent.substring(toEnd + 1);
+                    // 从消息内容中解析接收者（支持两种格式）
+                    // 格式1: JSON格式 {conversation_id: xxx, content: "xxx"}
+                    // 格式2: 旧格式 "to:username;message"
+                    try {
+                        com.google.gson.JsonObject jsonContent = com.google.gson.JsonParser.parseString(privateContent).getAsJsonObject();
+                        if (jsonContent.has("content")) {
+                            privateContent = jsonContent.get("content").getAsString();
+                        }
+                    } catch (Exception e) {
+                        // 不是JSON格式，尝试旧格式
+                        if (privateContent.startsWith("to:")) {
+                            int toEnd = privateContent.indexOf(";");
+                            if (toEnd > 0) {
+                                privateTo = privateContent.substring(3, toEnd);
+                                privateContent = privateContent.substring(toEnd + 1);
+                            }
+                        }
+                    }
+                    
+                    // 如果有conversationId但没有privateTo，从会话成员中获取接收者
+                    if (privateConversationId != null && privateConversationId > 0 && privateTo == null) {
+                        try (Connection tempConnection = dbManager.getConnection()) {
+                            List<server.sql.conversation.ConversationMember> members = conversationDAO.getConversationMembers(privateConversationId, tempConnection);
+                            for (server.sql.conversation.ConversationMember member : members) {
+                                if (!member.getUsername().equals(privateFrom)) {
+                                    privateTo = member.getUsername();
+                                    break;
+                                }
+                            }
+                        } catch (SQLException e) {
+                            System.err.println("获取会话成员失败: " + e.getMessage());
                         }
                     }
                     
                     System.out.println("处理私聊消息: 从" + privateFrom + "到" + privateTo + "的消息: " + privateContent);
                     
                     try (Connection connection = dbManager.getConnection()) {
+                        System.out.println("开始处理私聊消息，conversationId: " + privateConversationId);
+                        
                         // 检查是否为临时聊天（非好友关系）
                         server.sql.friend.FriendshipDAO friendshipDAO = new server.sql.friend.FriendshipDAO();
                         boolean isFriend = friendshipDAO.areFriends(privateFrom, privateTo, connection);
+                        System.out.println("好友关系检查: " + privateFrom + " 和 " + privateTo + " 是否为好友: " + isFriend);
                         
                         if (!isFriend) {
                             // 临时聊天，需要检查权限
                             boolean allowTemporaryChat = checkTemporaryChatPermission(privateTo, connection);
+                            System.out.println("临时聊天权限检查: " + privateTo + " 是否接受临时聊天: " + allowTemporaryChat);
                             
                             if (!allowTemporaryChat) {
                                 Message errorMsg = new Message(MessageType.SYSTEM, "server", "无法发送临时聊天消息：对方不接受临时聊天", null, privateConversationId);
                                 send(messageCodec.encode(errorMsg));
                                 System.out.println("临时聊天被拒绝: " + privateTo + " 不接受临时聊天");
-                                break;
+                                return;
                             }
                         }
                         
+                        System.out.println("检查conversationId: " + privateConversationId);
+                        
                         // 如果没有提供conversationId，查找或创建会话
                         if (privateConversationId == null || privateConversationId <= 0) {
+                            System.out.println("没有提供conversationId，开始查找或创建会话");
                             // 尝试查找已存在的会话
                             List<server.sql.conversation.Conversation> conversations = conversationDAO.getUserConversations(privateFrom, connection);
+                            System.out.println("找到 " + conversations.size() + " 个用户会话");
                             for (server.sql.conversation.Conversation conv : conversations) {
                                 List<server.sql.conversation.ConversationMember> members = conversationDAO.getConversationMembers(conv.getId(), connection);
                                 if (members.size() == 2) {
@@ -325,27 +358,36 @@ public class WebSocketConnection {
                                     }
                                     if (hasFrom && hasTo) {
                                         privateConversationId = conv.getId();
-                                    break;
+                                        System.out.println("找到已存在的会话: " + privateConversationId);
+                                        break;
+                                    }
                                 }
                             }
                         }
                         
-                        if (privateConversationId == -1) {
+                        if (privateConversationId == null || privateConversationId <= 0) {
                             // 创建新会话
+                            System.out.println("创建新会话");
                             String conversationType = isFriend ? "FRIEND" : "TEMP";
                             String conversationName = privateFrom + "_" + privateTo;
                             privateConversationId = conversationDAO.createConversation(conversationType, conversationName, connection);
+                            System.out.println("新会话已创建，ID: " + privateConversationId);
                             
                             // 添加会话成员
                             conversationDAO.addConversationMember(privateConversationId, privateFrom, "MEMBER", connection);
                             conversationDAO.addConversationMember(privateConversationId, privateTo, "MEMBER", connection);
+                            System.out.println("会话成员已添加");
+                        } else {
+                            System.out.println("使用已存在的conversationId: " + privateConversationId);
                         }
                         
                         // 查找接收者用户ID
+                        System.out.println("查找接收者用户ID: " + privateTo);
                         String recipientId = null;
                         for (Session session : messageRouter.getSessions().values()) {
                             if (session.getUsername().equals(privateTo)) {
                                 recipientId = session.getUserId();
+                                System.out.println("找到接收者用户ID: " + recipientId);
                                 break;
                             }
                         }
@@ -364,21 +406,28 @@ public class WebSocketConnection {
                         // 发送私聊消息
                         if (recipientId != null) {
                             // 接收者在线，发送消息
+                            System.out.println("接收者在线，发送消息");
                             if (messageRouter.sendMessageByConversationId(privateConversationId, messageCodec.encode(privateChatMsg), String.valueOf(currentUser.getId()))) {
                                 System.out.println("私聊消息发送成功: 从" + privateFrom + "到会话" + privateConversationId + "的消息: " + privateContent);
                             } else {
                                 Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 用户" + privateTo + "可能不在线", null, privateConversationId);
                                 send(messageCodec.encode(errorMsg));
+                                System.out.println("发送私聊消息失败");
                             }
                         } else {
                             // 接收者不在线，通知发送者
+                            System.out.println("接收者不在线，通知发送者");
                             Message infoMsg = new Message(MessageType.SYSTEM, "server", "消息已发送，但用户" + privateTo + "当前不在线，上线后将收到消息", null, privateConversationId);
                             send(messageCodec.encode(infoMsg));
                             System.out.println("私聊接收者不在线: " + privateTo);
                         }
-                    }
                 } catch (SQLException e) {
-                    System.err.println("处理私聊消息失败: " + e.getMessage());
+                    System.err.println("处理私聊消息失败 (SQLException): " + e.getMessage());
+                    e.printStackTrace();
+                    Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误", null);
+                    send(messageCodec.encode(errorMsg));
+                } catch (Exception e) {
+                    System.err.println("处理私聊消息失败 (Exception): " + e.getMessage());
                     e.printStackTrace();
                     Message errorMsg = new Message(MessageType.SYSTEM, "server", "发送私聊消息失败: 服务器内部错误", null);
                     send(messageCodec.encode(errorMsg));
@@ -2261,9 +2310,15 @@ public class WebSocketConnection {
             java.util.List<java.util.Map<String, Object>> friendList = new java.util.ArrayList<>();
             
             for (server.sql.friend.FriendshipDAO.Friendship friendship : friendships) {
-                java.util.Map<String, Object> friendInfo = new java.util.HashMap<>();
                 String friendUsername = friendship.user1Id == currentUser.getId() ? friendship.user2Username : friendship.user1Username;
+                
+                // 查找或创建好友会话的conversation_id
+                server.sql.conversation.Conversation friendConversation = conversationDAO.getOrCreatePrivateConversation(username, friendUsername, connection);
+                Integer conversationId = friendConversation != null ? friendConversation.getId() : null;
+                
+                java.util.Map<String, Object> friendInfo = new java.util.HashMap<>();
                 friendInfo.put("username", friendUsername);
+                friendInfo.put("conversation_id", conversationId);
                 friendInfo.put("createdAt", friendship.createdAt != null ? friendship.createdAt.toString() : "");
                 friendList.add(friendInfo);
             }
