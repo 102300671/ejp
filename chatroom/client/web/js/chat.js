@@ -4833,6 +4833,14 @@ let chatClient = {
         this.previousChat = this.currentChat;
         this.previousChatType = this.currentChatType;
         
+        // Mobile: Hide chats panel and show messages panel
+        const chatsPanel = document.querySelector('.chats-panel');
+        const messagesPanel = document.querySelector('.messages-panel');
+        if (chatsPanel && messagesPanel) {
+            chatsPanel.classList.add('hidden');
+            messagesPanel.classList.add('active');
+        }
+        
         // Switch to friend chat mode
         this.isIn私密Chat = true;
         this.privateChatRecipient = username;

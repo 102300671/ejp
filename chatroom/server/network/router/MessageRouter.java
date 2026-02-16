@@ -57,6 +57,19 @@ public class MessageRouter {
             }
         }
         
+        // 清理该用户的旧的非活动会话
+        for (Map.Entry<String, Session> entry : sessions.entrySet()) {
+            Session existingSession = entry.getValue();
+            if (existingSession != null && existingSession.getUsername() != null && 
+                existingSession.getUsername().equals(username) && 
+                !existingSession.isActive()) {
+                
+                System.out.println("清理旧的非活动会话: 用户名=" + username + ", 旧用户ID=" + entry.getKey());
+                sessions.remove(entry.getKey());
+                break;
+            }
+        }
+        
         // 获取用户之前的房间列表
         List<String> userRoomList = userRooms.get(userId);
         if (userRoomList == null) {
@@ -452,7 +465,8 @@ public class MessageRouter {
         // 使用迭代器遍历确保并发安全
         for (Map.Entry<String, Session> entry : sessions.entrySet()) {
             Session session = entry.getValue();
-            if (session != null && session.getUsername() != null && session.getUsername().equals(username)) {
+            if (session != null && session.getUsername() != null && 
+                session.getUsername().equals(username) && session.isActive()) {
                 return session;
             }
         }
