@@ -6864,6 +6864,11 @@ function initChat() {
         return;
     }
     
+    // Apply saved theme
+    const settings = JSON.parse(localStorage.getItem('userSettings')) || {};
+    applyTheme(settings.theme || 'light');
+    applyFontSize(settings.fontSize || 'medium');
+    
     // Set username in chatClient and UI immediately
     chatClient.username = username;
     const currentUserSpan = document.getElementById('current-user');
@@ -7988,7 +7993,6 @@ function loadSettings() {
     document.getElementById('message-storage').checked = settings.messageStorage !== false;
     document.getElementById('storage-type').value = settings.storageType || 'indexeddb';
     document.getElementById('max-messages').value = settings.maxMessages || '200';
-    document.getElementById('sync-interval').value = settings.syncInterval || '30';
     
     applyTheme(settings.theme || 'light');
     applyFontSize(settings.fontSize || 'medium');
@@ -8011,8 +8015,7 @@ function saveSettings() {
         allowNsfw: document.getElementById('allow-nsfw').checked,
         messageStorage: document.getElementById('message-storage').checked,
         storageType: document.getElementById('storage-type').value,
-        maxMessages: document.getElementById('max-messages').value,
-        syncInterval: document.getElementById('sync-interval').value
+        maxMessages: document.getElementById('max-messages').value
     };
     
     localStorage.setItem('userSettings', JSON.stringify(settings));
@@ -8092,8 +8095,20 @@ function resetSettings() {
 function applyTheme(theme) {
     document.body.className = '';
     
+    // 移除新年限定主题CSS
+    const springFestivalLink = document.querySelector('link[href*="spring-festival.css"]');
+    if (springFestivalLink) {
+        springFestivalLink.remove();
+    }
+    
     if (theme === 'dark') {
         document.body.classList.add('dark-theme');
+    } else if (theme === 'spring-festival') {
+        // 添加新年限定主题CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'css/spring-festival.css';
+        document.head.appendChild(link);
     } else if (theme === 'auto') {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.body.classList.add('dark-theme');
@@ -8120,6 +8135,44 @@ function initSettingsActions() {
     const changeEmailBtn = document.getElementById('change-email-btn');
     const deleteAccountBtn = document.getElementById('delete-account-btn');
     const clearDataBtn = document.getElementById('clear-data-btn');
+    
+    // 外观设置实时预览
+    const themeSelect = document.getElementById('theme-select');
+    const fontSizeSelect = document.getElementById('font-size-select');
+    const bubbleStyleSelect = document.getElementById('bubble-style-select');
+    const showTimestampsCheckbox = document.getElementById('show-timestamps');
+    
+    if (themeSelect) {
+        themeSelect.addEventListener('change', function() {
+            applyTheme(this.value);
+        });
+    }
+    
+    if (fontSizeSelect) {
+        fontSizeSelect.addEventListener('change', function() {
+            applyFontSize(this.value);
+        });
+    }
+    
+    if (bubbleStyleSelect) {
+        bubbleStyleSelect.addEventListener('change', function() {
+            document.body.classList.remove('rounded-bubbles', 'square-bubbles');
+            if (this.value === 'rounded') {
+                document.body.classList.add('rounded-bubbles');
+            } else if (this.value === 'square') {
+                document.body.classList.add('square-bubbles');
+            }
+        });
+    }
+    
+    if (showTimestampsCheckbox) {
+        showTimestampsCheckbox.addEventListener('change', function() {
+            const messages = document.querySelectorAll('.message-time');
+            messages.forEach(msg => {
+                msg.style.display = this.checked ? 'block' : 'none';
+            });
+        });
+    }
     
     if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', saveSettings);
