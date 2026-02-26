@@ -48,7 +48,8 @@ const MessageType = {
     RECALL_MESSAGE: 'RECALL_MESSAGE',
     REQUEST_ROOM_DISPLAY_NAMES: 'REQUEST_ROOM_DISPLAY_NAMES',
     ROOM_DISPLAY_NAMES_RESPONSE: 'ROOM_DISPLAY_NAMES_RESPONSE',
-    ROOM_DISPLAY_NAME_UPDATED: 'ROOM_DISPLAY_NAME_UPDATED'
+    ROOM_DISPLAY_NAME_UPDATED: 'ROOM_DISPLAY_NAME_UPDATED',
+    USER_STATUS_UPDATE: 'USER_STATUS_UPDATE'
 };
 
 const AES_KEY = 'ChatChatNSFWKey2024!@#';
@@ -1921,12 +1922,44 @@ let chatClient = {
             case MessageType.ROOM_DISPLAY_NAME_UPDATED:
                 this.handleChatDisplayNameUpdated(message);
                 break;
+            case MessageType.USER_STATUS_UPDATE:
+                this.handleUserStatusUpdate(message);
+                break;
             default:
                 console.log('Unknown message type:', message.type);
         }
     },
     
-
+    // Handle user status update message
+    handleUserStatusUpdate: function(message) {
+        try {
+            // 解析状态更新数据
+            const statusData = JSON.parse(message.content);
+            
+            if (statusData.username && statusData.isOnline !== undefined) {
+                const username = statusData.username;
+                const isOnline = statusData.isOnline;
+                
+                console.log('收到用户状态更新:', username, '现在', isOnline ? '在线' : '离线');
+                
+                // 更新好友会话的在线状态
+                this.sessions = this.sessions.map(session => {
+                    if (session.isFriend && session.id === username) {
+                        return {
+                            ...session,
+                            isOnline: isOnline
+                        };
+                    }
+                    return session;
+                });
+                
+                // 更新聊天列表，反映新的在线状态
+                this.updateChatsList();
+            }
+        } catch (error) {
+            console.error('解析用户状态更新消息失败:', error);
+        }
+    },
 
     // Show message in the UI
     showMessage: function(message, isSystem = false, roomName = null) {
@@ -4519,7 +4552,8 @@ let chatClient = {
                 name: friend.username,
                 type: 'PRIVATE',
                 isFriend: true,
-                isTemporary: false
+                isTemporary: false,
+                isOnline: false // 默认离线，后续可以通过其他方式更新
             });
         });
         
@@ -4573,7 +4607,11 @@ let chatClient = {
         this.sessions.forEach(session => {
             const sessionDiv = document.createElement('div');
             const isActive = session.id === this.currentChat;
-            const activeClass = session.isFriend ? 'friend-item' : '';
+            let activeClass = '';
+            if (session.isFriend) {
+                const isOnline = session.isOnline || false;
+                activeClass = `friend-item ${isOnline ? 'online' : 'offline'}`;
+            }
             sessionDiv.className = `room-item ${activeClass} ${isActive ? 'active' : ''}`;
             
             let onclickHandler;
@@ -4583,7 +4621,14 @@ let chatClient = {
             if (session.isFriend) {
                 // 好友会话
                 onclickHandler = `chatClient.switchToFriendChat('${session.id}')`;
-                displayText = `<strong>${session.name}</strong> (FRIEND)`;
+                // 添加在线状态指示器
+                const isOnline = session.isOnline || false;
+                const statusClass = isOnline ? 'status-online' : 'status-offline';
+                const statusText = isOnline ? '在线' : '离线';
+                displayText = `<div class="friend-info">
+                    <strong>${session.name}</strong>
+                    <span class="friend-status ${statusClass}">${statusText}</span>
+                </div>`;
                 buttonHandler = `event.stopPropagation(); chatClient.openFriendChatInNewWindow('${session.id}')`;
             } else {
                 // 会话会话
@@ -7996,6 +8041,25 @@ function loadSettings() {
     
     applyTheme(settings.theme || 'light');
     applyFontSize(settings.fontSize || 'medium');
+    
+    // 检查通知权限状态
+    const desktopNotificationsCheckbox = document.getElementById('desktop-notifications');
+    if (desktopNotificationsCheckbox) {
+        if ('Notification' in window) {
+            const permission = Notification.permission;
+            if (permission === 'denied' && desktopNotificationsCheckbox.checked) {
+                // 如果权限被拒绝，更新复选框状态
+                desktopNotificationsCheckbox.checked = false;
+                // 更新本地存储
+                settings.desktopNotifications = false;
+                localStorage.setItem('userSettings', JSON.stringify(settings));
+            }
+        } else {
+            // 如果浏览器不支持通知，禁用复选框
+            desktopNotificationsCheckbox.checked = false;
+            desktopNotificationsCheckbox.disabled = true;
+        }
+    }
 }
 
 function saveSettings() {
@@ -8234,14 +8298,30 @@ function initSettingsActions() {
         desktopNotificationsCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 if ('Notification' in window) {
-                    Notification.requestPermission().then(permission => {
-                        if (permission !== 'granted') {
-                            alert('Notification permission denied!');
-                            this.checked = false;
-                        }
-                    });
+                    // 先显示提示，说明通知的用途
+                    if (confirm('启用桌面通知后，您将在收到新消息时获得提醒。\n\n这些通知将包含发送者和消息内容。\n\n是否继续请求通知权限？')) {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                // 权限授予成功，显示成功提示
+                                alert('通知权限已授予！');
+                            } else if (permission === 'denied') {
+                                // 权限被拒绝，提供更友好的提示
+                                alert('通知权限被拒绝！\n\n您可以在浏览器设置中重新启用通知权限：\n1. 点击浏览器地址栏左侧的锁定图标\n2. 选择网站设置\n3. 在通知选项中选择允许');
+
+
+                                this.checked = false;
+                            } else {
+                                // 权限被忽略
+                                alert('通知权限请求被忽略！\n\n请点击复选框再次尝试。');
+                                this.checked = false;
+                            }
+                        });
+                    } else {
+                        // 用户取消了请求
+                        this.checked = false;
+                    }
                 } else {
-                    alert('Your browser does not support notifications!');
+                    alert('您的浏览器不支持桌面通知！');
                     this.checked = false;
                 }
             }

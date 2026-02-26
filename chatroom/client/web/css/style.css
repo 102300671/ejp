@@ -1928,11 +1928,114 @@ body {
 /* Friend Item */
 .friend-item {
     background-color: #f8f9fa;
-    border-left: 3px solid #28a745;
+    border-left: 3px solid #6c757d;
 }
 
 .friend-item .room-info {
+    color: #495057;
+}
+
+/* Online Friend Styles */
+.friend-item.online {
+    border-left: 3px solid #28a745;
+}
+
+.friend-item.online .room-info {
     color: #28a745;
+}
+
+/* Offline Friend Styles */
+.friend-item.offline {
+    border-left: 3px solid #6c757d;
+}
+
+.friend-item.offline .room-info {
+    color: #6c757d;
+}
+
+/* 确保状态文本颜色不受父元素影响 */
+.friend-item .room-info .status-online {
+    color: #155724 !important;
+}
+
+.friend-item .room-info .status-offline {
+    color: #721c24 !important;
+}
+
+/* Dark Theme Support for Status Colors */
+body.dark-theme .friend-item .room-info .status-online {
+    color: #28a745 !important;
+}
+
+body.dark-theme .friend-item .room-info .status-offline {
+    color: #e94560 !important;
+}
+
+/* Friend Info and Status */
+.friend-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.friend-status {
+    font-size: 12px;
+    font-weight: normal;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 10px;
+}
+
+.status-online {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-offline {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Dark Theme Support */
+body.dark-theme .status-online {
+    background-color: #0f3460;
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+body.dark-theme .status-offline {
+    background-color: #1a1a2e;
+    color: #e94560;
+    border: 1px solid #e94560;
+}
+
+/* Dark Theme Support for Friend Items */
+body.dark-theme .friend-item {
+    background-color: #16213e;
+    border-left: 3px solid #0f3460;
+}
+
+body.dark-theme .friend-item .room-info {
+    color: #e0e0e0;
+}
+
+body.dark-theme .friend-item.online {
+    border-left: 3px solid #28a745;
+}
+
+body.dark-theme .friend-item.online .room-info {
+    color: #28a745;
+}
+
+body.dark-theme .friend-item.offline {
+    border-left: 3px solid #0f3460;
+}
+
+body.dark-theme .friend-item.offline .room-info {
+    color: #a0a0a0;
 }
 
 /* Room Search Modal Styles */
