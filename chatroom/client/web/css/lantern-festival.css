@@ -1,0 +1,272 @@
+/* 元宵主题样式 */
+
+/* 彩色主题 */
+.chat-header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 50%, #feca57 100%);
+}
+
+/* 彩色边框装饰 */
+.chat-box {
+    border: 3px solid #ffd93d;
+    box-shadow: 0 0 30px rgba(255, 217, 61, 0.3), 0 0 60px rgba(255, 107, 107, 0.2);
+}
+
+/* 聊天室标题 */
+.chat-header h2 {
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+}
+
+/* 侧边栏背景 */
+.chats-panel {
+    background: linear-gradient(180deg, #fff9f3 0%, #fff3e0 100%);
+    border-right: 2px solid #ffd93d;
+}
+
+/* 房间列表项 */
+.room-item {
+    background: linear-gradient(90deg, #fff 0%, #fff9f3 100%);
+    border-left: 4px solid #ff6b6b;
+    transition: all 0.3s ease;
+}
+
+.room-item:hover {
+    background: linear-gradient(90deg, #fff9f3 0%, #fff3e0 100%);
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+}
+
+.room-item.active {
+    background: linear-gradient(90deg, #ff6b6b 0%, #ff8e53 100%);
+    color: #fff;
+    border-left: 4px solid #ffd93d;
+}
+
+.room-item.active strong {
+    color: #ffd93d;
+}
+
+/* 消息区域 */
+.messages-area {
+    background: linear-gradient(180deg, #fffaf5 0%, #fff9f3 100%);
+}
+
+/* 发送的消息 */
+.sent-message {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    border: 2px solid #ffd93d;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+/* 接收的消息 */
+.received-message {
+    background: linear-gradient(135deg, #fff 0%, #fff9f3 100%);
+    border: 2px solid #ff8e53;
+    box-shadow: 0 2px 8px rgba(255, 142, 83, 0.2);
+}
+
+/* 按钮样式 */
+button {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    border: 2px solid #ffd93d;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #ff8e53 0%, #feca57 100%);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* 创建房间按钮 */
+#create-chat-btn {
+    background: linear-gradient(135deg, #ffd93d 0%, #ffed4e 100%);
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* 刷新按钮 */
+#refresh-chats-btn {
+    background: linear-gradient(135deg, #ff8e53 0%, #ffaa6e 100%);
+}
+
+/* 消息输入框 */
+#message-input {
+    border: 2px solid #ff6b6b;
+    background: #fffaf5;
+}
+
+#message-input:focus {
+    border-color: #ffd93d;
+    box-shadow: 0 0 10px rgba(255, 217, 61, 0.3);
+}
+
+/* 发送按钮 */
+#send-btn {
+    background: linear-gradient(135deg, #ffd93d 0%, #ffed4e 100%);
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* 系统消息 */
+.system-message {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 217, 61, 0.2) 50%, transparent 100%);
+    color: #ff6b6b;
+    border: 1px dashed #ffd93d;
+}
+
+/* 灯笼装饰 */
+.chat-header::before {
+    content: '🏮';
+    position: absolute;
+    left: 50%;
+    top: -20px;
+    transform: translateX(-50%);
+    font-size: 24px;
+    animation: swing 3s ease-in-out infinite;
+}
+
+@keyframes swing {
+    0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+    50% { transform: translateX(-50%) rotate(5deg); }
+}
+
+/* 元宵背景效果 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 217, 61, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 70%, rgba(255, 142, 83, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 用户菜单 */
+.user-menu-dropdown {
+    background: linear-gradient(180deg, #fff 0%, #fff9f3 100%);
+    border: 2px solid #ffd93d;
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+}
+
+.user-menu-dropdown button {
+    background: transparent;
+    border: none;
+    color: #333;
+}
+
+.user-menu-dropdown button:hover {
+    background: linear-gradient(90deg, #ff6b6b 0%, #ff8e53 100%);
+    color: #fff;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle-btn {
+    color: #ffd93d;
+    font-size: 28px;
+}
+
+/* 返回按钮 */
+.return-button {
+    background: linear-gradient(135deg, #ffd93d 0%, #ffed4e 100%);
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* 新窗口按钮 */
+.new-window-btn {
+    background: linear-gradient(135deg, #ffd93d 0%, #ffed4e 100%);
+    color: #ff6b6b;
+    border: 2px solid #ff6b6b;
+}
+
+.new-window-btn:hover {
+    background: linear-gradient(135deg, #ffed4e 0%, #fff59d 100%);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .chat-header {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    }
+    
+    .room-item {
+        border-left-width: 3px;
+    }
+    
+    .sent-message, .received-message {
+        border-width: 1px;
+    }
+}
+
+/* 元宵祝福文字 */
+.chat-header h2::after {
+    content: ' 🏮 元宵快乐 🏮';
+    font-size: 14px;
+    margin-left: 10px;
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #fff9f3;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ff6b6b 0%, #ff8e53 100%);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #ff8e53 0%, #feca57 100%);
+}
+
+/* 元宵特效 - 彩色粒子 */
+@keyframes float {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+}
+
+.lantern-particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+    animation: float 10s linear infinite;
+}
+
+/* 不同颜色的粒子 */
+.lantern-particle.color1 {
+    background: rgba(255, 107, 107, 0.6);
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+}
+
+.lantern-particle.color2 {
+    background: rgba(255, 142, 83, 0.6);
+    box-shadow: 0 0 10px rgba(255, 142, 83, 0.8);
+}
+
+.lantern-particle.color3 {
+    background: rgba(255, 217, 61, 0.6);
+    box-shadow: 0 0 10px rgba(255, 217, 61, 0.8);
+}

@@ -8206,11 +8206,9 @@ function resetSettings() {
 function applyTheme(theme) {
     document.body.className = '';
     
-    // 移除新年限定主题CSS
-    const springFestivalLink = document.querySelector('link[href*="spring-festival.css"]');
-    if (springFestivalLink) {
-        springFestivalLink.remove();
-    }
+    // 移除节日主题CSS
+    const festivalLinks = document.querySelectorAll('link[href*="spring-festival.css"], link[href*="lantern-festival.css"]');
+    festivalLinks.forEach(link => link.remove());
     
     if (theme === 'dark') {
         document.body.classList.add('dark-theme');
@@ -8220,6 +8218,17 @@ function applyTheme(theme) {
         link.rel = 'stylesheet';
         link.href = 'css/spring-festival.css';
         document.head.appendChild(link);
+    } else if (theme === 'lantern-festival') {
+        // 添加元宵主题CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'css/lantern-festival.css';
+        document.head.appendChild(link);
+        
+        // 启动元宵主题特效
+        if (typeof createLanternParticles === 'function') {
+            createLanternParticles();
+        }
     } else if (theme === 'auto') {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.body.classList.add('dark-theme');
