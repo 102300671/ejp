@@ -1,6 +1,6 @@
 # Compiled output
 chatroom/server/bin/
-chatroom/client/bin/
+chatroom/client/cli/bin/
 *.class
 
 # IDE configuration
@@ -14,7 +14,7 @@ chatroom/client/bin/
 
 # Dependencies
 chatroom/server/lib/*
-chatroom/client/lib/*
+chatroom/client/cli/lib/*
 
 # Configuration files with sensitive information
 chatroom/client/user_cache.properties

@@ -278,13 +278,18 @@ public class WebSocketConnection {
                     String privateContent = message.getContent();
                     String privateTo = null;
                     
-                    // 从消息内容中解析接收者（支持两种格式）
+                    // 从消息内容中解析接收者（支持三种格式）
                     // 格式1: JSON格式 {conversation_id: xxx, content: "xxx"}
-                    // 格式2: 旧格式 "to:username;message"
+                    // 格式2: JSON格式 {to: "username", content: "xxx"} - 用于第一条消息
+                    // 格式3: 旧格式 "to:username;message"
                     try {
                         com.google.gson.JsonObject jsonContent = com.google.gson.JsonParser.parseString(privateContent).getAsJsonObject();
                         if (jsonContent.has("content")) {
                             privateContent = jsonContent.get("content").getAsString();
+                        }
+                        // 解析接收者（用于第一条消息，没有conversationId时）
+                        if (jsonContent.has("to")) {
+                            privateTo = jsonContent.get("to").getAsString();
                         }
                     } catch (Exception e) {
                         // 不是JSON格式，尝试旧格式
@@ -787,7 +792,10 @@ public class WebSocketConnection {
                             int newConversationId = conversationDAO.createConversation("ROOM", createRoomName, connection);
                             System.out.println("创建conversation成功: ID=" + newConversationId + ", name=" + createRoomName);
                             
-                            // 创建新房间
+                            // 获取当前用户ID作为房主ID
+                            String ownerId = String.valueOf(currentUser.getId());
+                            
+                            // 创建新房间（id参数暂时为null，数据库会生成）
                             Room newRoom;
                             if ("PRIVATE".equals(roomType)) {
                                 newRoom = new PrivateRoom(createRoomName, null, messageRouter);
@@ -797,6 +805,9 @@ public class WebSocketConnection {
                                 roomDAO.insertPublicRoom((PublicRoom) newRoom, connection);
                             }
                             
+                            // 设置房间的房主ID
+                            newRoom.setOwnerId(ownerId);
+                            
                             // 设置房间的conversation_id
                             newRoom.setConversationId(newConversationId);
                             
@@ -804,8 +815,8 @@ public class WebSocketConnection {
                             messageRouter.addRoom(newRoom);
                             
                             // 将创建者作为房主加入房间
-                            roomDAO.joinRoom(newRoom.getId(), String.valueOf(currentUser.getId()), "OWNER", connection);
-                            messageRouter.joinRoom(String.valueOf(currentUser.getId()), newRoom.getId());
+                            roomDAO.joinRoom(newRoom.getId(), ownerId, "OWNER", connection);
+                            messageRouter.joinRoom(ownerId, newRoom.getId());
                             
                             // 将创建者加入conversation
                             conversationDAO.addConversationMember(newConversationId, currentUser.getUsername(), "OWNER", connection);
@@ -2203,16 +2214,19 @@ public class WebSocketConnection {
                     // 更新好友请求状态
                     friendRequestDAO.updateFriendRequestStatus(request.id, "ACCEPTED", connection);
                     
-                    // 将临时会话转换为好友会话
+                    // 获取两个用户的用户名
+                    String fromUsername = toUsername;
+                    String toUsernameCurrent = username;
+                    Integer friendConversationId = null;
+                    
+                    // 将临时会话转换为好友会话，或创建新的好友会话
                     try {
-                        // 获取两个用户的用户名
-                        String fromUsername = toUsername;
-                        String toUsernameCurrent = username;
-                        
-                        // 查找两个用户之间的临时会话
+                        // 查找两个用户之间的现有会话（临时或好友）
                         List<server.sql.conversation.Conversation> fromConversations = conversationDAO.getUserConversations(fromUsername, connection);
+                        boolean foundExistingConversation = false;
+                        
                         for (server.sql.conversation.Conversation conv : fromConversations) {
-                            if ("TEMP".equals(conv.getType())) {
+                            if ("TEMP".equals(conv.getType()) || "FRIEND".equals(conv.getType())) {
                                 List<server.sql.conversation.ConversationMember> members = conversationDAO.getConversationMembers(conv.getId(), connection);
                                 if (members.size() == 2) {
                                     boolean hasFrom = false;
@@ -2225,16 +2239,32 @@ public class WebSocketConnection {
                                         }
                                     }
                                     if (hasFrom && hasTo) {
-                                        // 找到临时会话，更新为好友会话
-                                        conversationDAO.updateConversationType(conv.getId(), "FRIEND", connection);
-                                        System.out.println("临时会话已转换为好友会话: " + conv.getId());
+                                        // 找到现有会话
+                                        friendConversationId = conv.getId();
+                                        if ("TEMP".equals(conv.getType())) {
+                                            // 临时会话，更新为好友会话
+                                            conversationDAO.updateConversationType(conv.getId(), "FRIEND", connection);
+                                            System.out.println("临时会话已转换为好友会话: " + conv.getId());
+                                        } else {
+                                            System.out.println("使用已存在的好友会话: " + conv.getId());
+                                        }
+                                        foundExistingConversation = true;
                                         break;
                                     }
                                 }
                             }
                         }
+                        
+                        // 如果没有找到现有会话，创建新的好友会话
+                        if (!foundExistingConversation) {
+                            String conversationName = fromUsername + "_" + toUsernameCurrent;
+                            friendConversationId = conversationDAO.createConversation("FRIEND", conversationName, connection);
+                            conversationDAO.addConversationMember(friendConversationId, fromUsername, "MEMBER", connection);
+                            conversationDAO.addConversationMember(friendConversationId, toUsernameCurrent, "MEMBER", connection);
+                            System.out.println("新建好友会话: " + friendConversationId);
+                        }
                     } catch (Exception e) {
-                        System.err.println("转换临时会话为好友会话失败: " + e.getMessage());
+                        System.err.println("处理好友会话失败: " + e.getMessage());
                         e.printStackTrace();
                     }
                     
@@ -2248,9 +2278,20 @@ public class WebSocketConnection {
                     }
                     
                     if (recipientId != null) {
-                        Message notificationMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, "accept:" + username, null);
+                        // 构造包含conversationId的通知消息
+                        String notificationContent = "accept:" + username;
+                        if (friendConversationId != null) {
+                            notificationContent += ":" + friendConversationId;
+                        }
+                        Message notificationMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, notificationContent, null);
                         messageRouter.sendPrivateMessage(String.valueOf(currentUser.getId()), recipientId, messageCodec.encode(notificationMsg));
-                        System.out.println("好友请求接受通知已发送给: " + toUsername);
+                        System.out.println("好友请求接受通知已发送给: " + toUsername + ", conversationId: " + friendConversationId);
+                        
+                        // 向双方发送状态更新通知
+                        // 通知原始发送者（toUsername）当前用户（username）的状态
+                        messageRouter.notifyFriendsOfUserStatusUpdate(String.valueOf(currentUser.getId()), username, "ONLINE");
+                        // 通知当前用户（username）原始发送者（toUsername）的状态
+                        messageRouter.notifyFriendsOfUserStatusUpdate(recipientId, toUsername, "ONLINE");
                     }
                     
                     Message successMsg = new Message(MessageType.SYSTEM, "server", "您已接受 " + toUsername + " 的好友请求", null);

@@ -80,7 +80,12 @@ public class RoomDAO {
                 while (rs.next()) {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
-                    rooms.add(new PublicRoom(name, id, messageRouter));
+                    Room room = new PublicRoom(name, id, messageRouter);
+                    
+                    // 加载房主和管理员信息
+                    loadRoomOwnersAndAdmins(room, id, conn);
+                    
+                    rooms.add(room);
                 }
             }
         }
@@ -117,6 +122,9 @@ public class RoomDAO {
                     if (conversationId != null) {
                         room.setConversationId(conversationId);
                     }
+                    
+                    // 加载房主和管理员信息
+                    loadRoomOwnersAndAdmins(room, id, conn);
                     
                     rooms.add(room);
                 }

@@ -85,7 +85,98 @@ public class MessageRouter {
         // 通知好友用户上线
         notifyFriendsOfUserStatusUpdate(userId, username, "ONLINE");
         
+        // 向用户发送所有好友的当前状态
+        sendFriendsStatusToUser(userId, username);
+        
         return true;
+    }
+    
+    /**
+     * 向用户发送所有好友的当前状态
+     * @param userId 用户ID
+     * @param username 用户名
+     * @return 发送成功的好友数量
+     */
+    public int sendFriendsStatusToUser(String userId, String username) {
+        if (userId == null || username == null) {
+            System.err.println("无效的参数");
+            return 0;
+        }
+        
+        int sentCount = 0;
+        Session userSession = sessions.get(userId);
+        
+        if (userSession == null || !userSession.isActive()) {
+            System.err.println("用户会话不存在或非活动: " + username);
+            return 0;
+        }
+        
+        try (Connection connection = new DatabaseManager().getConnection()) {
+            // 获取用户的所有好友
+            FriendshipDAO friendshipDAO = new FriendshipDAO();
+            List<FriendshipDAO.Friendship> friendships = friendshipDAO.getUserFriends(Integer.parseInt(userId), connection);
+            
+            System.out.println("向用户" + username + "发送好友状态，好友数量: " + friendships.size());
+            
+            // 为每个好友创建并发送状态更新消息
+            MessageCodec messageCodec = new MessageCodec();
+            
+            for (FriendshipDAO.Friendship friendship : friendships) {
+                if (friendship == null) continue;
+                
+                // 确定好友的用户名
+                String friendUsername = null;
+                if (friendship.user1Username != null && !friendship.user1Username.equals(username)) {
+                    friendUsername = friendship.user1Username;
+                } else if (friendship.user2Username != null && !friendship.user2Username.equals(username)) {
+                    friendUsername = friendship.user2Username;
+                }
+                
+                if (friendUsername == null) continue;
+                
+                // 检查好友是否在线
+                Session friendSession = getSessionByUsername(friendUsername);
+                boolean isOnline = friendSession != null && friendSession.isActive();
+                String status = isOnline ? "ONLINE" : "OFFLINE";
+                
+                // 创建状态更新消息
+                Map<String, Object> statusData = new HashMap<>();
+                statusData.put("username", friendUsername);
+                statusData.put("status", status);
+                statusData.put("isOnline", isOnline);
+                
+                // 将状态数据转换为JSON字符串
+                String statusJson = null;
+                try {
+                    com.google.gson.Gson gson = new com.google.gson.Gson();
+                    statusJson = gson.toJson(statusData);
+                } catch (Exception e) {
+                    System.err.println("转换状态数据为JSON失败: " + e.getMessage());
+                    continue;
+                }
+                
+                Message statusMessage = new Message(
+                    MessageType.USER_STATUS_UPDATE,
+                    friendUsername,
+                    statusJson,
+                    null
+                );
+                
+                // 编码并发送消息
+                String encodedMessage = messageCodec.encode(statusMessage);
+                userSession.getClientConnection().send(encodedMessage);
+                sentCount++;
+                
+                System.out.println("向用户" + username + "发送好友状态: " + friendUsername + " 现在 " + status);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("向用户发送好友状态失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        System.out.println("成功向用户" + username + "发送" + sentCount + "个好友的状态");
+        return sentCount;
     }
 
     /**

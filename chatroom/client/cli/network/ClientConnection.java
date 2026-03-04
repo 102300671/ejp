@@ -1,6 +1,6 @@
-package client.network;
-import client.message.Message;
-import client.message.MessageCodec;
+package client.cli.network;
+import client.cli.message.Message;
+import client.cli.message.MessageCodec;
 import java.io.*;
 import java.net.*;
 

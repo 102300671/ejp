@@ -15,6 +15,8 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - **消息加密**：使用AES-GCM加密敏感消息内容
 - **好友系统**：支持好友请求、好友关系管理和好友聊天
 - **管理后台**：基于Spring Boot的Web管理界面，提供用户、房间、消息管理功能
+- **会话管理**：支持查看和管理用户会话，包括私人聊天会话
+- **实时监控**：管理后台提供系统实时监控功能
 
 ### 高级功能
 - **自动重连机制**：客户端断线后自动尝试重连
@@ -52,9 +54,11 @@ EJP是一个基于Java开发的多功能聊天应用，支持TCP Socket和WebSoc
 - **UserController**：用户管理API，提供用户CRUD、搜索、好友管理等功能
 - **RoomController**：房间管理API
 - **MessageController**：消息管理API
+- **ConversationController**：会话管理API，处理私人聊天会话
 - **UserService**：用户服务层，处理用户相关业务逻辑
 - **RoomService**：房间服务层，处理房间相关业务逻辑
 - **MessageService**：消息服务层，处理消息相关业务逻辑
+- **ConversationService**：会话服务层，处理私人聊天会话相关业务逻辑
 
 ### 客户端
 - **ClientConnection**：与服务器的网络连接
@@ -199,12 +203,12 @@ java -cp .:chatroom/server/bin:chatroom/server/lib/* server.ChatServer [port]
 
 ```bash
 # 使用Maven启动Spring Boot管理后台
-cd chatroom/server
+cd chatroom/dashboard
 mvn spring-boot:run
 
 # 或者先打包再运行
 mvn clean package
-java -jar target/chatroom-admin-1.0.0.jar
+java -jar target/dashboard-1.0.0.jar
 ```
 
 管理后台默认运行在 `http://localhost:8083`，提供以下功能：
@@ -212,6 +216,7 @@ java -jar target/chatroom-admin-1.0.0.jar
 - **用户管理**：查看、创建、删除用户，修改用户密码，查看用户好友和房间
 - **房间管理**：查看和管理所有房间
 - **消息管理**：查看消息历史和统计信息
+- **会话管理**：查看和管理用户私人聊天会话
 
 ### 启动客户端
 
@@ -286,31 +291,35 @@ ejp/
 │   │   │   └── test_sync.html
 │   │   ├── user_cache.properties
 │   │   └── Client.java    # 客户端主类
+│   ├── dashboard/         # 管理后台（Spring Boot）
+│   │   ├── src/           # 源码目录
+│   │   │   └── main/
+│   │   │       ├── java/admin/     # 管理后台Java代码
+│   │   │       │   ├── AdminApplication.java
+│   │   │       │   ├── controller/    # 控制器
+│   │   │       │   │   ├── MainController.java
+│   │   │       │   │   ├── UserController.java
+│   │   │       │   │   ├── RoomController.java
+│   │   │       │   │   ├── MessageController.java
+│   │   │       │   │   └── ConversationController.java
+│   │   │       │   └── service/       # 服务层
+│   │   │       │       ├── UserService.java
+│   │   │       │       ├── RoomService.java
+│   │   │       │       ├── MessageService.java
+│   │   │       │       └── ConversationService.java
+│   │   │       └── resources/         # 资源文件
+│   │   │           ├── application.properties
+│   │   │           └── templates/     # Thymeleaf模板
+│   │   │               ├── index.html
+│   │   │               ├── users.html
+│   │   │               ├── rooms.html
+│   │   │               ├── messages.html
+│   │   │               └── conversations.html
+│   │   ├── target/      # Maven编译输出目录
+│   │   └── pom.xml      # Maven项目配置文件
 │   └── server/            # 服务器端代码
 │       ├── bin/           # 编译输出目录
 │       ├── lib/           # 服务器端依赖库
-│       ├── src/           # Spring Boot管理后台源码
-│       │   └── main/
-│       │       ├── java/admin/     # 管理后台Java代码
-│       │       │   ├── AdminApplication.java
-│       │       │   ├── controller/    # 控制器
-│       │       │   │   ├── MainController.java
-│       │       │   │   ├── UserController.java
-│       │       │   │   ├── RoomController.java
-│       │       │   │   └── MessageController.java
-│       │       │   └── service/       # 服务层
-│       │       │       ├── UserService.java
-│       │       │       ├── RoomService.java
-│       │       │       └── MessageService.java
-│       │       └── resources/         # 资源文件
-│       │           ├── application.properties
-│       │           └── templates/     # Thymeleaf模板
-│       │               ├── index.html
-│       │               ├── users.html
-│       │               ├── rooms.html
-│       │               └── messages.html
-│       ├── target/      # Maven编译输出目录
-│       ├── pom.xml      # Maven项目配置文件
 │       ├── message/     # 消息相关类
 │       │   ├── Message.java
 │       │   ├── MessageCodec.java
@@ -441,6 +450,7 @@ ejp/
 - 用户管理：查看、创建、删除用户，修改密码
 - 房间管理：查看和管理所有房间
 - 消息管理：查看消息历史和统计信息
+- 会话管理：查看和管理用户私人聊天会话
 - 响应式设计，支持移动端访问
 
 ### 数据库配置
@@ -549,4 +559,4 @@ chatClient.sendMessage(MessageType.FILE, 'room-name', 'http://zfile-server/file-
 
 ---
 
-© 2025-2026 EJP Chat Application. All rights reserved.
+© 2026 EJP Chat Application. All rights reserved.

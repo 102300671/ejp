@@ -1,4 +1,4 @@
-package client.util;
+package client.cli.util;
 import java.io.*;
 import java.util.Properties;
 

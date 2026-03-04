@@ -35,6 +35,13 @@ public class MessageController {
         return ResponseEntity.ok(messageService.searchMessages(term, limit));
     }
     
+    @GetMapping("/conversation/{conversationId}")
+    public ResponseEntity<List<Map<String, Object>>> getConversationMessages(
+            @PathVariable int conversationId,
+            @RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(messageService.getConversationMessages(conversationId, limit));
+    }
+    
     @GetMapping("/room/{roomName}")
     public ResponseEntity<List<Map<String, Object>>> getRoomMessages(
             @PathVariable String roomName,
@@ -63,6 +70,12 @@ public class MessageController {
     public ResponseEntity<List<Map<String, Object>>> getTopUsers(
             @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(messageService.getTopUsersByMessageCount(limit));
+    }
+    
+    @GetMapping("/top-conversations")
+    public ResponseEntity<List<Map<String, Object>>> getTopConversations(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(messageService.getTopConversationsByMessageCount(limit));
     }
     
     @GetMapping("/top-rooms")

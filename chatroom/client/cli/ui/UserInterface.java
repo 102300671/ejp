@@ -1,7 +1,7 @@
-package client.ui;
-import client.message.Message;
-import client.message.MessageType;
-import client.network.ClientConnection;
+package client.cli.ui;
+import client.cli.message.Message;
+import client.cli.message.MessageType;
+import client.cli.network.ClientConnection;
 import java.util.Scanner;
 import java.util.HashMap;
 import java.util.Map;
@@ -131,14 +131,12 @@ public class UserInterface {
         switch (message.getType()) {
             case TEXT:
                 String content = message.getContent();
-                // 处理私人消息，去掉房间信息
-                if (content.startsWith("[room:")) {
+                if (content != null && content.startsWith("[room:")) {
                     int roomEnd = content.indexOf("]");
                     content = content.substring(roomEnd + 1);
                     System.out.println("[私聊] " + message.getFrom() + ": " + content + " (" + message.getTime() + ")");
                 } else {
-                    // 房间消息，简化显示，使用房间内显示名
-                    String displayName = getDisplayNameInRoom(message.getFrom(), message.getTo());
+                    String displayName = getDisplayNameInRoom(message.getFrom(), currentRoom);
                     System.out.println("[" + displayName + "]: " + content + " (" + message.getTime() + ")");
                 }
                 break;
@@ -146,10 +144,10 @@ public class UserInterface {
                 System.out.println("[系统] " + message.getContent());
                 break;
             case JOIN:
-                System.out.println("[系统] " + message.getFrom() + " 加入了房间 " + message.getTo());
+                System.out.println("[系统] " + message.getFrom() + " 加入了房间");
                 break;
             case LEAVE:
-                System.out.println("[系统] " + message.getFrom() + " 离开了房间 " + message.getTo());
+                System.out.println("[系统] " + message.getFrom() + " 离开了房间");
                 break;
             case HISTORY_RESPONSE:
                 displayHistoryResponse(message);
@@ -176,7 +174,7 @@ public class UserInterface {
                 displayRoomSearchResult(message);
                 break;
             case ROOM_JOIN_REQUEST:
-                System.out.println("[房间请求] " + message.getFrom() + " 申请加入房间 " + message.getTo());
+                System.out.println("[房间请求] " + message.getFrom() + " 申请加入房间");
                 break;
             case ROOM_JOIN_RESPONSE:
                 System.out.println("[房间] " + message.getContent());
@@ -199,14 +197,7 @@ public class UserInterface {
             case ROOM_DISPLAY_NAME_UPDATED:
                 handleRoomDisplayNameUpdated(message);
                 break;
-            case ROOM_DISPLAY_NAMES_RESPONSE:
-                handleRoomDisplayNamesResponse(message);
-                break;
-            case ROOM_DISPLAY_NAME_UPDATED:
-                handleRoomDisplayNameUpdated(message);
-                break;
             default:
-                // 隐藏未知消息的详细内容
                 System.out.println("[系统] 收到消息: " + message.getType() + " from " + message.getFrom());
                 break;
         }
@@ -217,7 +208,7 @@ public class UserInterface {
      */
     private void displayHistoryResponse(Message message) {
         System.out.println("============================================");
-        System.out.println("消息历史 (" + message.getTo() + "):");
+        System.out.println("消息历史:");
         System.out.println("============================================");
         String content = message.getContent();
         if (content != null && !content.isEmpty()) {
@@ -238,7 +229,7 @@ public class UserInterface {
      */
     private void displayRoomUsers(Message message) {
         System.out.println("============================================");
-        System.out.println("房间成员 (" + message.getTo() + "):");
+        System.out.println("房间成员:");
         System.out.println("============================================");
         String content = message.getContent();
         if (content != null && !content.isEmpty()) {
@@ -371,7 +362,7 @@ public class UserInterface {
      * @param content 消息内容
      */
     private void sendTextMessage(String to, String content) {
-        Message message = new Message(MessageType.TEXT, username, to, content);
+        Message message = new Message(MessageType.TEXT, username, content);
         clientConnection.sendMessage(message);
     }
     
@@ -405,7 +396,7 @@ public class UserInterface {
                 break;
         }
         
-        Message message = new Message(messageType, username, to, content);
+        Message message = new Message(messageType, username, content);
         clientConnection.sendMessage(message);
     }
     
@@ -478,8 +469,7 @@ public class UserInterface {
                     currentRoomType = "PUBLIC";
                     sendSystemMessage("JOIN", room, username + " 加入了房间");
                     displaySystemMessage("已加入房间: " + room + " (类型: " + currentRoomType + ")");
-                    // 请求房间显示名映射
-                    Message requestDisplayNamesMsg = new Message(MessageType.REQUEST_ROOM_DISPLAY_NAMES, username, "server", room);
+                    Message requestDisplayNamesMsg = new Message(MessageType.REQUEST_ROOM_DISPLAY_NAMES, username, room);
                     clientConnection.sendMessage(requestDisplayNamesMsg);
                 } else {
                     displaySystemMessage("请指定房间名称: /join <room>");
@@ -537,7 +527,7 @@ public class UserInterface {
             case "/searchrooms":
                 if (parts.length >= 2) {
                     String keyword = parts[1];
-                    Message searchMsg = new Message(MessageType.SEARCH_ROOMS, username, "server", keyword);
+                    Message searchMsg = new Message(MessageType.SEARCH_ROOMS, username, keyword);
                     clientConnection.sendMessage(searchMsg);
                     displaySystemMessage("正在搜索房间: " + keyword);
                 } else {
@@ -548,7 +538,7 @@ public class UserInterface {
             case "/requestjoin":
                 if (parts.length >= 2) {
                     String room = parts[1];
-                    Message requestMsg = new Message(MessageType.REQUEST_ROOM_JOIN, username, room, "");
+                    Message requestMsg = new Message(MessageType.REQUEST_ROOM_JOIN, username, room);
                     clientConnection.sendMessage(requestMsg);
                     displaySystemMessage("已发送加入房间请求: " + room);
                 } else {
@@ -565,7 +555,7 @@ public class UserInterface {
                         displaySystemMessage("无效的限制数量，使用默认值50");
                     }
                 }
-                Message historyMsg = new Message(MessageType.REQUEST_HISTORY, username, currentRoom, String.valueOf(limit));
+                Message historyMsg = new Message(MessageType.REQUEST_HISTORY, username, String.valueOf(limit));
                 clientConnection.sendMessage(historyMsg);
                 displaySystemMessage("正在获取消息历史...");
                 break;
@@ -575,7 +565,7 @@ public class UserInterface {
                 if (parts.length >= 3) {
                     String user = parts[1];
                     String content = parts[2];
-                    Message pmMsg = new Message(MessageType.PRIVATE_CHAT, username, user, content);
+                    Message pmMsg = new Message(MessageType.PRIVATE_CHAT, username, "to:" + user + ";" + content);
                     clientConnection.sendMessage(pmMsg);
                     System.out.println("[私聊] 你 -> " + user + ": " + content);
                 } else {
@@ -586,7 +576,7 @@ public class UserInterface {
             case "/recall":
                 if (parts.length >= 2) {
                     String messageId = parts[1];
-                    Message recallMsg = new Message(MessageType.RECALL_MESSAGE, username, currentRoom, messageId);
+                    Message recallMsg = new Message(MessageType.RECALL_MESSAGE, username, messageId);
                     clientConnection.sendMessage(recallMsg);
                     displaySystemMessage("正在撤回消息: " + messageId);
                 } else {
@@ -597,7 +587,7 @@ public class UserInterface {
             case "/addfriend":
                 if (parts.length >= 2) {
                     String friendUser = parts[1];
-                    Message addFriendMsg = new Message(MessageType.FRIEND_REQUEST, username, friendUser, "");
+                    Message addFriendMsg = new Message(MessageType.FRIEND_REQUEST, username, "to:" + friendUser);
                     clientConnection.sendMessage(addFriendMsg);
                     displaySystemMessage("已发送好友请求给: " + friendUser);
                 } else {
@@ -608,7 +598,7 @@ public class UserInterface {
             case "/accept":
                 if (parts.length >= 2) {
                     String friendUser = parts[1];
-                    Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "ACCEPT");
+                    Message acceptMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, "accept:" + friendUser);
                     clientConnection.sendMessage(acceptMsg);
                     displaySystemMessage("已接受好友请求: " + friendUser);
                 } else {
@@ -619,7 +609,7 @@ public class UserInterface {
             case "/reject":
                 if (parts.length >= 2) {
                     String friendUser = parts[1];
-                    Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "REJECT");
+                    Message rejectMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, "reject:" + friendUser);
                     clientConnection.sendMessage(rejectMsg);
                     displaySystemMessage("已拒绝好友请求: " + friendUser);
                 } else {
@@ -628,13 +618,13 @@ public class UserInterface {
                 break;
                 
             case "/friends":
-                Message friendListMsg = new Message(MessageType.REQUEST_FRIEND_LIST, username, "server", "");
+                Message friendListMsg = new Message(MessageType.REQUEST_FRIEND_LIST, username, "");
                 clientConnection.sendMessage(friendListMsg);
                 displaySystemMessage("正在获取好友列表...");
                 break;
                 
             case "/friendrequests":
-                Message friendRequestsMsg = new Message(MessageType.REQUEST_ALL_FRIEND_REQUESTS, username, "server", "");
+                Message friendRequestsMsg = new Message(MessageType.REQUEST_ALL_FRIEND_REQUESTS, username, "");
                 clientConnection.sendMessage(friendRequestsMsg);
                 displaySystemMessage("正在获取好友请求...");
                 break;
@@ -642,7 +632,7 @@ public class UserInterface {
             case "/removefriend":
                 if (parts.length >= 2) {
                     String friendUser = parts[1];
-                    Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, friendUser, "REMOVE");
+                    Message removeMsg = new Message(MessageType.FRIEND_REQUEST_RESPONSE, username, "remove:" + friendUser);
                     clientConnection.sendMessage(removeMsg);
                     displaySystemMessage("已删除好友: " + friendUser);
                 } else {
@@ -663,7 +653,7 @@ public class UserInterface {
                 break;
                 
             case "/stats":
-                Message statsMsg = new Message(MessageType.REQUEST_USER_STATS, username, "server", "");
+                Message statsMsg = new Message(MessageType.REQUEST_USER_STATS, username, "");
                 clientConnection.sendMessage(statsMsg);
                 displaySystemMessage("正在获取用户统计信息...");
                 break;
@@ -671,7 +661,7 @@ public class UserInterface {
             case "/searchusers":
                 if (parts.length >= 2) {
                     String keyword = parts[1];
-                    Message searchUsersMsg = new Message(MessageType.SEARCH_USERS, username, "server", keyword);
+                    Message searchUsersMsg = new Message(MessageType.SEARCH_USERS, username, keyword);
                     clientConnection.sendMessage(searchUsersMsg);
                     displaySystemMessage("正在搜索用户: " + keyword);
                 } else {
@@ -687,7 +677,7 @@ public class UserInterface {
                 if (parts.length >= 2) {
                     String displayName = parts[1];
                     String content = currentRoom + "|display_name|" + displayName;
-                    Message setDisplayNameMsg = new Message(MessageType.UPDATE_ROOM_SETTINGS, username, "server", content);
+                    Message setDisplayNameMsg = new Message(MessageType.UPDATE_ROOM_SETTINGS, username, content);
                     clientConnection.sendMessage(setDisplayNameMsg);
                     displaySystemMessage("正在设置房间显示名: " + displayName);
                 } else {
@@ -746,7 +736,7 @@ public class UserInterface {
      * 处理房间显示名响应
      */
     private void handleRoomDisplayNamesResponse(Message message) {
-        String roomName = message.getTo();
+        String roomName = currentRoom;
         String content = message.getContent();
         
         if (!roomDisplayNames.containsKey(roomName)) {
@@ -754,14 +744,16 @@ public class UserInterface {
         }
         
         Map<String, String> displayNames = roomDisplayNames.get(roomName);
-        String[] entries = content.split("\\|\\|");
-        for (String entry : entries) {
-            if (!entry.isEmpty() && entry.contains(":")) {
-                String[] parts = entry.split(":");
-                if (parts.length >= 2) {
-                    String userId = parts[0];
-                    String displayName = parts[1];
-                    displayNames.put(userId, displayName);
+        if (content != null && !content.isEmpty()) {
+            String[] entries = content.split("\\|\\|");
+            for (String entry : entries) {
+                if (!entry.isEmpty() && entry.contains(":")) {
+                    String[] parts = entry.split(":");
+                    if (parts.length >= 2) {
+                        String userId = parts[0];
+                        String displayName = parts[1];
+                        displayNames.put(userId, displayName);
+                    }
                 }
             }
         }
@@ -773,7 +765,7 @@ public class UserInterface {
      * 处理房间显示名更新
      */
     private void handleRoomDisplayNameUpdated(Message message) {
-        String roomName = message.getTo();
+        String roomName = currentRoom;
         String content = message.getContent();
         
         if (!roomDisplayNames.containsKey(roomName)) {
@@ -781,18 +773,20 @@ public class UserInterface {
         }
         
         Map<String, String> displayNames = roomDisplayNames.get(roomName);
-        String[] parts = content.split(":");
-        if (parts.length >= 3) {
-            String userId = parts[0];
-            String displayName = parts[1];
-            String username = parts[2];
-            
-            if (displayName != null && !displayName.trim().isEmpty()) {
-                displayNames.put(userId, displayName);
-                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已更新为: " + displayName);
-            } else {
-                displayNames.remove(userId);
-                displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已清除");
+        if (content != null) {
+            String[] parts = content.split(":");
+            if (parts.length >= 3) {
+                String userId = parts[0];
+                String displayName = parts[1];
+                String username = parts[2];
+                
+                if (displayName != null && !displayName.trim().isEmpty()) {
+                    displayNames.put(userId, displayName);
+                    displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已更新为: " + displayName);
+                } else {
+                    displayNames.remove(userId);
+                    displaySystemMessage("用户 " + username + " 在房间 " + roomName + " 的显示名已清除");
+                }
             }
         }
     }

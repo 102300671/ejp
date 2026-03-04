@@ -1,8 +1,8 @@
-package client.ui;
-import client.message.Message;
-import client.message.MessageType;
-import client.network.ClientConnection;
-import client.util.UUIDCache;
+package client.cli.ui;
+import client.cli.message.Message;
+import client.cli.message.MessageType;
+import client.cli.network.ClientConnection;
+import client.cli.util.UUIDCache;
 import java.util.Scanner;
 
 public class AuthenticationInterface {
@@ -122,7 +122,7 @@ public class AuthenticationInterface {
         // 发送注册请求
         System.out.println("正在注册...");
         String registerContent = username + ":" + password;
-        Message registerMessage = new Message(MessageType.REGISTER, username, "server", registerContent);
+        Message registerMessage = new Message(MessageType.REGISTER, username, registerContent);
         clientConnection.sendMessage(registerMessage);
         
         // 等待认证结果
@@ -153,11 +153,9 @@ public class AuthenticationInterface {
             String choice = scanner.nextLine().trim().toLowerCase();
             
             if ("y".equals(choice)) {
-                // 使用UUID认证
                 System.out.println("正在使用UUID登录...");
-                // 先保存用户名到实例变量，确保认证失败时也能获取到
                 this.username = username;
-                Message uuidAuthMessage = new Message(MessageType.UUID_AUTH, username, "server", cachedUUID);
+                Message uuidAuthMessage = new Message(MessageType.UUID_AUTH, username, cachedUUID);
                 clientConnection.sendMessage(uuidAuthMessage);
                 
                 // 等待认证结果
@@ -175,10 +173,9 @@ public class AuthenticationInterface {
             password = scanner.nextLine().trim();
         }
         
-        // 发送登录请求
         System.out.println("正在登录...");
         String loginContent = username + ":" + password;
-        Message loginMessage = new Message(MessageType.LOGIN, username, "server", loginContent);
+        Message loginMessage = new Message(MessageType.LOGIN, username, loginContent);
         clientConnection.sendMessage(loginMessage);
         
         // 等待认证结果
@@ -218,13 +215,14 @@ public class AuthenticationInterface {
         switch (message.getType()) {
             case AUTH_SUCCESS:
                 System.out.println("认证成功！");
-                this.username = message.getTo();
-                this.uuid = message.getContent();
+                this.username = message.getContent();
+                this.uuid = message.getTime();
                 this.isAuthenticated = true;
                 this.isAuthenticationComplete = true;
                 
-                // 保存UUID到缓存
-                uuidCache.saveUUID(username, uuid);
+                if (this.username != null && this.uuid != null) {
+                    uuidCache.saveUUID(username, uuid);
+                }
                 break;
                 
             case AUTH_FAILURE:
@@ -234,15 +232,14 @@ public class AuthenticationInterface {
                 
             case UUID_AUTH_SUCCESS:
                 System.out.println("UUID认证成功！");
-                this.username = message.getTo();
-                this.uuid = message.getContent();
+                this.username = message.getContent();
+                this.uuid = message.getTime();
                 this.isAuthenticated = true;
                 this.isAuthenticationComplete = true;
                 break;
                 
             case UUID_AUTH_FAILURE:
                 System.out.println("UUID认证失败: " + message.getContent());
-                // UUID认证失败，重新登录
                 this.isAuthenticationComplete = true;
                 break;
                 

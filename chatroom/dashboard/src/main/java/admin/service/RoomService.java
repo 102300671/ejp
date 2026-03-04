@@ -15,15 +15,21 @@ public class RoomService {
     
     public List<Map<String, Object>> getAllRooms() {
         String sql = "SELECT r.id, r.room_name, r.room_type, r.created_at, " +
+                     "c.id as conversation_id, " +
                      "(SELECT COUNT(*) FROM room_member WHERE room_id = r.id) as member_count " +
-                     "FROM room r ORDER BY r.id";
+                     "FROM room r " +
+                     "LEFT JOIN conversation c ON c.type = 'ROOM' AND c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci " +
+                     "ORDER BY r.id";
         return jdbcTemplate.queryForList(sql);
     }
     
     public Map<String, Object> getRoomById(int roomId) {
         String sql = "SELECT r.id, r.room_name, r.room_type, r.created_at, " +
+                     "c.id as conversation_id, " +
                      "(SELECT COUNT(*) FROM room_member WHERE room_id = r.id) as member_count " +
-                     "FROM room r WHERE r.id = ?";
+                     "FROM room r " +
+                     "LEFT JOIN conversation c ON c.type = 'ROOM' AND c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci " +
+                     "WHERE r.id = ?";
         try {
             return jdbcTemplate.queryForMap(sql, roomId);
         } catch (Exception e) {
@@ -33,8 +39,11 @@ public class RoomService {
     
     public Map<String, Object> getRoomByName(String roomName) {
         String sql = "SELECT r.id, r.room_name, r.room_type, r.created_at, " +
+                     "c.id as conversation_id, " +
                      "(SELECT COUNT(*) FROM room_member WHERE room_id = r.id) as member_count " +
-                     "FROM room r WHERE r.room_name = ?";
+                     "FROM room r " +
+                     "LEFT JOIN conversation c ON c.type = 'ROOM' AND c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci " +
+                     "WHERE r.room_name = ?";
         try {
             return jdbcTemplate.queryForMap(sql, roomName);
         } catch (Exception e) {
@@ -44,8 +53,11 @@ public class RoomService {
     
     public List<Map<String, Object>> searchRooms(String searchTerm) {
         String sql = "SELECT r.id, r.room_name, r.room_type, r.created_at, " +
+                     "c.id as conversation_id, " +
                      "(SELECT COUNT(*) FROM room_member WHERE room_id = r.id) as member_count " +
-                     "FROM room r WHERE r.room_name LIKE ? ORDER BY r.room_name LIMIT 20";
+                     "FROM room r " +
+                     "LEFT JOIN conversation c ON c.type = 'ROOM' AND c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci " +
+                     "WHERE r.room_name LIKE ? ORDER BY r.room_name LIMIT 20";
         return jdbcTemplate.queryForList(sql, "%" + searchTerm + "%");
     }
     

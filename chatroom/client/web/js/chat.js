@@ -1942,6 +1942,19 @@ let chatClient = {
                 
                 console.log('收到用户状态更新:', username, '现在', isOnline ? '在线' : '离线');
                 
+                // 检查sessions数组是否为空（可能还没有收到好友列表）
+                const friendSession = this.sessions.find(s => s.isFriend && s.id === username);
+                if (!friendSession) {
+                    // 如果找不到好友会话，可能是还没有收到好友列表
+                    // 保存状态更新到pendingOnlineStatus，等到initSessions时再应用
+                    if (!this.pendingOnlineStatus) {
+                        this.pendingOnlineStatus = {};
+                    }
+                    this.pendingOnlineStatus[username] = isOnline;
+                    console.log('保存待处理的状态更新:', username, '->', isOnline);
+                    return;
+                }
+                
                 // 更新好友会话的在线状态
                 this.sessions = this.sessions.map(session => {
                     if (session.isFriend && session.id === username) {
@@ -4531,6 +4544,14 @@ let chatClient = {
     initSessions: function() {
         this.log('info', '初始化会话列表');
         
+        // 保存现有的在线状态
+        const onlineStatusMap = {};
+        this.sessions.forEach(session => {
+            if (session.isFriend && session.isOnline !== undefined) {
+                onlineStatusMap[session.id] = session.isOnline;
+            }
+        });
+        
         // 清空会话列表
         this.sessions = [];
         
@@ -4547,15 +4568,26 @@ let chatClient = {
         
         // 添加好友会话（ID使用用户名）
         this.friends.forEach(friend => {
+            // 保留现有的在线状态，如果没有则检查pendingOnlineStatus
+            let isOnline = onlineStatusMap[friend.username];
+            if (isOnline === undefined && this.pendingOnlineStatus && this.pendingOnlineStatus[friend.username] !== undefined) {
+                isOnline = this.pendingOnlineStatus[friend.username];
+                console.log('应用待处理的状态更新:', friend.username, '->', isOnline);
+            }
             this.sessions.push({
                 id: friend.username,
                 name: friend.username,
                 type: 'PRIVATE',
                 isFriend: true,
                 isTemporary: false,
-                isOnline: false // 默认离线，后续可以通过其他方式更新
+                isOnline: isOnline || false
             });
         });
+        
+        // 清空待处理的状态更新
+        if (this.pendingOnlineStatus) {
+            this.pendingOnlineStatus = {};
+        }
         
         this.log('info', `会话列表初始化完成，共${this.sessions.length}个会话`);
     },
@@ -5248,7 +5280,10 @@ let chatClient = {
         
         if (content.startsWith('accept:')) {
             // Friend request accepted
-            const friendUsername = content.substring(7);
+            // 解析消息内容: accept:username:conversationId
+            const parts = content.substring(7).split(':');
+            const friendUsername = parts[0];
+            const conversationId = parts.length > 1 ? parseInt(parts[1]) : null;
             
             // Add to friends list
             if (!this.friends.some(friend => friend.username === friendUsername)) {
@@ -5256,6 +5291,12 @@ let chatClient = {
                     username: friendUsername,
                     createdAt: new Date().toISOString()
                 });
+            }
+            
+            // 保存conversationId映射
+            if (conversationId) {
+                this.sessionToConversationId[friendUsername] = conversationId;
+                console.log('保存好友会话ID映射:', friendUsername, '->', conversationId);
             }
             
             this.showMessage(`[Friend] ${friendUsername} accepted your friend request!`, true);
@@ -5311,8 +5352,8 @@ let chatClient = {
             // 同步所有会话的消息（只在上线时同步）
             this.syncAllSessions();
             
-            // 更新UI
-            this.updateSessionsList();
+            // 更新UI（只更新聊天列表，不重新初始化会话）
+            this.updateChatsList();
         } catch (error) {
             this.log('error', `Failed to parse friend list: ${error.message}`);
         }
@@ -6292,11 +6333,17 @@ let chatClient = {
         // 获取会话ID
         let conversationId = this.sessionToConversationId[sessionId];
         
-        // 构造消息内容，包含conversation_id
-        let messageContent = content;
+        // 构造消息内容，包含conversation_id和接收者信息
+        let messageContent;
         if (conversationId) {
             messageContent = JSON.stringify({
                 conversation_id: conversationId,
+                content: content
+            });
+        } else {
+            // 第一条消息，没有conversationId，需要包含接收者信息
+            messageContent = JSON.stringify({
+                to: to,
                 content: content
             });
         }

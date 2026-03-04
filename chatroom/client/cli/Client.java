@@ -1,6 +1,6 @@
-package client;
-import client.network.ClientConnection;
-import client.ui.UserInterface;
+package client.cli;
+import client.cli.network.ClientConnection;
+import client.cli.ui.UserInterface;
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -75,7 +75,7 @@ public class Client {
      */
     private String authenticate() {
         // 初始化认证界面
-        client.ui.AuthenticationInterface authInterface = new client.ui.AuthenticationInterface(clientConnection);
+        client.cli.ui.AuthenticationInterface authInterface = new client.cli.ui.AuthenticationInterface(clientConnection);
         
         // 开始认证流程
         boolean success = authInterface.authenticate();
