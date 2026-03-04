@@ -1,6 +1,7 @@
 package client.cli.network;
 import client.cli.message.Message;
 import client.cli.message.MessageCodec;
+import client.cli.message.MessageType;
 import java.io.*;
 import java.net.*;
 
@@ -14,6 +15,13 @@ public class ClientConnection implements Runnable {
     private volatile boolean isConnected;
     private MessageReceivedCallback messageReceivedCallback;
     private String username;
+    
+    private volatile long lastHeartbeat;
+    private static final long HEARTBEAT_INTERVAL = 25000;
+    private Thread heartbeatThread;
+    
+    private static final MessageType PING = MessageType.PING;
+    private static final MessageType PONG = MessageType.PONG;
     
     /**
      * 消息接收回调接口
@@ -80,6 +88,8 @@ public class ClientConnection implements Runnable {
             this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
             
             this.isConnected = true;
+            lastHeartbeat = System.currentTimeMillis();
+            startHeartbeat();
             
             System.out.println("成功连接到服务器: " + serverAddress + ":" + serverPort);
             
@@ -136,9 +146,15 @@ public class ClientConnection implements Runnable {
             while (isConnected && (jsonMessage = reader.readLine()) != null) {
                 // 解码消息
                 Message message = messageCodec.decode(jsonMessage);
-                if (message != null && messageReceivedCallback != null) {
-                    // 通知回调处理消息
-                    messageReceivedCallback.onMessageReceived(message);
+                
+                if (message != null) {
+                    if (message.getType() == PING) {
+                        Message pong = new Message(PONG, "client", message.getContent());
+                        sendMessage(pong);
+                        lastHeartbeat = System.currentTimeMillis();
+                    } else if (messageReceivedCallback != null) {
+                        messageReceivedCallback.onMessageReceived(message);
+                    }
                 }
             }
             
@@ -171,6 +187,8 @@ public class ClientConnection implements Runnable {
         System.out.println("正在关闭客户端连接...");
         
         isConnected = false;
+        
+        stopHeartbeat();
         
         try {
             if (reader != null) {
@@ -232,5 +250,41 @@ public class ClientConnection implements Runnable {
      */
     public int getServerPort() {
         return serverPort;
+    }
+    
+    private void startHeartbeat() {
+        heartbeatThread = new Thread(() -> {
+            while (isConnected) {
+                try {
+                    Thread.sleep(HEARTBEAT_INTERVAL);
+                    
+                    if (!isConnected) break;
+                    
+                    long idleTime = System.currentTimeMillis() - lastHeartbeat;
+                    if (idleTime > 60000) {
+                        System.out.println("未收到服务器心跳响应，断开连接");
+                        close();
+                        break;
+                    }
+                    
+                    if (isConnected) {
+                        Message ping = new Message(MessageType.PING, "client", String.valueOf(System.currentTimeMillis()));
+                        sendMessage(ping);
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        heartbeatThread.setDaemon(true);
+        heartbeatThread.setName("ClientHeartbeat");
+        heartbeatThread.start();
+    }
+    
+    private void stopHeartbeat() {
+        if (heartbeatThread != null) {
+            heartbeatThread.interrupt();
+            heartbeatThread = null;
+        }
     }
 }

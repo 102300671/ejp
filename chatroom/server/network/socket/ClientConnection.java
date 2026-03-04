@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicLong;
 import server.message.*;
 import server.network.router.MessageRouter;
 import server.network.session.Session;
@@ -36,6 +37,11 @@ public class ClientConnection implements Runnable {
     private User currentUser;
     private MessageRouter messageRouter;
     private Session currentSession;
+    
+    private volatile long lastActiveTime;
+    private static final long HEARTBEAT_INTERVAL = 30000;
+    private static final long HEARTBEAT_TIMEOUT = 90000;
+    private Thread heartbeatThread;
 
     /**
      * TCP客户端连接构造函数
@@ -90,6 +96,9 @@ public class ClientConnection implements Runnable {
     public void run() {
         System.out.println("开始处理客户端连接: " + clientAddress + ":" + clientPort);
         
+        lastActiveTime = System.currentTimeMillis();
+        startHeartbeat();
+        
         try {
             while (isConnected) {
                 String jsonMessage = reader.readLine();
@@ -101,7 +110,6 @@ public class ClientConnection implements Runnable {
                 
                 System.out.println("收到客户端消息 (" + clientAddress + ":" + clientPort + "): " + jsonMessage);
                 
-                // 解码消息
                 Message message = messageCodec.decode(jsonMessage);
                 
                 if (message == null) {
@@ -109,7 +117,8 @@ public class ClientConnection implements Runnable {
                     continue;
                 }
                 
-                // 处理消息
+                lastActiveTime = System.currentTimeMillis();
+                
                 processMessage(message);
             }
         } catch (SocketException e) {
@@ -124,7 +133,44 @@ public class ClientConnection implements Runnable {
             System.err.println("客户端处理异常 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
             e.printStackTrace();
         } finally {
+            stopHeartbeat();
             close();
+        }
+    }
+    
+    private void startHeartbeat() {
+        heartbeatThread = new Thread(() -> {
+            while (isConnected) {
+                try {
+                    Thread.sleep(HEARTBEAT_INTERVAL);
+                    
+                    if (!isConnected) break;
+                    
+                    long idleTime = System.currentTimeMillis() - lastActiveTime;
+                    if (idleTime > HEARTBEAT_TIMEOUT) {
+                        System.out.println("客户端心跳超时 (" + clientAddress + ":" + clientPort + "): 空闲 " + idleTime + "ms");
+                        close();
+                        break;
+                    }
+                    
+                    if (isConnected && isAuthenticated) {
+                        Message ping = new Message(MessageType.PING, "server", String.valueOf(System.currentTimeMillis()));
+                        send(messageCodec.encode(ping));
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        heartbeatThread.setDaemon(true);
+        heartbeatThread.setName("Heartbeat-" + clientAddress + ":" + clientPort);
+        heartbeatThread.start();
+    }
+    
+    private void stopHeartbeat() {
+        if (heartbeatThread != null) {
+            heartbeatThread.interrupt();
+            heartbeatThread = null;
         }
     }
     
@@ -143,6 +189,9 @@ public class ClientConnection implements Runnable {
                     break;
                 case UUID_AUTH:
                     handleUUIDAuth(message);
+                    break;
+                case PONG:
+                    lastActiveTime = System.currentTimeMillis();
                     break;
                 case TEXT:
                     // 已认证，处理文本消息
@@ -1426,6 +1475,7 @@ public class ClientConnection implements Runnable {
             writer.write(message);
             writer.newLine();
             writer.flush();
+            lastActiveTime = System.currentTimeMillis();
             System.out.println("消息已发送到客户端 (" + clientAddress + ":" + clientPort + "): " + message);
         } catch (IOException e) {
             System.err.println("发送消息失败 (" + clientAddress + ":" + clientPort + "): " + e.getMessage());
