@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 CLIENT_DIR="$PROJECT_ROOT/chatroom/client"
 SERVER_DIR="$PROJECT_ROOT/chatroom/server"
-CLIENT_LIB_DIR="$CLIENT_DIR/lib"
+CLIENT_LIB_DIR="$CLIENT_DIR/cli/lib"
 SERVER_LIB_DIR="$SERVER_DIR/lib"
 ADMIN_DIR="$SERVER_DIR"
 
