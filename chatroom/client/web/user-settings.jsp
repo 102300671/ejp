@@ -69,6 +69,7 @@
                                     <option value="dark">深色</option>
                                     <option value="spring-festival">新年限定 🎊</option>
                                     <option value="lantern-festival">元宵限定 🏮</option>
+                                    <option value="womens-day">妇女节限定 🌸</option>
                                     <option value="auto">自动（跟随系统）</option>
                                 </select>
                             </div>
@@ -277,6 +278,8 @@
     </div>
     
     <script src="js/lantern-festival.js"></script>
+    <script src="js/womens-day.js"></script>
+    <script src="js/localStorage_clear.js"></script>
     <script src="js/chat.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

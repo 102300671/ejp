@@ -60,6 +60,8 @@
         </div>
     </div>
     
+    <script src="js/lantern-festival.js"></script>
+    <script src="js/womens-day.js"></script>
     <script src="js/chat.js"></script>
     <script>
         // Get room name and type from URL parameters

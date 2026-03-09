@@ -20,16 +20,17 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public void saveMessage(Message message, String messageType, int conversationId, Connection connection) throws SQLException {
-        String sql = "INSERT INTO messages (type, from_username, conversation_id, content, message_type, is_nsfw, iv) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO messages (type, from_username, conversation_id, content, create_time, message_type, is_nsfw, iv) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, message.getType().name());
             stmt.setString(2, message.getFrom());
             stmt.setInt(3, conversationId);
             stmt.setString(4, message.getContent());
-            stmt.setString(5, messageType);
-            stmt.setBoolean(6, message.isNSFW());
-            stmt.setString(7, message.getIv());
+            stmt.setString(5, message.getTime());
+            stmt.setString(6, messageType);
+            stmt.setBoolean(7, message.isNSFW());
+            stmt.setString(8, message.getIv());
             
             stmt.executeUpdate();
         }
@@ -261,6 +262,77 @@ public class MessageDAO {
     public int getUnreadMessageCount(String username, Connection connection) throws SQLException {
         // 这里可以扩展为支持未读消息功能
         return 0;
+    }
+    
+    /**
+     * 获取用户的离线消息
+     * @param username 用户名
+     *param lastOnlineTime 用户最后一次上线时间（格式：yyyy-MM-dd HH:mm:ss），如果为null则获取最近1小时的消息
+     * @param connection 数据库连接
+     * @return 离线消息列表
+     * @throws SQLException SQL异常
+     */
+    public List<Message> getOfflineMessages(String username, String lastOnlineTime, Connection connection) throws SQLException {
+        // 获取用户参与的所有会话
+        String sql;
+        
+        if (lastOnlineTime != null && !lastOnlineTime.isEmpty()) {
+            // 如果有最后上线时间，获取该时间之后的消息
+            sql = "SELECT m.id, m.type, m.from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
+                  "FROM messages m " +
+                  "INNER JOIN conversation_member cm ON m.conversation_id = cm.conversation_id " +
+                  "WHERE cm.username = ? " +
+                  "AND m.from_username != ? " +
+                  "AND m.create_time > ? " +
+                  "ORDER BY m.create_time ASC";
+        } else {
+            // 如果没有最后上线时间，获取最近1小时的消息
+            sql = "SELECT m.id, m.type, m.from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
+                  "FROM messages m " +
+                  "INNER JOIN conversation_member cm ON m.conversation_id = cm.conversation_id " +
+                  "WHERE cm.username = ? " +
+                  "AND m.from_username != ? " +
+                  "AND m.create_time > DATE_SUB(NOW(), INTERVAL 1 HOUR) " +
+                  "ORDER BY m.create_time ASC";
+        }
+        
+        List<Message> messages = new ArrayList<>();
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, username);
+            
+            if (lastOnlineTime != null && !lastOnlineTime.isEmpty()) {
+                stmt.setString(3, lastOnlineTime);
+            }
+            
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int dbId = rs.getInt("id");
+                String typeStr = rs.getString("type");
+                MessageType type;
+                try {
+                    type = MessageType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("未知的消息类型: " + typeStr + "，跳过该消息");
+                    continue;
+                }
+                
+                String from = rs.getString("from_username");
+                String content = rs.getString("content");
+                String time = rs.getString("create_time").replace('T', ' ').substring(0, 19);
+                boolean isNSFW = rs.getBoolean("is_nsfw");
+                String iv = rs.getString("iv");
+                int conversationId = rs.getInt("conversation_id");
+                
+                String messageId = String.format("%s_conversation_%d_%d", type.name(), conversationId, dbId);
+                Message message = new Message(type, from, content, time, isNSFW, iv, messageId, conversationId);
+                messages.add(message);
+            }
+        }
+        
+        System.out.println("获取用户 " + username + " 的离线消息: " + messages.size() + " 条");
+        return messages;
     }
     
     /**

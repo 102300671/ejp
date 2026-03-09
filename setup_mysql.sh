@@ -209,10 +209,13 @@ create_tables() {
       `id` int NOT NULL AUTO_INCREMENT,
       `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
       `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+      `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否接受临时聊天',
+      `status` ENUM('ONLINE', 'OFFLINE', 'AWAY', 'BUSY') NOT NULL DEFAULT 'OFFLINE' COMMENT '用户状态：ONLINE-在线，OFFLINE-离线，AWAY-离开，BUSY-忙碌',
       `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+      `last_logout_time` timestamp NULL DEFAULT NULL COMMENT '最后登出时间',
       PRIMARY KEY (`id`) USING BTREE,
       UNIQUE KEY `username` (`username`) USING BTREE
-    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建room表
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
@@ -222,7 +225,7 @@ create_tables() {
       `room_type` enum('PUBLIC','PRIVATE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
       `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (`id`) USING BTREE
-    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建room_member表
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
@@ -230,11 +233,15 @@ create_tables() {
       `room_id` int NOT NULL,
       `user_id` int NOT NULL,
       `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+      `role` ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '用户在房间中的角色：OWNER-房主，ADMIN-管理员，MEMBER-普通成员',
+      `accept_temporary_chat` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '在该房间是否接受临时聊天',
+      `display_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '用户在该房间的显示名称，如果为空则使用用户名',
       PRIMARY KEY (`room_id`,`user_id`) USING BTREE,
       KEY `user_id` (`user_id`) USING BTREE,
-      CONSTRAINT `room_member_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `room` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-      CONSTRAINT `room_member_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+      KEY `idx_role` (`role`) USING BTREE,
+      CONSTRAINT `room_member_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `room` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT `room_member_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建user_uuid表
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
@@ -245,7 +252,7 @@ create_tables() {
       PRIMARY KEY (`user_id`) USING BTREE,
       UNIQUE KEY `uuid` (`uuid`) USING BTREE,
       CONSTRAINT `user_uuid_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建friendships表
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
@@ -259,7 +266,7 @@ create_tables() {
       KEY `user2_id` (`user2_id`) USING BTREE,
       CONSTRAINT `friendships_ibfk_1` FOREIGN KEY (`user1_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
       CONSTRAINT `friendships_ibfk_2` FOREIGN KEY (`user2_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建friend_requests表
     eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"
@@ -276,10 +283,10 @@ create_tables() {
       KEY `status` (`status`) USING BTREE,
       CONSTRAINT `friend_requests_ibfk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
       CONSTRAINT `friend_requests_ibfk_2` FOREIGN KEY (`to_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\";"
+    ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC;\"";
     
     # 创建system房间
-    eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"INSERT IGNORE INTO `room` (`room_name`, `room_type`) VALUES ('system', 'PUBLIC');\";"
+    eval "$MYSQL_ROOT_COMMAND $DATABASE_NAME -e \"INSERT IGNORE INTO `room` (`room_name`, `room_type`) VALUES ('system', 'PUBLIC');\"";
     
     if [ $? -eq 0 ]; then
         log_success "数据库表结构创建成功"

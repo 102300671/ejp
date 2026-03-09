@@ -278,4 +278,77 @@ public class UserDAO {
             throw e;
         }
     }
+    
+    /**
+     * 更新用户状态并记录最后下线时间
+     * @param userId 用户ID
+     * @param status 用户状态 (ONLINE, OFFLINE, AWAY, BUSY)
+     * @param connection 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException 如果更新过程中发生数据库错误
+     */
+    public boolean updateUserStatusWithLogoutTime(int userId, String status, Connection connection) throws SQLException {
+        String sql;
+        if ("OFFLINE".equals(status)) {
+            sql = "UPDATE user SET status = ?, last_logout_time = CURRENT_TIMESTAMP WHERE id = ?";
+        } else {
+            sql = "UPDATE user SET status = ? WHERE id = ?";
+        }
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, status);
+            preparedStatement.setInt(2, userId);
+            
+            int rowsAffected = preparedStatement.executeUpdate();
+            System.out.println("更新用户状态: 用户ID=" + userId + ", status=" + status + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
+            // 如果字段不存在，回退到普通更新
+            if (e.getMessage().contains("Unknown column") || e.getMessage().contains("last_logout_time")) {
+                System.out.println("last_logout_time 字段不存在，使用普通状态更新");
+                return updateUserStatus(userId, status, connection);
+            }
+            System.err.println("更新用户状态失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    /**
+     * 获取用户最后下线时间
+     * @param userId 用户ID
+     * @param connection 数据库连接
+     * @return 最后下线时间，如果没有则返回null
+     * @throws SQLException 如果查询过程中发生数据库错误
+     */
+    public String getUserLastLogoutTime(int userId, Connection connection) throws SQLException {
+        String sql = "SELECT last_logout_time FROM user WHERE id = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, userId);
+            
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    java.sql.Timestamp logoutTime = resultSet.getTimestamp("last_logout_time");
+                    if (logoutTime != null) {
+                        return logoutTime.toString().substring(0, 19);
+                    }
+                }
+            }
+            
+            return null;
+            
+        } catch (SQLException e) {
+            // 如果字段不存在，返回null
+            if (e.getMessage().contains("Unknown column") || e.getMessage().contains("last_logout_time")) {
+                System.out.println("last_logout_time 字段不存在，返回null");
+                return null;
+            }
+            System.err.println("查询用户最后下线时间失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }

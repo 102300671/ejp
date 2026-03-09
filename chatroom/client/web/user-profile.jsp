@@ -110,6 +110,8 @@
     </div>
     
     <script src="js/localStorage.js"></script>
+    <script src="js/lantern-festival.js"></script>
+    <script src="js/womens-day.js"></script>
     <script src="js/chat.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

@@ -83,9 +83,9 @@ public class WebSocketConnection {
             String userId = String.valueOf(currentUser.getId());
             messageRouter.deregisterSession(userId);
             
-            // 更新用户状态为OFFLINE
+            // 更新用户状态为OFFLINE并记录最后下线时间
             try (Connection connection = dbManager.getConnection()) {
-                userDAO.updateUserStatus(currentUser.getId(), "OFFLINE", connection);
+                userDAO.updateUserStatusWithLogoutTime(currentUser.getId(), "OFFLINE", connection);
                 System.out.println("用户状态已更新为OFFLINE: " + currentUser.getUsername());
             } catch (SQLException e) {
                 System.err.println("更新用户状态失败: " + e.getMessage());
@@ -115,6 +115,14 @@ public class WebSocketConnection {
     
     private void processMessage(Message message) {
         try {
+            // 验证消息时间
+            if (message.getTime() != null && !isValidMessageTime(message.getTime())) {
+                System.err.println("消息时间无效: " + message.getTime());
+                Message errorMsg = new Message(MessageType.SYSTEM, "server", "消息时间无效，请检查您的系统时间");
+                send(messageCodec.encode(errorMsg));
+                return;
+            }
+            
             switch (message.getType()) {
                 case REGISTER:
                     handleRegister(message);
@@ -1810,10 +1818,35 @@ public class WebSocketConnection {
                             }
                         }
                     }
-                } catch (SQLException e) {
-                    System.err.println("获取用户房间列表失败: " + e.getMessage());
-                    e.printStackTrace();
+            
+            // 发送离线消息 - 获取用户下线后收到的消息
+            try {
+                MessageDAO messageDAO = new MessageDAO();
+                // 获取用户最后下线时间
+                String lastLogoutTime = userDAO.getUserLastLogoutTime(currentUser.getId(), connection);
+                
+                if (lastLogoutTime != null) {
+                    List<Message> offlineMessages = messageDAO.getOfflineMessages(currentUser.getUsername(), lastLogoutTime, connection);
+                    
+                    if (!offlineMessages.isEmpty()) {
+                        System.out.println("发送离线消息给用户 " + currentUser.getUsername() + ": " + offlineMessages.size() + " 条");
+                        
+                        for (Message offlineMessage : offlineMessages) {
+                            send(messageCodec.encode(offlineMessage));
+                        }
+                    }
                 }
+            } catch (SQLException e) {
+                System.err.println("发送离线消息失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            // 发送好友状态通知
+            messageRouter.sendFriendsStatusToUser(userId, currentUser.getUsername());
+        } catch (SQLException e) {
+            System.err.println("获取用户房间列表失败: " + e.getMessage());
+            e.printStackTrace();
+        }
             } else {
                 System.err.println("注册会话失败: 用户\"" + currentUser.getUsername() + "\"可能已在其他地方登录");
                 // 发送登录失败消息
@@ -2617,7 +2650,7 @@ public class WebSocketConnection {
         }
         
         // 发送房间加入请求给房主和管理员
-        Message requestMsg = new Message(MessageType.ROOM_JOIN_REQUEST, username, username, null);
+        Message requestMsg = new Message(MessageType.ROOM_JOIN_REQUEST, username, roomName, null);
         
         int sentCount = 0;
         for (String notifyUserId : notifyUserIds) {
@@ -2690,7 +2723,7 @@ public class WebSocketConnection {
         
         // 解析响应内容
         String[] parts = content.split(":");
-        if (parts.length != 2) {
+        if (parts.length < 2) {
             System.err.println("无效的房间加入响应格式: " + content);
             return;
         }
@@ -2807,12 +2840,17 @@ public class WebSocketConnection {
                     System.out.println("房间加入请求已接受: " + requesterUsername + " 可以加入 " + roomName);
                     
                     // 发送响应给请求者
-                    Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, fromUsername, "accept:" + roomName, conversationId);
+                    Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, "server", "accept:" + roomName, conversationId);
                     if (webSocketServer != null) {
                         WebSocketConnection requesterConnection = webSocketServer.getConnectionByUserId(requesterId);
                         if (requesterConnection != null) {
                             requesterConnection.send(messageCodec.encode(responseMsg));
+                            System.out.println("已发送房间加入接受响应给: " + requesterUsername);
+                        } else {
+                            System.out.println("无法找到请求者的连接: " + requesterUsername);
                         }
+                    } else {
+                        System.out.println("WebSocketServer 为 null");
                     }
                 } else {
                     System.out.println("用户已在房间中: " + requesterUsername);
@@ -2846,12 +2884,17 @@ public class WebSocketConnection {
             
             if (requesterId != null) {
                 // 发送拒绝响应给请求者
-                Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, fromUsername, "reject:" + roomName, conversationId);
+                Message responseMsg = new Message(MessageType.ROOM_JOIN_RESPONSE, "server", "reject:" + roomName, conversationId);
                 if (webSocketServer != null) {
                     WebSocketConnection requesterConnection = webSocketServer.getConnectionByUserId(requesterId);
                     if (requesterConnection != null) {
                         requesterConnection.send(messageCodec.encode(responseMsg));
+                        System.out.println("已发送房间加入拒绝响应给: " + requesterUsername);
+                    } else {
+                        System.out.println("无法找到请求者的连接: " + requesterUsername);
                     }
+                } else {
+                    System.out.println("WebSocketServer 为 null");
                 }
             }
             
@@ -3167,8 +3210,8 @@ public class WebSocketConnection {
             }
             
             // 解析消息时间
-            java.time.format.DateTimeFormatter isoFormatter = java.time.format.DateTimeFormatter.ISO_DATE_TIME;
-            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(message.getTime(), isoFormatter);
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(message.getTime(), formatter);
             long messageTimeMillis = messageTime.atZone(BEIJING_ZONE).toInstant().toEpochMilli();
             long currentTime = System.currentTimeMillis();
             long timeDiff = (currentTime - messageTimeMillis) / 1000 / 60; // 转换为分钟
@@ -3176,6 +3219,25 @@ public class WebSocketConnection {
             return timeDiff <= 2;
         } catch (Exception e) {
             System.err.println("检查消息撤回时间失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    private boolean isValidMessageTime(String timeStr) {
+        try {
+            // 解析消息时间
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            java.time.LocalDateTime messageTime = java.time.LocalDateTime.parse(timeStr, formatter);
+            long messageTimeMillis = messageTime.atZone(BEIJING_ZONE).toInstant().toEpochMilli();
+            long currentTime = System.currentTimeMillis();
+            
+            // 允许消息时间在服务器时间的±5分钟范围内
+            long timeDiff = Math.abs(currentTime - messageTimeMillis);
+            long maxAllowedDiff = 5 * 60 * 1000; // 5分钟
+            
+            return timeDiff <= maxAllowedDiff;
+        } catch (Exception e) {
+            System.err.println("验证消息时间失败: " + e.getMessage());
             return false;
         }
     }

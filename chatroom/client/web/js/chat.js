@@ -144,13 +144,12 @@ function getLocalTimeWithMillis() {
 
 function getLocalTimeISO() {
     const now = new Date();
-    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
-    const year = beijingTime.getFullYear();
-    const month = String(beijingTime.getMonth() + 1).padStart(2, '0');
-    const day = String(beijingTime.getDate()).padStart(2, '0');
-    const hours = String(beijingTime.getHours()).padStart(2, '0');
-    const minutes = String(beijingTime.getMinutes()).padStart(2, '0');
-    const seconds = String(beijingTime.getSeconds()).padStart(2, '0');
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
@@ -214,6 +213,9 @@ let chatClient = {
     serviceConfig: {
         zfileServerUrl: null
     }, // 服务配置，从服务器动态获取
+    
+    // ========== 新增：未读消息计数 ==========
+    unreadCounts: {}, // 存储每个会话的未读消息数: { [sessionName]: count }
     
     // 日志记录方法
     log: function(level, message) {
@@ -508,12 +510,23 @@ let chatClient = {
                         }
                         
                         // 检查消息是否已存在于内存中
-                        const messageExists = this.messages[roomName].some(m => 
-                            m.id === internalMsg.id || 
-                            (m.content === internalMsg.content && 
-                             m.from === internalMsg.from && 
-                             m.time === internalMsg.time)
-                        );
+                        const messageExists = this.messages[roomName].some(m => {
+                            // 优先使用ID检查
+                            if (m.id && internalMsg.id && m.id === internalMsg.id) {
+                                return true;
+                            }
+                            // 使用内容、发送者和时间检查（允许1秒时间差）
+                            if (m.content === internalMsg.content && 
+                                m.from === internalMsg.from) {
+                                // 比较时间戳，允许1秒的误差
+                                const timeA = new Date(m.time).getTime();
+                                const timeB = new Date(internalMsg.time).getTime();
+                                if (Math.abs(timeA - timeB) < 1000) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
                         
                         if (!messageExists) {
                             this.messages[roomName].push(internalMsg);
@@ -585,12 +598,23 @@ let chatClient = {
                                     }
                                     
                                     // 检查消息是否已存在于内存中
-                                    const messageExists = this.messages[roomName].some(m => 
-                                        m.id === internalMsg.id || 
-                                        (m.content === internalMsg.content && 
-                                         m.from === internalMsg.from && 
-                                         m.time === internalMsg.time)
-                                    );
+                                    const messageExists = this.messages[roomName].some(m => {
+                                        // 优先使用ID检查
+                                        if (m.id && internalMsg.id && m.id === internalMsg.id) {
+                                            return true;
+                                        }
+                                        // 使用内容、发送者和时间检查（允许1秒时间差）
+                                        if (m.content === internalMsg.content && 
+                                            m.from === internalMsg.from) {
+                                            // 比较时间戳，允许1秒的误差
+                                            const timeA = new Date(m.time).getTime();
+                                            const timeB = new Date(internalMsg.time).getTime();
+                                            if (Math.abs(timeA - timeB) < 1000) {
+                                                return true;
+                                            }
+                                        }
+                                        return false;
+                                    });
                                     
                                     if (!messageExists) {
                                         this.messages[roomName].push(internalMsg);
@@ -902,10 +926,12 @@ let chatClient = {
             }
             
             // 转换为内部消息格式
+            // 优先使用createTime（与本地存储一致），如果没有则使用time
+            const msgTime = msg.createTime || msg.time;
             const internalMsg = {
                 content: content,
                 from: msg.from,
-                time: msg.time,
+                time: msgTime,
                 isSystem: msg.type === 'SYSTEM',
                 id: msg.id || this.generateMessageId(msg.type || 'TEXT', roomName),
                 type: msg.type || 'TEXT',
@@ -924,12 +950,23 @@ let chatClient = {
             
             // 检查内存中的消息
             if (this.messages[roomName]) {
-                messageExists = this.messages[roomName].some(m => 
-                    m.id === internalMsg.id || 
-                    (m.content === internalMsg.content && 
-                     m.from === internalMsg.from && 
-                     m.time === internalMsg.time)
-                );
+                messageExists = this.messages[roomName].some(m => {
+                    // 优先使用ID检查
+                    if (m.id && internalMsg.id && m.id === internalMsg.id) {
+                        return true;
+                    }
+                    // 使用内容、发送者和时间检查（允许1秒时间差）
+                    if (m.content === internalMsg.content && 
+                        m.from === internalMsg.from) {
+                        // 比较时间戳，允许1秒的误差
+                        const timeA = new Date(m.time).getTime();
+                        const timeB = new Date(internalMsg.time).getTime();
+                        if (Math.abs(timeA - timeB) < 1000) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
             }
             
             if (!messageExists) {
@@ -991,6 +1028,8 @@ let chatClient = {
             if (syncTimeStr) {
                 try {
                     this.lastSyncTime = JSON.parse(syncTimeStr);
+                    // 修正错误的同步时间（快8小时的问题）
+                    this.correctLastSyncTimes();
                 } catch (error) {
                     this.log('error', `加载最后同步时间失败: ${error.message}`);
                     this.lastSyncTime = {};
@@ -1009,6 +1048,8 @@ let chatClient = {
                             syncTimes[item.id] = item.timestamp;
                         });
                         this.lastSyncTime = syncTimes;
+                        // 修正错误的同步时间（快8小时的问题）
+                        this.correctLastSyncTimes();
                         console.log('从IndexedDB加载最后同步时间:', syncTimes);
                     };
                     
@@ -1021,6 +1062,42 @@ let chatClient = {
                     console.error('打开IndexedDB加载最后同步时间失败:', error);
                     this.lastSyncTime = {};
                 });
+        }
+    },
+    
+    // 修正错误的最后同步时间（快8小时的问题）
+    correctLastSyncTimes: function() {
+        const currentDate = new Date();
+        let hasCorrection = false;
+        
+        for (const roomName in this.lastSyncTime) {
+            const syncTime = this.lastSyncTime[roomName];
+            try {
+                const syncDate = new Date(syncTime);
+                const timeDiff = syncDate.getTime() - currentDate.getTime();
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                // 如果同步时间比当前时间快6-10小时，修正为正确时间
+                if (hoursDiff > 6 && hoursDiff < 10) {
+                    const correctedDate = new Date(syncDate.getTime() - (8 * 60 * 60 * 1000));
+                    const year = correctedDate.getFullYear();
+                    const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(correctedDate.getDate()).padStart(2, '0');
+                    const hours = String(correctedDate.getHours()).padStart(2, '0');
+                    const minutes = String(correctedDate.getMinutes()).padStart(2, '0');
+                    const seconds = String(correctedDate.getSeconds()).padStart(2, '0');
+                    this.lastSyncTime[roomName] = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                    hasCorrection = true;
+                    this.log('info', `修正了 ${roomName} 的最后同步时间: ${syncTime} -> ${this.lastSyncTime[roomName]}`);
+                }
+            } catch (e) {
+                // 时间解析失败，跳过
+            }
+        }
+        
+        // 如果有修正，保存修正后的时间
+        if (hasCorrection) {
+            this.saveLastSyncTime();
         }
     },
     
@@ -1217,6 +1294,9 @@ let chatClient = {
             // 更新当前窗口UI
             if (this.currentChat === roomName) {
                 this.updateMessagesArea(roomName);
+            } else {
+                // 如果不是当前会话，增加未读消息计数
+                this.incrementUnreadCount(roomName);
             }
             
             this.log('debug', `已处理新消息到会话 ${roomName}: ${messageToStore.content.substring(0, 50)}`);
@@ -2154,7 +2234,29 @@ let chatClient = {
                             contentHtml = this.escapeHtml(msg.content);
                         }
                         
-                        messageDiv.innerHTML = `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${msg.time}</small></div>`;
+                        // 修正错误的消息时间（快8小时的问题）
+                        let displayTime = msg.time;
+                        try {
+                            const messageDate = new Date(msg.time);
+                            const currentDate = new Date();
+                            const timeDiff = currentDate.getTime() - messageDate.getTime();
+                            const hoursDiff = timeDiff / (1000 * 60 * 60);
+                            
+                            // 如果消息时间比当前时间快6-10小时，修正为正确时间
+                            if (hoursDiff > 6 && hoursDiff < 10) {
+                                const correctedDate = new Date(messageDate.getTime() - (8 * 60 * 60 * 1000));
+                                const year = correctedDate.getFullYear();
+                                const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
+                                const day = String(correctedDate.getDate()).padStart(2, '0');
+                                const hours = String(correctedDate.getHours()).padStart(2, '0');
+                                const minutes = String(correctedDate.getMinutes()).padStart(2, '0');
+                                const seconds = String(correctedDate.getSeconds()).padStart(2, '0');
+                                displayTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                            }
+                        } catch (e) {
+                            // 时间解析失败，使用原始时间
+                        }
+                        messageDiv.innerHTML = `<div class="message-content">${contentHtml}</div><div class="message-time"><small>${displayTime}</small></div>`;
                         messageWrapper.appendChild(messageDiv);
                         
                         messagesArea.appendChild(messageWrapper);
@@ -2614,7 +2716,9 @@ let chatClient = {
             if (this.currentChat === targetChat) {
                 this.updateMessagesArea(targetChat);
             } else {
-                // 如果不在当前会话，显示通知
+                // 如果不在当前会话，增加未读消息计数
+                this.incrementUnreadCount(targetChat);
+                // 显示通知
                 this.showToast(`New image from ${from} in ${targetChat}`, 'info');
             }
         } catch (error) {
@@ -2675,14 +2779,16 @@ let chatClient = {
             if (this.currentChat === targetChat) {
                 this.updateMessagesArea(targetChat);
             } else {
-                // 如果不在当前会话，显示通知
+                // 如果不在当前会话，增加未读消息计数
+                this.incrementUnreadCount(targetChat);
+                // 显示通知
                 this.showToast(`New file from ${from} in ${targetChat}`, 'info');
             }
         } catch (error) {
             this.log('error', `处理文件消息失败: ${error.message}`);
         }
     },
-    
+
     requestUploadToken: function() {
         if (!this.isConnected || !this.isAuthenticated) {
             this.log('error', '未连接或未认证，无法请求上传 token');
@@ -3646,12 +3752,23 @@ let chatClient = {
         }
         
         // 去重检查 - 使用消息ID优先，然后使用内容+时间+发送者
-        const isDuplicate = this.messages[roomName].some(m => 
-            (localMessage.id && m.id === localMessage.id) || 
-            (!localMessage.id && m.content === content && 
-             m.from === message.from && 
-             m.time === message.time)
-        );
+        const isDuplicate = this.messages[roomName].some(m => {
+            // 优先使用ID检查
+            if (localMessage.id && m.id && localMessage.id === m.id) {
+                return true;
+            }
+            // 使用内容、发送者和时间检查（允许1秒时间差）
+            if (m.content === content && 
+                m.from === message.from) {
+                // 比较时间戳，允许1秒的误差
+                const timeA = new Date(m.time).getTime();
+                const timeB = new Date(message.time).getTime();
+                if (Math.abs(timeA - timeB) < 1000) {
+                    return true;
+                }
+            }
+            return false;
+        });
         
         if (!isDuplicate) {
             this.messages[roomName].push(localMessage);
@@ -3672,7 +3789,9 @@ let chatClient = {
             if (this.currentChat === roomName) {
                 this.updateMessagesArea(roomName);
             } else {
-                // 如果不在当前会话，显示通知
+                // 如果不在当前会话，增加未读消息计数
+                this.incrementUnreadCount(roomName);
+                // 显示通知
                 this.showToast(`New message from ${message.from} in ${roomName}`, 'info');
             }
             
@@ -3736,12 +3855,23 @@ let chatClient = {
         }
         
         // 去重检查
-        const isDuplicate = this.messages[sessionName].some(m => 
-            (localMessage.id && m.id === localMessage.id) || 
-            (!localMessage.id && m.content === content && 
-             m.from === from && 
-             m.time === message.time)
-        );
+        const isDuplicate = this.messages[sessionName].some(m => {
+            // 优先使用ID检查
+            if (localMessage.id && m.id && localMessage.id === m.id) {
+                return true;
+            }
+            // 使用内容、发送者和时间检查（允许1秒时间差）
+            if (m.content === content && 
+                m.from === from) {
+                // 比较时间戳，允许1秒的误差
+                const timeA = new Date(m.time).getTime();
+                const timeB = new Date(message.time).getTime();
+                if (Math.abs(timeA - timeB) < 1000) {
+                    return true;
+                }
+            }
+            return false;
+        });
         
         if (!isDuplicate) {
             this.messages[sessionName].push(localMessage);
@@ -3755,7 +3885,9 @@ let chatClient = {
             if (this.currentChat === sessionName) {
                 this.updateMessagesArea(sessionName);
             } else {
-                // 如果不在当前会话，显示通知
+                // 如果不在当前会话，增加未读消息计数
+                this.incrementUnreadCount(sessionName);
+                // 显示通知
                 this.showToast(`New private message from ${from}`, 'info');
             }
             
@@ -3836,6 +3968,9 @@ let chatClient = {
                 
                 // Show success message
                 this.showMessage(`[System] ${message.content}`, true, 'system');
+                
+                // Auto-switch to the newly created room
+                this.switchChat(roomName, roomType);
                 return;
             }
         }
@@ -4626,6 +4761,27 @@ let chatClient = {
         }
     },
     
+    // ========== 未读消息计数相关方法 ==========
+    
+    // 增加未读消息计数
+    incrementUnreadCount: function(sessionName) {
+        if (!this.unreadCounts[sessionName]) {
+            this.unreadCounts[sessionName] = 0;
+        }
+        this.unreadCounts[sessionName]++;
+        this.log('debug', `会话 ${sessionName} 未读消息数: ${this.unreadCounts[sessionName]}`);
+        this.updateChatsList();
+    },
+    
+    // 清除未读消息计数
+    clearUnreadCount: function(sessionName) {
+        if (this.unreadCounts[sessionName]) {
+            delete this.unreadCounts[sessionName];
+            this.log('debug', `清除会话 ${sessionName} 未读消息计数`);
+            this.updateChatsList();
+        }
+    },
+    
     // UI updates
     updateChatsList: function() {
         const roomsList = document.getElementById('chats-list');
@@ -4650,6 +4806,10 @@ let chatClient = {
             let displayText;
             let buttonHandler;
             
+            // 获取未读消息数
+            const unreadCount = this.unreadCounts[session.id] || 0;
+            const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+            
             if (session.isFriend) {
                 // 好友会话
                 onclickHandler = `chatClient.switchToFriendChat('${session.id}')`;
@@ -4660,12 +4820,13 @@ let chatClient = {
                 displayText = `<div class="friend-info">
                     <strong>${session.name}</strong>
                     <span class="friend-status ${statusClass}">${statusText}</span>
+                    ${unreadBadge}
                 </div>`;
                 buttonHandler = `event.stopPropagation(); chatClient.openFriendChatInNewWindow('${session.id}')`;
             } else {
                 // 会话会话
                 onclickHandler = `chatClient.switchChat('${session.id}', '${session.type}')`;
-                displayText = `<strong>${session.name}</strong> (${session.type})`;
+                displayText = `<div class="room-info-text"><strong>${session.name}</strong> (${session.type})</div>${unreadBadge}`;
                 buttonHandler = `event.stopPropagation(); chatClient.openChatInNewWindow('${session.id}', '${session.type}')`;
             }
             
@@ -4715,6 +4876,10 @@ let chatClient = {
         this.currentChat = sessionId;
         this.currentChatType = roomType;
         document.getElementById('current-chat-name').textContent = roomName;
+        
+        // 清除该会话的未读消息计数
+        this.clearUnreadCount(sessionId);
+        
         this.updateSessionsList();
         
         // Update message input placeholder to indicate room chat
@@ -4933,6 +5098,9 @@ let chatClient = {
         if (currentChatNameElement) {
             currentChatNameElement.textContent = `与${username}聊天`;
         }
+        
+        // 清除该会话的未读消息计数
+        this.clearUnreadCount(sessionId);
         
         // Update sessions list to reflect the new current room
         this.updateSessionsList();
@@ -5607,7 +5775,35 @@ let chatClient = {
         timeDiv.style.fontSize = '11px';
         timeDiv.style.color = '#6c757d';
         timeDiv.style.marginTop = '2px';
-        timeDiv.textContent = request.time ? request.time.substring(0, 16) : '';
+        // 修正错误的消息时间（快8小时的问题）
+        let displayTime = request.time;
+        try {
+            if (request.time) {
+                const messageDate = new Date(request.time);
+                const currentDate = new Date();
+                const timeDiff = currentDate.getTime() - messageDate.getTime();
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                // 如果消息时间比当前时间快6-10小时，修正为正确时间
+                if (hoursDiff > 6 && hoursDiff < 10) {
+                    const correctedDate = new Date(messageDate.getTime() - (8 * 60 * 60 * 1000));
+                    const year = correctedDate.getFullYear();
+                    const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(correctedDate.getDate()).padStart(2, '0');
+                    const hours = String(correctedDate.getHours()).padStart(2, '0');
+                    const minutes = String(correctedDate.getMinutes()).padStart(2, '0');
+                    displayTime = `${year}-${month}-${day} ${hours}:${minutes}`;
+                } else {
+                    displayTime = request.time.substring(0, 16);
+                }
+            }
+        } catch (e) {
+            // 时间解析失败，使用原始时间
+            if (request.time) {
+                displayTime = request.time.substring(0, 16);
+            }
+        }
+        timeDiv.textContent = displayTime;
         
         infoDiv.appendChild(usernameDiv);
         infoDiv.appendChild(statusDiv);
@@ -6046,14 +6242,8 @@ let chatClient = {
         const fromUsername = message.from;
         const roomName = message.content;
         
-        // 检查当前用户是否为房主或管理员
-        const isOwnerOrAdmin = this.currentUserRole === 'OWNER' || this.currentUserRole === 'ADMIN';
-        
-        // 只有房主或管理员才处理会话加入请求
-        if (!isOwnerOrAdmin) {
-            this.log('debug', `Ignoring room join request from ${fromUsername} - not owner or admin`);
-            return;
-        }
+        // 服务器已经确保只有房主/管理员才会收到请求，这里不需要再检查角色
+        // 直接处理请求
         
         // Add to received requests
         if (!this.receivedChatRequests.some(req => req.from === fromUsername && req.roomName === roomName)) {
@@ -8207,7 +8397,7 @@ function applyTheme(theme) {
     document.body.className = '';
     
     // 移除节日主题CSS
-    const festivalLinks = document.querySelectorAll('link[href*="spring-festival.css"], link[href*="lantern-festival.css"]');
+    const festivalLinks = document.querySelectorAll('link[href*="spring-festival.css"], link[href*="lantern-festival.css"], link[href*="womens-day.css"]');
     festivalLinks.forEach(link => link.remove());
     
     if (theme === 'dark') {
@@ -8228,6 +8418,20 @@ function applyTheme(theme) {
         // 启动元宵主题特效
         if (typeof createLanternParticles === 'function') {
             createLanternParticles();
+        }
+    } else if (theme === 'womens-day') {
+        // 添加妇女节主题CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'css/womens-day.css';
+        document.head.appendChild(link);
+        
+        // 启动妇女节主题特效
+        if (typeof createFlowerPetals === 'function') {
+            createFlowerPetals();
+        }
+        if (typeof createHeartDecorations === 'function') {
+            createHeartDecorations();
         }
     } else if (theme === 'auto') {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -8341,10 +8545,14 @@ function initSettingsActions() {
     
     if (clearDataBtn) {
         clearDataBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all locally stored data?')) {
-                localStorage.clear();
-                alert('All data cleared successfully!');
-                loadSettings();
+            if (confirm('确定要清空所有本地存储的数据吗？这将清空所有消息记录，然后从服务器重新拉取。')) {
+                MessageStorage.clearAll().then(() => {
+                    alert('所有数据已清空！页面将刷新以从服务器重新拉取消息。');
+                    window.location.href = 'chat.jsp';
+                }).catch(error => {
+                    console.error('清空数据失败:', error);
+                    alert('清空数据失败: ' + error.message);
+                });
             }
         });
     }

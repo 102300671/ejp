@@ -1486,6 +1486,34 @@ body {
 
 .room-info {
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.room-info-text {
+    flex: 1;
+}
+
+/* Unread Badge Styles */
+.unread-badge {
+    background-color: #ff4757;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.room-item.active .unread-badge {
+    background-color: #dc3545;
 }
 
 .new-window-btn {
@@ -3552,6 +3580,16 @@ body.dark-theme .room-item:hover {
 body.dark-theme .room-item.active {
     background-color: #e94560;
     color: #fff;
+}
+
+body.dark-theme .unread-badge {
+    background-color: #ff6b6b;
+    color: #fff;
+}
+
+body.dark-theme .room-item.active .unread-badge {
+    background-color: #fff;
+    color: #e94560;
 }
 
 body.dark-theme .room-item.active strong {
