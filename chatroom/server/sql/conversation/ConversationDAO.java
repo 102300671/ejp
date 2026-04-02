@@ -17,11 +17,25 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public int createConversation(String type, String name, Connection connection) throws SQLException {
-        String sql = "INSERT INTO conversation (type, name) VALUES (?, ?)";
+        return createConversation(type, name, null, connection);
+    }
+    
+    /**
+     * 创建新会话（带房间ID）
+     * @param type 会话类型 (ROOM / FRIEND / TEMP)
+     * @param name 会话名称
+     * @param roomId 房间ID（仅用于ROOM类型）
+     * @param connection 数据库连接
+     * @return 会话ID
+     * @throws SQLException SQL异常
+     */
+    public int createConversation(String type, String name, Integer roomId, Connection connection) throws SQLException {
+        String sql = "INSERT INTO conversation (type, name, room_id) VALUES (?, ?, ?)";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, type);
             stmt.setString(2, name);
+            stmt.setObject(3, roomId);
             
             stmt.executeUpdate();
             
@@ -46,7 +60,7 @@ public class ConversationDAO {
         // 尝试查找是否已存在对应的会话
         String findSql = "SELECT c.id FROM conversation c " +
                          "JOIN conversation_member cm ON c.id = cm.conversation_id " +
-                         "JOIN room_member rm ON cm.username = (SELECT username FROM user WHERE id = rm.user_id) " +
+                         "JOIN room_member rm ON cm.user_id = rm.user_id " +
                          "WHERE c.type = 'ROOM' AND rm.room_id = ? " +
                          "LIMIT 1";
         
@@ -79,11 +93,10 @@ public class ConversationDAO {
         }
         
         // 创建新会话
-        int conversationId = createConversation("ROOM", roomName, connection);
+        int conversationId = createConversation("ROOM", roomName, roomId, connection);
         
         // 将会员从旧房间迁移到新会话
-        String membersSql = "SELECT u.username, rm.role FROM room_member rm " +
-                           "JOIN user u ON rm.user_id = u.id " +
+        String membersSql = "SELECT rm.user_id, rm.role FROM room_member rm " +
                            "WHERE rm.room_id = ?";
         
         try (PreparedStatement stmt = connection.prepareStatement(membersSql)) {
@@ -91,9 +104,9 @@ public class ConversationDAO {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String username = rs.getString("username");
+                    int userId = rs.getInt("user_id");
                     String role = rs.getString("role");
-                    addConversationMember(conversationId, username, role, connection);
+                    addConversationMember(conversationId, userId, role, connection);
                 }
             }
         }
@@ -150,17 +163,17 @@ public class ConversationDAO {
     /**
      * 添加会话成员
      * @param conversationId 会话ID
-     * @param username 用户名
+     * @param userId 用户ID
      * @param role 角色
      * @param connection 数据库连接
      * @throws SQLException SQL异常
      */
-    public void addConversationMember(int conversationId, String username, String role, Connection connection) throws SQLException {
-        String sql = "INSERT INTO conversation_member (conversation_id, username, role) VALUES (?, ?, ?)";
+    public void addConversationMember(int conversationId, int userId, String role, Connection connection) throws SQLException {
+        String sql = "INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, ?)";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, conversationId);
-            stmt.setString(2, username);
+            stmt.setInt(2, userId);
             stmt.setString(3, role);
             
             stmt.executeUpdate();
@@ -259,33 +272,33 @@ public class ConversationDAO {
     /**
      * 添加用户到房间会话
      * @param conversationId 会话ID
-     * @param username 用户名
+     * @param userId 用户ID
      * @param role 角色
      * @param connection 数据库连接
      * @throws SQLException SQL异常
      */
-    public void addUserToRoomConversation(int conversationId, String username, String role, Connection connection) throws SQLException {
+    public void addUserToRoomConversation(int conversationId, int userId, String role, Connection connection) throws SQLException {
         // 检查用户是否已在会话中
-        if (isConversationMember(conversationId, username, connection)) {
+        if (isConversationMember(conversationId, userId, connection)) {
             return;
         }
         
-        addConversationMember(conversationId, username, role, connection);
+        addConversationMember(conversationId, userId, role, connection);
     }
     
     /**
      * 从房间会话中移除用户
      * @param conversationId 会话ID
-     * @param username 用户名
+     * @param userId 用户ID
      * @param connection 数据库连接
      * @throws SQLException SQL异常
      */
-    public void removeUserFromRoomConversation(int conversationId, String username, Connection connection) throws SQLException {
-        String sql = "DELETE FROM conversation_member WHERE conversation_id = ? AND username = ?";
+    public void removeUserFromRoomConversation(int conversationId, int userId, Connection connection) throws SQLException {
+        String sql = "DELETE FROM conversation_member WHERE conversation_id = ? AND user_id = ?";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, conversationId);
-            stmt.setString(2, username);
+            stmt.setInt(2, userId);
             stmt.executeUpdate();
         }
     }
@@ -504,7 +517,9 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public List<ConversationMember> getConversationMembers(int conversationId, Connection connection) throws SQLException {
-        String sql = "SELECT conversation_id, username, role, joined_at FROM conversation_member WHERE conversation_id = ?";
+        String sql = "SELECT cm.conversation_id, cm.user_id, u.username, cm.role, cm.joined_at FROM conversation_member cm " +
+                     "JOIN user u ON cm.user_id = u.id " +
+                     "WHERE cm.conversation_id = ?";
         
         List<ConversationMember> members = new ArrayList<>();
         
@@ -515,6 +530,7 @@ public class ConversationDAO {
                 while (rs.next()) {
                     members.add(new ConversationMember(
                         rs.getInt("conversation_id"),
+                        rs.getInt("user_id"),
                         rs.getString("username"),
                         rs.getString("role"),
                         rs.getTimestamp("joined_at").toString()
@@ -534,14 +550,15 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public List<Conversation> getUserConversations(String username, Connection connection) throws SQLException {
+        int userId = getUserIdFromUsername(username, connection);
         String sql = "SELECT c.id, c.type, c.name, c.created_at FROM conversation c " +
                      "JOIN conversation_member cm ON c.id = cm.conversation_id " +
-                     "WHERE cm.username = ?";
+                     "WHERE cm.user_id = ?";
         
         List<Conversation> conversations = new ArrayList<>();
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setInt(1, userId);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -567,15 +584,16 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public List<Conversation> getConversationsByType(String type, String username, Connection connection) throws SQLException {
+        int userId = getUserIdFromUsername(username, connection);
         String sql = "SELECT c.id, c.type, c.name, c.created_at FROM conversation c " +
                      "JOIN conversation_member cm ON c.id = cm.conversation_id " +
-                     "WHERE c.type = ? AND cm.username = ?";
+                     "WHERE c.type = ? AND cm.user_id = ?";
         
         List<Conversation> conversations = new ArrayList<>();
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, type);
-            stmt.setString(2, username);
+            stmt.setInt(2, userId);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -595,17 +613,17 @@ public class ConversationDAO {
     /**
      * 检查用户是否是会话成员
      * @param conversationId 会话ID
-     * @param username 用户名
+     * @param userId 用户ID
      * @param connection 数据库连接
      * @return 是否是成员
      * @throws SQLException SQL异常
      */
-    public boolean isConversationMember(int conversationId, String username, Connection connection) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM conversation_member WHERE conversation_id = ? AND username = ?";
+    public boolean isConversationMember(int conversationId, int userId, Connection connection) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM conversation_member WHERE conversation_id = ? AND user_id = ?";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, conversationId);
-            stmt.setString(2, username);
+            stmt.setInt(2, userId);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -666,18 +684,21 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public Conversation getOrCreatePrivateConversation(String user1, String user2, Connection connection) throws SQLException {
+        int userId1 = getUserIdFromUsername(user1, connection);
+        int userId2 = getUserIdFromUsername(user2, connection);
+        
         // 尝试获取已存在的私聊会话（双向查找）
         String sql = "SELECT c.id, c.type, c.name, c.created_at FROM conversation c " +
                      "JOIN conversation_member cm1 ON c.id = cm1.conversation_id " +
                      "JOIN conversation_member cm2 ON c.id = cm2.conversation_id " +
                      "WHERE c.type IN ('FRIEND', 'TEMP') AND " +
-                     "((cm1.username = ? AND cm2.username = ?) OR (cm1.username = ? AND cm2.username = ?))";
+                     "((cm1.user_id = ? AND cm2.user_id = ?) OR (cm1.user_id = ? AND cm2.user_id = ?))";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, user1);
-            stmt.setString(2, user2);
-            stmt.setString(3, user2);
-            stmt.setString(4, user1);
+            stmt.setInt(1, userId1);
+            stmt.setInt(2, userId2);
+            stmt.setInt(3, userId2);
+            stmt.setInt(4, userId1);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -709,8 +730,8 @@ public class ConversationDAO {
         int conversationId = createConversation(conversationType, conversationName, connection);
         
         // 添加两个用户为成员
-        addConversationMember(conversationId, user1, "MEMBER", connection);
-        addConversationMember(conversationId, user2, "MEMBER", connection);
+        addConversationMember(conversationId, userId1, "MEMBER", connection);
+        addConversationMember(conversationId, userId2, "MEMBER", connection);
         
         // 返回新创建的会话
         return getConversation(conversationId, connection);
@@ -757,18 +778,21 @@ public class ConversationDAO {
      * @throws SQLException SQL异常
      */
     public void updateConversationOnFriendshipEstablished(String user1, String user2, Connection connection) throws SQLException {
+        int userId1 = getUserIdFromUsername(user1, connection);
+        int userId2 = getUserIdFromUsername(user2, connection);
+        
         // 查找两个用户之间的临时会话
         String sql = "SELECT c.id FROM conversation c " +
                      "JOIN conversation_member cm1 ON c.id = cm1.conversation_id " +
                      "JOIN conversation_member cm2 ON c.id = cm2.conversation_id " +
                      "WHERE c.type = 'TEMP' AND " +
-                     "((cm1.username = ? AND cm2.username = ?) OR (cm1.username = ? AND cm2.username = ?))";
+                     "((cm1.user_id = ? AND cm2.user_id = ?) OR (cm1.user_id = ? AND cm2.user_id = ?))";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, user1);
-            stmt.setString(2, user2);
-            stmt.setString(3, user2);
-            stmt.setString(4, user1);
+            stmt.setInt(1, userId1);
+            stmt.setInt(2, userId2);
+            stmt.setInt(3, userId2);
+            stmt.setInt(4, userId1);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {

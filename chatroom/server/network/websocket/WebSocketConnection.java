@@ -237,7 +237,8 @@ public class WebSocketConnection {
                         }
                         
                         // 检查用户是否是会话成员
-                        if (!conversationDAO.isConversationMember(conversationId, from, connection)) {
+                        int fromUserId = conversationDAO.getUserIdFromUsername(from, connection);
+                        if (!conversationDAO.isConversationMember(conversationId, fromUserId, connection)) {
                             Message errorMsg = new Message(MessageType.SYSTEM, "server", "您不是该会话的成员");
                             send(messageCodec.encode(errorMsg));
                             break;
@@ -387,8 +388,10 @@ public class WebSocketConnection {
                             System.out.println("新会话已创建，ID: " + privateConversationId);
                             
                             // 添加会话成员
-                            conversationDAO.addConversationMember(privateConversationId, privateFrom, "MEMBER", connection);
-                            conversationDAO.addConversationMember(privateConversationId, privateTo, "MEMBER", connection);
+                            int privateFromUserId = conversationDAO.getUserIdFromUsername(privateFrom, connection);
+                            int privateToUserId = conversationDAO.getUserIdFromUsername(privateTo, connection);
+                            conversationDAO.addConversationMember(privateConversationId, privateFromUserId, "MEMBER", connection);
+                            conversationDAO.addConversationMember(privateConversationId, privateToUserId, "MEMBER", connection);
                             System.out.println("会话成员已添加");
                         } else {
                             System.out.println("使用已存在的conversationId: " + privateConversationId);
@@ -669,9 +672,10 @@ public class WebSocketConnection {
                         }
                         
                         // 只在用户不是会话成员时才添加到conversation_member表
-                        boolean isConversationMember = conversationDAO.isConversationMember(conversation.getId(), currentUser.getUsername(), connection);
+                        int userIdInt = Integer.parseInt(userId);
+                        boolean isConversationMember = conversationDAO.isConversationMember(conversation.getId(), userIdInt, connection);
                         if (!isConversationMember) {
-                            conversationDAO.addConversationMember(conversation.getId(), currentUser.getUsername(), "MEMBER", connection);
+                            conversationDAO.addConversationMember(conversation.getId(), userIdInt, "MEMBER", connection);
                         }
                         
                         // 更新会话的当前房间
@@ -827,7 +831,8 @@ public class WebSocketConnection {
                             messageRouter.joinRoom(ownerId, newRoom.getId());
                             
                             // 将创建者加入conversation
-                            conversationDAO.addConversationMember(newConversationId, currentUser.getUsername(), "OWNER", connection);
+                            int ownerIdInt = Integer.parseInt(ownerId);
+                            conversationDAO.addConversationMember(newConversationId, ownerIdInt, "OWNER", connection);
                             
                             // 发送成功消息
                             Message systemMessage = new Message(MessageType.SYSTEM, "server", "房间" + createRoomName + "创建成功，类型: " + roomType, newConversationId);
@@ -1184,7 +1189,8 @@ public class WebSocketConnection {
                     
                     // 将用户加入system conversation
                     if (systemRoom.getConversationId() != null) {
-                        conversationDAO.addConversationMember(systemRoom.getConversationId(), username, "MEMBER", connection);
+                        int memberUserId = conversationDAO.getUserIdFromUsername(username, connection);
+                        conversationDAO.addConversationMember(systemRoom.getConversationId(), memberUserId, "MEMBER", connection);
                         System.out.println("用户已加入system conversation: " + username + ", conversation_id: " + systemRoom.getConversationId());
                     }
                 }
@@ -1305,8 +1311,8 @@ public class WebSocketConnection {
                         
                         // 将用户加入system conversation
                         if (systemRoom.getConversationId() != null) {
-                            if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), connection)) {
-                                conversationDAO.addConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                            if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), currentUser.getId(), connection)) {
+                                conversationDAO.addConversationMember(systemRoom.getConversationId(), currentUser.getId(), "MEMBER", connection);
                                 System.out.println("用户已加入system conversation: " + username + ", conversation_id: " + systemRoom.getConversationId());
                             }
                         }
@@ -1808,8 +1814,9 @@ public class WebSocketConnection {
                                 Room room = messageRouter.getRooms().get(roomId);
                                 if (room != null && room.getConversationId() != null) {
                                     // 检查用户是否已在conversation中
-                                    if (!conversationDAO.isConversationMember(room.getConversationId(), currentUser.getUsername(), connection)) {
-                                        conversationDAO.addConversationMember(room.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                                    int userIdInt = Integer.parseInt(userId);
+                                    if (!conversationDAO.isConversationMember(room.getConversationId(), userIdInt, connection)) {
+                                        conversationDAO.addConversationMember(room.getConversationId(), userIdInt, "MEMBER", connection);
                                         System.out.println("用户已加入conversation: " + currentUser.getUsername() + ", conversation_id: " + room.getConversationId() + ", room: " + roomName);
                                     }
                                 }
@@ -2292,8 +2299,10 @@ public class WebSocketConnection {
                         if (!foundExistingConversation) {
                             String conversationName = fromUsername + "_" + toUsernameCurrent;
                             friendConversationId = conversationDAO.createConversation("FRIEND", conversationName, connection);
-                            conversationDAO.addConversationMember(friendConversationId, fromUsername, "MEMBER", connection);
-                            conversationDAO.addConversationMember(friendConversationId, toUsernameCurrent, "MEMBER", connection);
+                            int fromUserIdNew = conversationDAO.getUserIdFromUsername(fromUsername, connection);
+                            int toUserId = conversationDAO.getUserIdFromUsername(toUsernameCurrent, connection);
+                            conversationDAO.addConversationMember(friendConversationId, fromUserIdNew, "MEMBER", connection);
+                            conversationDAO.addConversationMember(friendConversationId, toUserId, "MEMBER", connection);
                             System.out.println("新建好友会话: " + friendConversationId);
                         }
                     } catch (Exception e) {
@@ -2584,7 +2593,7 @@ public class WebSocketConnection {
             }
             
             // 检查用户是否已在conversation中
-            if (conversationId != null && conversationDAO.isConversationMember(conversationId, username, connection)) {
+            if (conversationId != null && conversationDAO.isConversationMember(conversationId, currentUser.getId(), connection)) {
                 Message errorMsg = new Message(MessageType.SYSTEM, "server", "您已在会话 " + roomName + " 中", null);
                 send(messageCodec.encode(errorMsg));
                 return;
@@ -2620,7 +2629,7 @@ public class WebSocketConnection {
                 
                 // 加入conversation
                 if (conversationId != null) {
-                    conversationDAO.addConversationMember(conversationId, username, "MEMBER", connection);
+                    conversationDAO.addConversationMember(conversationId, currentUser.getId(), "MEMBER", connection);
                     System.out.println("用户已加入conversation: " + username + ", conversation_id: " + conversationId);
                 }
                 
@@ -2833,7 +2842,8 @@ public class WebSocketConnection {
                     
                     // 加入conversation
                     if (conversationId != null) {
-                        conversationDAO.addConversationMember(conversationId, requesterUsername, "MEMBER", connection);
+                        int requesterUserId = Integer.parseInt(requesterId);
+                        conversationDAO.addConversationMember(conversationId, requesterUserId, "MEMBER", connection);
                         System.out.println("用户已加入conversation: " + requesterUsername + ", conversation_id: " + conversationId);
                     }
                     

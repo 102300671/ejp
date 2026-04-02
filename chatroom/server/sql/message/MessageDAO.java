@@ -20,11 +20,14 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public void saveMessage(Message message, String messageType, int conversationId, Connection connection) throws SQLException {
-        String sql = "INSERT INTO messages (type, from_username, conversation_id, content, create_time, message_type, is_nsfw, iv) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // 获取用户ID
+        int userId = getUserIdFromUsername(message.getFrom(), connection);
+        
+        String sql = "INSERT INTO messages (type, user_id, conversation_id, content, create_time, message_type, is_nsfw, iv) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, message.getType().name());
-            stmt.setString(2, message.getFrom());
+            stmt.setInt(2, userId);
             stmt.setInt(3, conversationId);
             stmt.setString(4, message.getContent());
             stmt.setString(5, message.getTime());
@@ -57,9 +60,10 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getConversationMessages(int conversationId, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, content, create_time, is_nsfw, iv FROM messages " +
-                     "WHERE conversation_id = ? " +
-                     "ORDER BY create_time DESC LIMIT ?";
+        String sql = "SELECT m.id, m.type, u.username as from_username, m.content, m.create_time, m.is_nsfw, m.iv FROM messages m " +
+                     "JOIN user u ON m.user_id = u.id " +
+                     "WHERE m.conversation_id = ? " +
+                     "ORDER BY m.create_time DESC LIMIT ?";
         
         List<Message> messages = new ArrayList<>();
         
@@ -133,9 +137,10 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getConversationMessagesAfter(int conversationId, String afterTimestamp, int limit, Connection connection) throws SQLException {
-        String sql = "SELECT id, type, from_username, content, create_time, is_nsfw, iv FROM messages " +
-                     "WHERE conversation_id = ? AND create_time > ? " +
-                     "ORDER BY create_time ASC LIMIT ?";
+        String sql = "SELECT m.id, m.type, u.username as from_username, m.content, m.create_time, m.is_nsfw, m.iv FROM messages m " +
+                     "JOIN user u ON m.user_id = u.id " +
+                     "WHERE m.conversation_id = ? AND m.create_time > ? " +
+                     "ORDER BY m.create_time ASC LIMIT ?";
         
         List<Message> messages = new ArrayList<>();
         
@@ -273,25 +278,29 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<Message> getOfflineMessages(String username, String lastOnlineTime, Connection connection) throws SQLException {
+        int userId = getUserIdFromUsername(username, connection);
+        
         // 获取用户参与的所有会话
         String sql;
         
         if (lastOnlineTime != null && !lastOnlineTime.isEmpty()) {
             // 如果有最后上线时间，获取该时间之后的消息
-            sql = "SELECT m.id, m.type, m.from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
+            sql = "SELECT m.id, m.type, u.username as from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
                   "FROM messages m " +
+                  "JOIN user u ON m.user_id = u.id " +
                   "INNER JOIN conversation_member cm ON m.conversation_id = cm.conversation_id " +
-                  "WHERE cm.username = ? " +
-                  "AND m.from_username != ? " +
+                  "WHERE cm.user_id = ? " +
+                  "AND m.user_id != ? " +
                   "AND m.create_time > ? " +
                   "ORDER BY m.create_time ASC";
         } else {
             // 如果没有最后上线时间，获取最近1小时的消息
-            sql = "SELECT m.id, m.type, m.from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
+            sql = "SELECT m.id, m.type, u.username as from_username, m.content, m.create_time, m.is_nsfw, m.iv, m.conversation_id " +
                   "FROM messages m " +
+                  "JOIN user u ON m.user_id = u.id " +
                   "INNER JOIN conversation_member cm ON m.conversation_id = cm.conversation_id " +
-                  "WHERE cm.username = ? " +
-                  "AND m.from_username != ? " +
+                  "WHERE cm.user_id = ? " +
+                  "AND m.user_id != ? " +
                   "AND m.create_time > DATE_SUB(NOW(), INTERVAL 1 HOUR) " +
                   "ORDER BY m.create_time ASC";
         }
@@ -299,8 +308,8 @@ public class MessageDAO {
         List<Message> messages = new ArrayList<>();
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            stmt.setString(2, username);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
             
             if (lastOnlineTime != null && !lastOnlineTime.isEmpty()) {
                 stmt.setString(3, lastOnlineTime);
@@ -343,18 +352,21 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public List<String> getPrivateChatUsers(String username, Connection connection) throws SQLException {
-        String sql = "SELECT DISTINCT cm.username " +
+        int userId = getUserIdFromUsername(username, connection);
+        
+        String sql = "SELECT DISTINCT u.username " +
                      "FROM conversation_member cm " +
+                     "JOIN user u ON cm.user_id = u.id " +
                      "INNER JOIN conversation c ON cm.conversation_id = c.id " +
                      "WHERE c.type IN ('FRIEND', 'TEMP') " +
-                     "AND cm.conversation_id IN (SELECT conversation_id FROM conversation_member WHERE username = ?) " +
-                     "AND cm.username != ?";
+                     "AND cm.conversation_id IN (SELECT conversation_id FROM conversation_member WHERE user_id = ?) " +
+                     "AND cm.user_id != ?";
         
         List<String> users = new ArrayList<>();
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            stmt.setString(2, username);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
             
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -376,10 +388,11 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public int getUserMessageCount(String username, Connection connection) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ?";
+        int userId = getUserIdFromUsername(username, connection);
+        String sql = "SELECT COUNT(*) FROM messages WHERE user_id = ?";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setInt(1, userId);
             
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -398,10 +411,11 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public int getUserImageCount(String username, Connection connection) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ? AND type = 'IMAGE'";
+        int userId = getUserIdFromUsername(username, connection);
+        String sql = "SELECT COUNT(*) FROM messages WHERE user_id = ? AND type = 'IMAGE'";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setInt(1, userId);
             
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -420,10 +434,11 @@ public class MessageDAO {
      * @throws SQLException SQL异常
      */
     public int getUserFileCount(String username, Connection connection) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM messages WHERE from_username = ? AND type = 'FILE'";
+        int userId = getUserIdFromUsername(username, connection);
+        String sql = "SELECT COUNT(*) FROM messages WHERE user_id = ? AND type = 'FILE'";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setInt(1, userId);
             
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -432,6 +447,29 @@ public class MessageDAO {
         }
         
         return 0;
+    }
+    
+    /**
+     * 根据用户名获取用户ID
+     * @param username 用户名
+     * @param connection 数据库连接
+     * @return 用户ID
+     * @throws SQLException SQL异常
+     */
+    private int getUserIdFromUsername(String username, Connection connection) throws SQLException {
+        String sql = "SELECT id FROM user WHERE username = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+        
+        throw new SQLException("User not found: " + username);
     }
     
     /**

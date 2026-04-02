@@ -1597,8 +1597,9 @@ public class ClientConnection implements Runnable {
                             try (Connection connection = dbManager.getConnection()) {
                                 ConversationDAO conversationDAO = new ConversationDAO();
                                 // 检查用户是否已在conversation中
-                                if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), connection)) {
-                                    conversationDAO.addConversationMember(systemRoom.getConversationId(), currentUser.getUsername(), "MEMBER", connection);
+                                int userIdInt = Integer.parseInt(userId);
+                                if (!conversationDAO.isConversationMember(systemRoom.getConversationId(), userIdInt, connection)) {
+                                    conversationDAO.addConversationMember(systemRoom.getConversationId(), userIdInt, "MEMBER", connection);
                                     System.out.println("用户已加入system conversation：" + currentUser.getUsername() + ", conversation_id: " + systemRoom.getConversationId());
                                 }
                             } catch (SQLException e) {
