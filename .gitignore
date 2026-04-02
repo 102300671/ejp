@@ -18,6 +18,7 @@ chatroom/client/cli/lib/*
 
 # Configuration files with sensitive information
 chatroom/client/user_cache.properties
+chatroom/client/cli/user_cache.properties
 
 # Logs
 logs/
