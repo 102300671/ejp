@@ -49,13 +49,11 @@ public class ServiceConfig {
    }
 
    private void loadDefaultConfig() {
-      this.properties.setProperty("server.base.url", "http://localhost:8081");
+      this.properties.setProperty("server.base.url", "http://your-server-url");
       this.properties.setProperty("websocket.ssl.enabled", "false");
-      this.properties.setProperty("zfile.server.url", "http://localhost:8081");
-      this.properties.setProperty("zfile.username", "chatroom-system");
-      this.properties.setProperty("zfile.password", "zeXvrDUDacr56Nt");
-      this.properties.setProperty("onlyoffice.server.url", "http://localhost:8082");
-      this.properties.setProperty("onlyoffice.api.url", "http://localhost:8082/web-apps/apps/api/documents/api.js");
+      this.properties.setProperty("zfile.server.url", "https://your-zfile-server-url");
+      this.properties.setProperty("zfile.username", "your-zfile-username");
+      this.properties.setProperty("zfile.password", "your-zfile-password");
       System.out.println("使用默认服务配置");
    }
 
