@@ -49,7 +49,6 @@ public class ServiceConfig {
    }
 
    private void loadDefaultConfig() {
-      this.properties.setProperty("server.base.url", "http://your-server-url");
       this.properties.setProperty("websocket.ssl.enabled", "false");
       this.properties.setProperty("zfile.server.url", "https://your-zfile-server-url");
       this.properties.setProperty("zfile.username", "your-zfile-username");
@@ -70,10 +69,6 @@ public class ServiceConfig {
       } else {
          return var1;
       }
-   }
-
-   public String getServerBaseUrl() {
-      return this.resolveValue(this.properties.getProperty("server.base.url"));
    }
 
    public String getZfileServerUrl() {
