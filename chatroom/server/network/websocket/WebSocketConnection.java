@@ -1903,7 +1903,6 @@ public class WebSocketConnection {
         
         try (java.sql.Connection connection = dbManager.getConnection()) {
             server.sql.message.MessageDAO messageDAO = new server.sql.message.MessageDAO();
-            server.sql.conversation.ConversationDAO conversationDAO = new server.sql.conversation.ConversationDAO();
             java.util.List<Message> messages;
             
             // 判断时间戳是否有效（非空、非"null"、非"0"）
@@ -1923,8 +1922,15 @@ public class WebSocketConnection {
                 // 使用新的基于conversation_id的方法获取消息
                 if (isValidTimestamp) {
                     // 如果提供了有效时间戳，获取该时间戳之后的消息
-                    messages = messageDAO.getConversationMessagesAfter(conversationId, lastTimestamp, 100, connection);
-                    System.out.println("获取增量消息: 会话" + conversationId + "中" + lastTimestamp + "之后的" + messages.size() + "条消息");
+                    try {
+                        messages = messageDAO.getConversationMessagesAfter(conversationId, lastTimestamp, 100, connection);
+                        System.out.println("获取增量消息: 会话" + conversationId + "中" + lastTimestamp + "之后的" + messages.size() + "条消息");
+                    } catch (Exception e) {
+                        System.err.println("获取增量消息失败: " + e.getMessage());
+                        // 失败时获取最近100条消息
+                        messages = messageDAO.getConversationMessages(conversationId, 100, connection);
+                        System.out.println("获取历史消息: 会话" + conversationId + "的" + messages.size() + "条消息");
+                    }
                 } else {
                     // 否则获取最近100条消息
                     messages = messageDAO.getConversationMessages(conversationId, 100, connection);
@@ -2054,7 +2060,8 @@ public class WebSocketConnection {
      * @param message 请求消息
      */
     private void handleRequestPrivateUsers(Message message) {
-        String from = message.getFrom();
+        // 使用当前认证用户的用户名，而不是消息中的from字段
+        String from = currentUser != null ? currentUser.getUsername() : message.getFrom();
         
         System.out.println("处理私聊用户列表请求: 用户" + from);
         
@@ -2074,6 +2081,11 @@ public class WebSocketConnection {
             System.out.println("发送私聊用户列表响应: " + from + "的私聊用户数量: " + users.size());
         } catch (java.sql.SQLException e) {
             System.err.println("获取私聊用户列表失败: " + e.getMessage());
+            e.printStackTrace();
+            Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取私聊用户列表失败: 服务器内部错误");
+            send(messageCodec.encode(errorMsg));
+        } catch (Exception e) {
+            System.err.println("处理私聊用户列表请求失败: " + e.getMessage());
             e.printStackTrace();
             Message errorMsg = new Message(MessageType.SYSTEM, "server", "获取私聊用户列表失败: 服务器内部错误");
             send(messageCodec.encode(errorMsg));
