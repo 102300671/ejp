@@ -1,6 +1,8 @@
 # Compiled output
 chatroom/server/bin/
 chatroom/client/cli/bin/
+ldrchat/server/bin/
+ldrchat/client/cli/bin/
 *.class
 
 # IDE configuration
@@ -15,10 +17,14 @@ chatroom/client/cli/bin/
 # Dependencies
 chatroom/server/lib/*
 chatroom/client/cli/lib/*
+ldrchat/server/lib/*
+ldrchat/client/cli/lib/*
 
 # Configuration files with sensitive information
 chatroom/client/user_cache.properties
 chatroom/client/cli/user_cache.properties
+ldrchat/client/user_cache.properties
+ldrchat/client/cli/user_cache.properties
 
 # Logs
 logs/
@@ -33,16 +39,24 @@ Thumbs.db
 *.temp
 .cache/
 
+# Database and configuration
 chatroom/server/sql/database.properties
+chatroom/server/config/service.properties
+ldrchat/server/sql/database.properties
+ldrchat/server/config/service.properties
 files
 chatroom/server/keystore.jks
 chatroom/server/keystore.p12
 chatroom/server/keystore.p12.backup
 chatroom/server/websocket_server_api.txt
-chatroom/server/config/service.properties
+ldrchat/server/keystore.jks
+ldrchat/server/keystore.p12
+ldrchat/server/keystore.p12.backup
+ldrchat/server/websocket_server_api.txt
 
 # Maven
 chatroom/dashboard/target/
+ldrchat/dashboard/target/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -86,5 +100,8 @@ build/
 # Mac
 .DS_Store
 
+# Log directories
 chatroom/server/log/
 chatroom/client/web/log/
+ldrchat/server/log/
+ldrchat/client/web/log/
