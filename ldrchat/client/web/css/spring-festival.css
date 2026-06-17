@@ -1,0 +1,242 @@
+/* 新年限定主题样式 */
+
+/* 红色主题 */
+.chat-header {
+    background: linear-gradient(135deg, #c41e3a 0%, #e63946 50%, #ff6b6b 100%);
+}
+
+/* 金色边框装饰 */
+.chat-box {
+    border: 3px solid #ffd700;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3), 0 0 60px rgba(196, 30, 58, 0.2);
+}
+
+/* 聊天室标题 */
+.chat-header h2 {
+    color: #ffd700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+}
+
+/* 侧边栏背景 */
+.chats-panel {
+    background: linear-gradient(180deg, #fff5f5 0%, #ffe6e6 100%);
+    border-right: 2px solid #ffd700;
+}
+
+/* 房间列表项 */
+.room-item {
+    background: linear-gradient(90deg, #fff 0%, #fff5f5 100%);
+    border-left: 4px solid #c41e3a;
+    transition: all 0.3s ease;
+}
+
+.room-item:hover {
+    background: linear-gradient(90deg, #fff5f5 0%, #ffe6e6 100%);
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(196, 30, 58, 0.2);
+}
+
+.room-item.active {
+    background: linear-gradient(90deg, #c41e3a 0%, #e63946 100%);
+    color: #fff;
+    border-left: 4px solid #ffd700;
+}
+
+.room-item.active strong {
+    color: #ffd700;
+}
+
+/* 消息区域 */
+.messages-area {
+    background: linear-gradient(180deg, #fff9f9 0%, #fff5f5 100%);
+}
+
+/* 发送的消息 */
+.sent-message {
+    background: linear-gradient(135deg, #c41e3a 0%, #e63946 100%);
+    border: 2px solid #ffd700;
+    box-shadow: 0 2px 8px rgba(196, 30, 58, 0.3);
+}
+
+/* 接收的消息 */
+.received-message {
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+    border: 2px solid #e63946;
+    box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2);
+}
+
+/* 按钮样式 */
+button {
+    background: linear-gradient(135deg, #c41e3a 0%, #e63946 100%);
+    border: 2px solid #ffd700;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #e63946 0%, #ff6b6b 100%);
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.4);
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* 创建房间按钮 */
+#create-chat-btn {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+    color: #c41e3a;
+    font-weight: bold;
+}
+
+/* 刷新按钮 */
+#refresh-chats-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+}
+
+/* 消息输入框 */
+#message-input {
+    border: 2px solid #c41e3a;
+    background: #fff9f9;
+}
+
+#message-input:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* 发送按钮 */
+#send-btn {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+    color: #c41e3a;
+    font-weight: bold;
+}
+
+/* 系统消息 */
+.system-message {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.2) 50%, transparent 100%);
+    color: #c41e3a;
+    border: 1px dashed #ffd700;
+}
+
+/* 灯笼装饰 */
+.chat-header::before {
+    content: '🏮';
+    position: absolute;
+    left: 50%;
+    top: -20px;
+    transform: translateX(-50%);
+    font-size: 24px;
+    animation: swing 3s ease-in-out infinite;
+}
+
+@keyframes swing {
+    0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+    50% { transform: translateX(-50%) rotate(5deg); }
+}
+
+/* 烟花效果背景 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(196, 30, 58, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 70%, rgba(255, 107, 107, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 用户菜单 */
+.user-menu-dropdown {
+    background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+    border: 2px solid #ffd700;
+    box-shadow: 0 4px 16px rgba(196, 30, 58, 0.3);
+}
+
+.user-menu-dropdown button {
+    background: transparent;
+    border: none;
+    color: #333;
+}
+
+.user-menu-dropdown button:hover {
+    background: linear-gradient(90deg, #c41e3a 0%, #e63946 100%);
+    color: #fff;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle-btn {
+    color: #ffd700;
+    font-size: 28px;
+}
+
+/* 返回按钮 */
+.return-button {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+    color: #c41e3a;
+    font-weight: bold;
+}
+
+/* 新窗口按钮 */
+.new-window-btn {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+    color: #c41e3a;
+    border: 2px solid #c41e3a;
+}
+
+.new-window-btn:hover {
+    background: linear-gradient(135deg, #ffed4a 0%, #fff59d 100%);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .chat-header {
+        background: linear-gradient(135deg, #c41e3a 0%, #e63946 100%);
+    }
+    
+    .room-item {
+        border-left-width: 3px;
+    }
+    
+    .sent-message, .received-message {
+        border-width: 1px;
+    }
+}
+
+/* 春节祝福文字 */
+.chat-header h2::after {
+    content: ' 🎊 新年快乐 🎊';
+    font-size: 14px;
+    margin-left: 10px;
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #fff5f5;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #c41e3a 0%, #e63946 100%);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #e63946 0%, #ff6b6b 100%);
+}

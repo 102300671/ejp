@@ -1,0 +1,673 @@
+localStorage.js:454 MessageStorage has been attached to window object
+chat.js:229 [2026-02-14 23:11:00.286] [INFO] 主窗口BroadcastChannel初始化成功
+chat.js:375 === initMessagePersistence START ===
+chat.js:378 MessageStorage in global scope: object
+chat.js:380 MessageStorage is in window object: {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+chat.js:392 messageStorage initialized: {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: system {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:00.289] [INFO] Using saved WebSocket port: 8889
+chat.js:229 [2026-02-14 23:11:00.289] [INFO] Connecting to WebSocket server at ws://localhost:8889
+chat.js:229 [2026-02-14 23:11:00.289] [INFO] Using WebSocket protocol: ws:
+chat.js:229 [2026-02-14 23:11:00.290] [INFO] Server IP: localhost, WebSocket Port: 8889
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:419 IndexedDB connection successful: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+chat.js:425 IndexedDB stores: IDBObjectStore {name: 'messages', keyPath: 'id', indexNames: DOMStringList, transaction: IDBTransaction, autoIncrement: false} IDBObjectStore {name: 'lastSync', keyPath: 'id', indexNames: DOMStringList, transaction: IDBTransaction, autoIncrement: false}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: system
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: (35) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+chat.js:1583 sendMessage调试信息: {type: 'UUID_AUTH', to: 'test', conversationId: undefined, sessionToConversationId: {…}, currentChat: 'system'}
+chat.js:1457 Parsed message: {
+  "type": "UUID_AUTH_SUCCESS",
+  "from": "server",
+  "content": "test",
+  "time": "认证成功",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'UUID_AUTH_SUCCESS', from: 'server', content: 'test', time: '认证成功', isNSFW: false}
+chat.js:1583 sendMessage调试信息: {type: 'LIST_ROOMS', to: 'server', conversationId: undefined, sessionToConversationId: {…}, currentChat: 'system'}
+chat.js:229 [2026-02-14 23:11:01.616] [INFO] Started periodic child window cleanup (every 30 seconds)
+chat.js:229 [2026-02-14 23:11:01.616] [INFO] 主窗口BroadcastChannel初始化成功
+chat.js:375 === initMessagePersistence START ===
+chat.js:378 MessageStorage in global scope: object
+chat.js:380 MessageStorage is in window object: {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+chat.js:392 messageStorage initialized: {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: system {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:01.619] [INFO] Requested friend list from server
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:419 IndexedDB connection successful: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+chat.js:425 IndexedDB stores: IDBObjectStore {name: 'messages', keyPath: 'id', indexNames: DOMStringList, transaction: IDBTransaction, autoIncrement: false} IDBObjectStore {name: 'lastSync', keyPath: 'id', indexNames: DOMStringList, transaction: IDBTransaction, autoIncrement: false}
+chat.js:1457 Parsed message: {
+  "type": "SERVICE_CONFIG",
+  "from": "server",
+  "content": "{\"zfileServerUrl\":\"http://localhost:8081\"}",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'SERVICE_CONFIG', from: 'server', content: '{"zfileServerUrl":"http://localhost:8081"}', isNSFW: false}
+chat.js:229 [2026-02-14 23:11:01.685] [INFO] ZFile服务器URL: http://localhost:8081
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 4
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 4}
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 13
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 13}
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 1
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 1}
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 5
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 5}
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 6
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 6}
+chat.js:1457 Parsed message: {
+  "type": "JOIN",
+  "from": "test",
+  "content": "test 加入了聊天室",
+  "isNSFW": false,
+  "conversationId": 7
+}
+chat.js:1720 Received message: {type: 'JOIN', from: 'test', content: 'test 加入了聊天室', isNSFW: false, conversationId: 7}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: system
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "SYSTEM",
+  "from": "server",
+  "content": "{\"rooms\":[{\"name\":\"system\",\"type\":\"PUBLIC\",\"conversation_id\":4},{\"name\":\"try\",\"type\":\"PUBLIC\",\"conversation_id\":1},{\"name\":\"try1\",\"type\":\"PUBLIC\",\"conversation_id\":5},{\"name\":\"try2\",\"type\":\"PRIVATE\",\"conversation_id\":6},{\"name\":\"try3\",\"type\":\"PUBLIC\",\"conversation_id\":7},{\"name\":\"t1\",\"type\":\"PUBLIC\",\"conversation_id\":13}]}",
+  "time": "2026-02-14 23:11:01",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'SYSTEM', from: 'server', content: '{"rooms":[{"name":"system","type":"PUBLIC","conver…ame":"t1","type":"PUBLIC","conversation_id":13}]}', time: '2026-02-14 23:11:01', isNSFW: false}
+chat.js:3616 保存conversation_id映射: system -> 4
+chat.js:3616 保存conversation_id映射: try -> 1
+chat.js:3616 保存conversation_id映射: try1 -> 5
+chat.js:3616 保存conversation_id映射: try2 -> 6
+chat.js:3616 保存conversation_id映射: try3 -> 7
+chat.js:3616 保存conversation_id映射: t1 -> 13
+chat.js:1003 广播消息类型: ROOM_LIST_UPDATE 目标会话: all ID: ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6
+chat.js:1004 广播消息详细数据: {"rooms":[{"name":"system","type":"PUBLIC"},{"name":"try","type":"PUBLIC"},{"name":"try1","type":"PUBLIC"},{"name":"try2","type":"PRIVATE"},{"name":"try3","type":"PUBLIC"},{"name":"t1","type":"PUBLIC"}]}
+chat.js:1012 使用BroadcastChannel发送消息: ROOM_LIST_UPDATE ID: ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6
+chat.js:1014 BroadcastChannel消息发送成功
+chat.js:1054 主窗口开始同步消息到子窗口，目标会话: all 消息类型: ROOM_LIST_UPDATE ID: ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6
+chat.js:1457 Parsed message: {
+  "type": "PRIVATE_USERS_RESPONSE",
+  "from": "server",
+  "content": "[\"test3\",\"test1\"]",
+  "time": "2026-02-14 23:11:01",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'PRIVATE_USERS_RESPONSE', from: 'server', content: '["test3","test1"]', time: '2026-02-14 23:11:01', isNSFW: false}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "FRIEND_LIST",
+  "from": "server",
+  "content": "[{\"createdAt\":\"2026-02-14 22:28:55.0\",\"username\":\"test2\"},{\"createdAt\":\"2026-02-11 20:47:47.0\",\"username\":\"test3\"},{\"createdAt\":\"2026-02-09 11:45:25.0\",\"username\":\"test1\"}]",
+  "time": "2026-02-14 23:11:01",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'FRIEND_LIST', from: 'server', content: '[{"createdAt":"2026-02-14 22:28:55.0","username":"…dAt":"2026-02-09 11:45:25.0","username":"test1"}]', time: '2026-02-14 23:11:01', isNSFW: false}
+chat.js:229 [2026-02-14 23:11:01.723] [INFO] Received friend list: 3 friends
+chat.js:445 loadLocalMessages called: system {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:01.726] [INFO] 注册会话: try
+chat.js:445 loadLocalMessages called: try {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:01.728] [INFO] 注册会话: try1
+chat.js:445 loadLocalMessages called: try1 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:01.729] [INFO] 注册会话: try2
+chat.js:445 loadLocalMessages called: try2 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:229 [2026-02-14 23:11:01.729] [INFO] 注册会话: try3
+chat.js:445 loadLocalMessages called: try3 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: t1 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: test2 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: test3 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:445 loadLocalMessages called: test1 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:288 收到广播消息: {"type":"ROOM_LIST_UPDATE","data":{"rooms":[{"name":"system","type":"PUBLIC"},{"name":"try","type":"PUBLIC"},{"name":"try1","type":"PUBLIC"},{"name":"try2","type":"PRIVATE"},{"name":"try3","type":"PUBLIC"},{"name":"t1","type":"PUBLIC"}]},"roomName":null,"uniqueId":"ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6","timestamp":1771081861720,"source":"main_window"}
+chat.js:297 处理广播消息: ROOM_LIST_UPDATE for all ID: ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6
+chat.js:322 处理ROOM_LIST_UPDATE消息
+chat.js:323 ROOM_LIST_UPDATE消息完整数据: {"type":"ROOM_LIST_UPDATE","data":{"rooms":[{"name":"system","type":"PUBLIC"},{"name":"try","type":"PUBLIC"},{"name":"try1","type":"PUBLIC"},{"name":"try2","type":"PRIVATE"},{"name":"try3","type":"PUBLIC"},{"name":"t1","type":"PUBLIC"}]},"roomName":null,"uniqueId":"ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6","timestamp":1771081861720,"source":"main_window"}
+chat.js:1043 忽略重复的广播消息: ROOM_LIST_UPDATE_all_1771081861720_9j3v23vk6
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: system
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try1
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try2
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try3
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: t1
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: test2
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: test3
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: test1
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: (35) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 4
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+chat.js:229 [2026-02-14 23:11:02.548] [INFO] 向服务器请求try会话的历史消息，从时间戳2026-02-13 21:26:34开始
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 1
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+chat.js:229 [2026-02-14 23:11:02.561] [INFO] 向服务器请求try1会话的历史消息，从时间戳0开始
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:229 [2026-02-14 23:11:02.651] [INFO] 向服务器请求try2会话的历史消息，从时间戳0开始
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 5
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 6
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+chat.js:229 [2026-02-14 23:11:02.713] [INFO] 向服务器请求try3会话的历史消息，从时间戳0开始
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 7
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false,
+  "conversationId": 13
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false, …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: (35) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_308 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_313 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_314 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_315 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770980443202_4shjrfp68 test
+chat.js:2005 为消息添加右键菜单: TEXT_system_1770985036711_wldr7jnrb test1
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_4_319 test1
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false}
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false}
+chat.js:528 getRoomMessages returned: (23) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:229 [2026-02-14 23:11:02.784] [INFO] 成功加载try会话的15条本地消息
+chat.js:1457 Parsed message: {
+  "type": "HISTORY_RESPONSE",
+  "from": "server",
+  "content": "[]",
+  "time": "2026-02-14 23:11:02",
+  "isNSFW": false
+}
+chat.js:1720 Received message: {type: 'HISTORY_RESPONSE', from: 'server', content: '[]', time: '2026-02-14 23:11:02', isNSFW: false}
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try', conversationId: 1, sessionToConversationId: {…}, currentChat: 'try'}
+chat.js:445 loadLocalMessages called: try {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try",
+  "time": "2026-02-14 23:11:38",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try_1771081898345_x00536o5y"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try_1771081898345_x00536o5y Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try', time: '2026-02-14 23:11:38', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+chat.js:528 getRoomMessages returned: (23) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:229 [2026-02-14 23:11:38.366] [INFO] 成功加载try会话的0条本地消息
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_305 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_306 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_307 test1
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770980453164_xs3vju1b4 test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770980461810_odgt797vf test1
+chat.js:2005 为消息添加右键菜单: IMAGE_try_1770985013095_x5caqs2ya test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770987645269_salem4ngm test
+chat.js:2005 为消息添加右键菜单: IMAGE_conversation_1_322 test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770988105661_6q82cd71j test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770989178847_cwvuh73es test
+chat.js:2005 为消息添加右键菜单: IMAGE_conversation_1_325 test
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try1', conversationId: 5, sessionToConversationId: {…}, currentChat: 'try1'}
+chat.js:445 loadLocalMessages called: try1 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try1
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try1",
+  "time": "2026-02-14 23:11:39",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try1_1771081899443_ajsy6l99b"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try1_1771081899443_ajsy6l99b Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try1', time: '2026-02-14 23:11:39', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try2', conversationId: 6, sessionToConversationId: {…}, currentChat: 'try2'}
+chat.js:445 loadLocalMessages called: try2 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try2
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try2",
+  "time": "2026-02-14 23:11:40",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try2_1771081900721_c4z2qu8pl"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try2_1771081900721_c4z2qu8pl Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try2', time: '2026-02-14 23:11:40', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try3', conversationId: 7, sessionToConversationId: {…}, currentChat: 'try3'}
+chat.js:445 loadLocalMessages called: try3 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try3
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try3",
+  "time": "2026-02-14 23:11:42",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try3_1771081902239_mig7pgu16"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try3_1771081902239_mig7pgu16 Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try3', time: '2026-02-14 23:11:42', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 't1', conversationId: 13, sessionToConversationId: {…}, currentChat: 't1'}
+chat.js:445 loadLocalMessages called: t1 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: t1
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "t1",
+  "time": "2026-02-14 23:11:42",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_t1_1771081902782_4mvqimyii"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_t1_1771081902782_4mvqimyii Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 't1', time: '2026-02-14 23:11:42', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try3', conversationId: 7, sessionToConversationId: {…}, currentChat: 'try3'}
+chat.js:445 loadLocalMessages called: try3 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try3
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try3",
+  "time": "2026-02-14 23:11:43",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try3_1771081903511_jr0735qhj"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try3_1771081903511_jr0735qhj Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try3', time: '2026-02-14 23:11:43', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try2', conversationId: 6, sessionToConversationId: {…}, currentChat: 'try2'}
+chat.js:445 loadLocalMessages called: try2 {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try2
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try2",
+  "time": "2026-02-14 23:11:43",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try2_1771081903887_f4cti1tre"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try2_1771081903887_f4cti1tre Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try2', time: '2026-02-14 23:11:43', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: []
+chat.js:1583 sendMessage调试信息: {type: 'REQUEST_ROOM_DISPLAY_NAMES', to: 'try', conversationId: 1, sessionToConversationId: {…}, currentChat: 'try'}
+chat.js:445 loadLocalMessages called: try {DB_NAME: 'ChatMessageDB', DB_VERSION: 6, STORE_NAME: 'messages', LAST_SYNC_STORE: 'lastSync', test: ƒ, …}
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:524 Database created, now getting room messages
+chat.js:525 Calling getRoomMessages for room: try
+localStorage.js:102 IndexedDB open request created: IDBOpenDBRequest {onblocked: null, onupgradeneeded: null, source: null, transaction: null, readyState: 'pending', …}
+chat.js:1457 Parsed message: {
+  "type": "REQUEST_ROOM_DISPLAY_NAMES",
+  "from": "test",
+  "content": "try",
+  "time": "2026-02-14 23:11:44",
+  "isNSFW": false,
+  "id": "REQUEST_ROOM_DISPLAY_NAMES_try_1771081904720_0tlu3xqcz"
+}
+chat.js:1458 Message ID: REQUEST_ROOM_DISPLAY_NAMES_try_1771081904720_0tlu3xqcz Type: string
+chat.js:1720 Received message: {type: 'REQUEST_ROOM_DISPLAY_NAMES', from: 'test', content: 'try', time: '2026-02-14 23:11:44', isNSFW: false, …}
+chat.js:1823 Unknown message type: REQUEST_ROOM_DISPLAY_NAMES
+localStorage.js:148 IndexedDB open request succeeded
+localStorage.js:150 Database connection established: IDBDatabase {name: 'ChatMessageDB', version: 6, objectStoreNames: DOMStringList, onabort: null, onclose: null, …}
+localStorage.js:151 Available object stores: DOMStringList {0: 'lastSync', 1: 'messages', length: 2}
+chat.js:528 getRoomMessages returned: (23) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chat.js:229 [2026-02-14 23:11:44.734] [INFO] 成功加载try会话的0条本地消息
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_305 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_306 test
+chat.js:2005 为消息添加右键菜单: TEXT_conversation_1_307 test1
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770980453164_xs3vju1b4 test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770980461810_odgt797vf test1
+chat.js:2005 为消息添加右键菜单: IMAGE_try_1770985013095_x5caqs2ya test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770987645269_salem4ngm test
+chat.js:2005 为消息添加右键菜单: IMAGE_conversation_1_322 test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770988105661_6q82cd71j test
+chat.js:2005 为消息添加右键菜单: TEXT_try_1770989178847_cwvuh73es test
+chat.js:2005 为消息添加右键菜单: IMAGE_conversation_1_325 test

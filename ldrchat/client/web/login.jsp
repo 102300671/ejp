@@ -1,0 +1,158 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>💑 异地恋专属聊天室 - 登录</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-box">
+            <div class="chat-header">
+                <h2>💕 亲爱的，我在等你 💕</h2>
+            </div>
+            
+            <!-- 情侣专属装饰 -->
+            <div class="love-decoration">
+                <span class="decoration-heart">💗</span>
+                <span class="decoration-text">距离再远，爱一直在</span>
+                <span class="decoration-heart">💗</span>
+            </div>
+            
+            <!-- Current Connection Info -->
+            <div id="connection-info" class="connection-info">
+                <div class="connection-details">
+                    <span id="server-ip-port"></span>
+                </div>
+                <button id="disconnect-btn" class="disconnect-btn">断开连接</button>
+            </div>
+            
+            <div class="auth-container">
+                <div class="auth-tabs">
+                    <button class="tab-btn active" onclick="switchTab('login')">登录</button>
+                    <button class="tab-btn" onclick="switchTab('register')">注册</button>
+                </div>
+                
+                <!-- Login Form -->
+                <div id="login-tab" class="tab-content active">
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="login-username">用户名:</label>
+                            <input type="text" id="login-username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">密码:</label>
+                            <input type="password" id="login-password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit">登录</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Register Form -->
+                <div id="register-tab" class="tab-content">
+                    <form id="register-form">
+                        <div class="form-group avatar-upload-group">
+                            <label>头像（可选）:</label>
+                            <div class="avatar-upload-container">
+                                <div class="avatar-preview-wrapper">
+                                    <img id="register-avatar-preview" src="" alt="头像预览" class="avatar-preview">
+                                    <div class="avatar-placeholder">+</div>
+                                </div>
+                                <button type="button" id="upload-avatar-btn" class="upload-avatar-btn">上传头像</button>
+                                <button type="button" id="remove-avatar-btn" class="remove-avatar-btn" style="display: none;">移除</button>
+                                <input type="file" id="register-avatar-input" accept="image/*" style="display: none;">
+                            </div>
+                            <p class="avatar-hint">点击上传头像文件（可选）</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="register-username">用户名:</label>
+                            <input type="text" id="register-username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password">密码:</label>
+                            <input type="password" id="register-password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="register-confirm">确认密码:</label>
+                            <input type="password" id="register-confirm" name="confirm" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit">注册</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div id="message" class="message"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/chat.js"></script>
+    <script>
+        // Check if server connection info exists
+        document.addEventListener('DOMContentLoaded', function() {
+            // Debug: Log sessionStorage contents
+            console.log('sessionStorage contents:', sessionStorage);
+            
+            // Get server info from sessionStorage first
+            let serverIp = sessionStorage.getItem('serverIp');
+            let wsPort = sessionStorage.getItem('wsPort');
+            
+            // If sessionStorage doesn't have the info, try to get from URL parameters
+            if (!serverIp || !wsPort) {
+                console.log('Trying to get server info from URL parameters...');
+                const urlParams = new URLSearchParams(window.location.search);
+                serverIp = serverIp || urlParams.get('serverIp');
+                wsPort = wsPort || urlParams.get('wsPort');
+            }
+            
+            console.log('Retrieved serverIp:', serverIp);
+            console.log('Retrieved wsPort:', wsPort);
+            
+            // Ensure values are not null or empty strings
+            serverIp = (serverIp || '').trim();
+            wsPort = (wsPort || '').trim();
+            
+            if (!serverIp || !wsPort) {
+                // No valid server info, redirect to connect page
+                window.location.href = 'connect.jsp';
+                return;
+            }
+            
+            // Save to sessionStorage
+            sessionStorage.setItem('serverIp', serverIp);
+            sessionStorage.setItem('wsPort', wsPort);
+            
+            // Display current connection info
+            const serverIpPortElement = document.getElementById('server-ip-port');
+            serverIpPortElement.textContent = `Connected to: ${serverIp}`;
+            
+            // Establish WebSocket connection first
+            chatClient.connect();
+            
+            // Then initialize login
+            initLogin();
+            
+            // Add disconnect button functionality
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            disconnectBtn.addEventListener('click', function() {
+                // Close WebSocket connection if it exists
+                if (chatClient.ws && chatClient.ws.readyState === WebSocket.OPEN) {
+                    chatClient.ws.close();
+                }
+                
+                // Clear connection info from storage
+                sessionStorage.removeItem('serverIp');
+                sessionStorage.removeItem('serverPort');
+                
+                // Redirect to connect page
+                window.location.href = 'connect.jsp';
+            });
+        });
+    </script>
+</body>
+</html>
