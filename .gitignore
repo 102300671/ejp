@@ -105,3 +105,32 @@ chatroom/server/log/
 chatroom/client/web/log/
 ldrchat/server/log/
 ldrchat/client/web/log/
+
+# JavaFX
+chatroom/client/javafx/target/
+chatroom/client/javafx/.mvn/
+
+# Client local storage
+.chat_client/
+
+# Root level log
+log.txt
+
+# temp directories
+temp/
+
+# stuclub project
+stuclub/server/lib/
+stuclub/client/cli/lib/
+stuclub/dashboard/target/
+stuclub/server/keystore.jks
+stuclub/server/keystore.p12
+stuclub/server/keystore.p12.backup
+stuclub/client/cli/user_cache.properties
+
+# GUI target
+chatroom/client/gui/target/
+
+# Generic target and lib
+**/target/
+**/lib/

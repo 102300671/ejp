@@ -8,6 +8,7 @@ import server.network.session.Session;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
+import server.sql.user.UserStatusLogDAO;
 import server.sql.user.uuid.UUIDGenerator;
 import server.sql.message.MessageDAO;
 import server.sql.friend.FriendRequestDAO;
@@ -431,10 +432,6 @@ public class WebSocketConnection {
                                 System.out.println("发送私聊消息失败");
                             }
                         } else {
-                            // 接收者不在线，通知发送者
-                            System.out.println("接收者不在线，通知发送者");
-                            Message infoMsg = new Message(MessageType.SYSTEM, "server", "消息已发送，但用户" + privateTo + "当前不在线，上线后将收到消息", null, privateConversationId);
-                            send(messageCodec.encode(infoMsg));
                             System.out.println("私聊接收者不在线: " + privateTo);
                         }
                 } catch (SQLException e) {
@@ -603,6 +600,16 @@ public class WebSocketConnection {
                     if (roomId == null) {
                         roomName = message.getContent();
                         if (roomName != null && !roomName.isEmpty()) {
+                            // 尝试解析JSON格式的房间名
+                            try {
+                                com.google.gson.JsonObject jsonObj = com.google.gson.JsonParser.parseString(roomName).getAsJsonObject();
+                                if (jsonObj.has("room_name")) {
+                                    roomName = jsonObj.get("room_name").getAsString();
+                                }
+                            } catch (Exception e) {
+                                // 如果不是JSON格式，保持原值
+                            }
+                            
                             for (String rId : messageRouter.getRooms().keySet()) {
                                 Room room = messageRouter.getRooms().get(rId);
                                 if (room.getName().equals(roomName)) {
@@ -1842,6 +1849,18 @@ public class WebSocketConnection {
                             send(messageCodec.encode(offlineMessage));
                         }
                     }
+                    
+                    // 发送离线期间的用户状态变更
+                    UserStatusLogDAO statusLogDAO = new UserStatusLogDAO();
+                    List<Message> statusChanges = statusLogDAO.getOfflineStatusChanges(currentUser.getId(), lastLogoutTime, connection);
+                    
+                    if (!statusChanges.isEmpty()) {
+                        System.out.println("发送离线期间状态变更给用户 " + currentUser.getUsername() + ": " + statusChanges.size() + " 条");
+                        
+                        for (Message statusMessage : statusChanges) {
+                            send(messageCodec.encode(statusMessage));
+                        }
+                    }
                 }
             } catch (SQLException e) {
                 System.err.println("发送离线消息失败: " + e.getMessage());
@@ -2411,10 +2430,26 @@ public class WebSocketConnection {
                 server.sql.conversation.Conversation friendConversation = conversationDAO.getOrCreatePrivateConversation(username, friendUsername, connection);
                 Integer conversationId = friendConversation != null ? friendConversation.getId() : null;
                 
+                // 查询好友的在线状态
+                boolean isOnline = false;
+                String status = "OFFLINE";
+                try {
+                    server.sql.user.UserDAO userDAO = new server.sql.user.UserDAO();
+                    server.user.User friendUser = userDAO.getUserByUsername(friendUsername, connection);
+                    if (friendUser != null && friendUser.getStatus() != null) {
+                        status = friendUser.getStatus();
+                        isOnline = "ONLINE".equals(status);
+                    }
+                } catch (SQLException e) {
+                    System.err.println("获取好友 " + friendUsername + " 状态失败: " + e.getMessage());
+                }
+                
                 java.util.Map<String, Object> friendInfo = new java.util.HashMap<>();
                 friendInfo.put("username", friendUsername);
                 friendInfo.put("conversation_id", conversationId);
                 friendInfo.put("createdAt", friendship.createdAt != null ? friendship.createdAt.toString() : "");
+                friendInfo.put("isOnline", isOnline);
+                friendInfo.put("status", status);
                 friendList.add(friendInfo);
             }
             

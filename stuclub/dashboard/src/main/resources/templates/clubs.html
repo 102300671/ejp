@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社团管理 - 学生社团管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .sidebar nav ul {
+            list-style: none;
+        }
+        
+        .sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar nav ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 12px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+        }
+        
+        .search-bar select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+        .status-suspended { background: #d6d8db; color: #464a4e; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 500px;
+            max-width: 90%;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .pagination a {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 0 5px;
+            text-decoration: none;
+            color: #667eea;
+        }
+        
+        .pagination a.active,
+        .pagination a:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>社团管理</h2>
+            <nav>
+                <ul>
+                    <li><a href="/">仪表板</a></li>
+                    <li><a href="/users">用户管理</a></li>
+                    <li><a href="/clubs" class="active">社团管理</a></li>
+                    <li><a href="/activities">活动管理</a></li>
+                    <li><a href="/messages">消息管理</a></li>
+                    <li><a href="/announcements">公告管理</a></li>
+                </ul>
+            </nav>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1>社团管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">+ 新增社团</button>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="搜索社团名称..." onkeyup="searchClubs()">
+                <select id="status-filter" onchange="filterClubs()">
+                    <option value="">全部状态</option>
+                    <option value="APPROVED">已审核</option>
+                    <option value="PENDING">待审核</option>
+                    <option value="REJECTED">已拒绝</option>
+                </select>
+                <select id="category-filter" onchange="filterClubs()">
+                    <option value="">全部类别</option>
+                    <option value="学术科技">学术科技</option>
+                    <option value="文化艺术">文化艺术</option>
+                    <option value="体育健身">体育健身</option>
+                    <option value="志愿服务">志愿服务</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+            
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>社团名称</th>
+                            <th>类别</th>
+                            <th>指导老师</th>
+                            <th>成员数</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="club-table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #999;">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+    
+    <!-- 添加社团弹窗 -->
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <h2>新增社团</h2>
+            <form id="add-form">
+                <div class="form-group">
+                    <label>社团名称 *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>社团类别 *</label>
+                    <select name="category" required>
+                        <option value="">请选择类别</option>
+                        <option value="学术科技">学术科技</option>
+                        <option value="文化艺术">文化艺术</option>
+                        <option value="体育健身">体育健身</option>
+                        <option value="志愿服务">志愿服务</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>社团简介</label>
+                    <textarea name="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>指导老师</label>
+                    <input type="text" name="advisor">
+                </div>
+                <div class="form-group">
+                    <label>最大成员数</label>
+                    <input type="number" name="maxMembers" value="100" min="1">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">创建</button>
+                    <button type="button" class="btn btn-warning" onclick="closeAddModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 编辑社团弹窗 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h2>编辑社团</h2>
+            <form id="edit-form">
+                <input type="hidden" name="id">
+                <div class="form-group">
+                    <label>社团名称 *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>社团类别 *</label>
+                    <select name="category" required>
+                        <option value="">请选择类别</option>
+                        <option value="学术科技">学术科技</option>
+                        <option value="文化艺术">文化艺术</option>
+                        <option value="体育健身">体育健身</option>
+                        <option value="志愿服务">志愿服务</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>社团简介</label>
+                    <textarea name="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>指导老师</label>
+                    <input type="text" name="advisor">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="status">
+                        <option value="APPROVED">已审核</option>
+                        <option value="PENDING">待审核</option>
+                        <option value="REJECTED">已拒绝</option>
+                        <option value="SUSPENDED">已停用</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">保存</button>
+                    <button type="button" class="btn btn-warning" onclick="closeEditModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let clubs = [];
+        
+        // 初始化加载数据
+        document.addEventListener('DOMContentLoaded', loadClubs);
+        
+        function loadClubs() {
+            // 从后端API获取真实数据
+            fetch('/clubs/api')
+                .then(response => response.json())
+                .then(data => {
+                    clubs = data;
+                    renderTable();
+                })
+                .catch(error => {
+                    console.error('加载社团数据失败:', error);
+                    document.getElementById('club-table-body').innerHTML = 
+                        '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">加载失败，请刷新页面重试</td></tr>';
+                });
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('club-table-body');
+            tbody.innerHTML = clubs.map(club => `
+                <tr>
+                    <td>${club.name}</td>
+                    <td>${club.category}</td>
+                    <td>${club.advisor || '-'}</td>
+                    <td>${club.member_count || 0}</td>
+                    <td><span class="status-badge status-${club.status.toLowerCase()}">${getStatusText(club.status)}</span></td>
+                    <td>${formatDate(club.created_at)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="viewClub(${club.id})">查看</button>
+                        <button class="btn btn-sm btn-success" onclick="showEditModal(${club.id})">编辑</button>
+                        ${club.status === 'PENDING' ? `
+                            <button class="btn btn-sm btn-success" onclick="approveClub(${club.id})">审核通过</button>
+                            <button class="btn btn-sm btn-warning" onclick="rejectClub(${club.id})">审核拒绝</button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteClub(${club.id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function getStatusText(status) {
+            const map = { 'APPROVED': '已审核', 'PENDING': '待审核', 'REJECTED': '已拒绝', 'SUSPENDED': '已停用' };
+            return map[status] || status;
+        }
+        
+        function searchClubs() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            // 简单的过滤实现
+            renderTable();
+        }
+        
+        function filterClubs() {
+            // 过滤实现
+            renderTable();
+        }
+        
+        function showAddModal() {
+            document.getElementById('add-modal').style.display = 'flex';
+        }
+        
+        function closeAddModal() {
+            document.getElementById('add-modal').style.display = 'none';
+            document.getElementById('add-form').reset();
+        }
+        
+        function showEditModal(clubId) {
+            const club = clubs.find(c => c.id === clubId);
+            if (!club) return;
+            
+            const form = document.getElementById('edit-form');
+            form.name.value = club.name;
+            form.category.value = club.category;
+            form.description.value = club.description || '';
+            form.advisor.value = club.advisor || '';
+            form.status.value = club.status;
+            form.id.value = club.id;
+            
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+        
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('edit-form').reset();
+        }
+        
+        function deleteClub(clubId) {
+            if (confirm('确定要删除该社团吗？')) {
+                fetch('/clubs/api/' + clubId, {
+                    method: 'DELETE'
+                })
+                .then(response => response.text())
+                .then(message => {
+                    alert(message);
+                    loadClubs();
+                })
+                .catch(error => {
+                    console.error('删除社团失败:', error);
+                    alert('删除失败');
+                });
+            }
+        }
+        
+        function approveClub(clubId) {
+            if (confirm('确定要审核通过该社团吗？')) {
+                fetch('/clubs/api/' + clubId + '/approve', {
+                    method: 'POST'
+                })
+                .then(response => response.text())
+                .then(message => {
+                    alert(message);
+                    loadClubs();
+                })
+                .catch(error => {
+                    console.error('审核失败:', error);
+                    alert('审核失败');
+                });
+            }
+        }
+        
+        function rejectClub(clubId) {
+            if (confirm('确定要拒绝该社团吗？')) {
+                fetch('/clubs/api/' + clubId + '/reject', {
+                    method: 'POST'
+                })
+                .then(response => response.text())
+                .then(message => {
+                    alert(message);
+                    loadClubs();
+                })
+                .catch(error => {
+                    console.error('拒绝失败:', error);
+                    alert('拒绝失败');
+                });
+            }
+        }
+        
+        function viewClub(clubId) {
+            window.location.href = '/clubs/' + clubId;
+        }
+        
+        // 表单提交
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                if (key === 'maxMembers') {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value;
+                }
+            });
+            
+            fetch('/clubs/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.text())
+            .then(message => {
+                alert(message);
+                closeAddModal();
+                loadClubs();
+            })
+            .catch(error => {
+                console.error('创建社团失败:', error);
+                alert('创建失败，请检查网络连接');
+            });
+        });
+        
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                if (key === 'id') {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value;
+                }
+            });
+            
+            fetch('/clubs/api/' + data.id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.text())
+            .then(message => {
+                alert(message);
+                closeEditModal();
+                loadClubs();
+            })
+            .catch(error => {
+                console.error('更新社团失败:', error);
+                alert('更新失败，请检查网络连接');
+            });
+        });
+        
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

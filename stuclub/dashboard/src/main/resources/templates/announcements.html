@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公告管理 - 学生社团管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .sidebar nav ul {
+            list-style: none;
+        }
+        
+        .sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar nav ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 12px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+        }
+        
+        .search-bar select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .status-published { background: #d4edda; color: #155724; }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-expired { background: #f8d7da; color: #721c24; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 600px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .priority-high { color: #e74c3c; font-weight: bold; }
+        .priority-medium { color: #f39c12; }
+        .priority-low { color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>社团管理</h2>
+            <nav>
+                <ul>
+                    <li><a href="/">仪表板</a></li>
+                    <li><a href="/users">用户管理</a></li>
+                    <li><a href="/clubs">社团管理</a></li>
+                    <li><a href="/activities">活动管理</a></li>
+                    <li><a href="/messages">消息管理</a></li>
+                    <li><a href="/announcements" class="active">公告管理</a></li>
+                </ul>
+            </nav>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1>公告管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">+ 发布公告</button>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="搜索公告标题..." onkeyup="searchAnnouncements()">
+                <select id="status-filter" onchange="filterAnnouncements()">
+                    <option value="">全部状态</option>
+                    <option value="PUBLISHED">已发布</option>
+                    <option value="DRAFT">草稿</option>
+                    <option value="EXPIRED">已过期</option>
+                </select>
+                <select id="priority-filter" onchange="filterAnnouncements()">
+                    <option value="">全部优先级</option>
+                    <option value="HIGH">高优先级</option>
+                    <option value="MEDIUM">中优先级</option>
+                    <option value="LOW">低优先级</option>
+                </select>
+            </div>
+            
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>发布范围</th>
+                            <th>优先级</th>
+                            <th>发布时间</th>
+                            <th>截止时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="announcement-table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #999;">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加公告弹窗 -->
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="add-modal-title">发布公告</h2>
+            <form id="add-form">
+                <input type="hidden" id="announcement-id" value="">
+                <div class="form-group">
+                    <label>标题 *</label>
+                    <input type="text" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>内容 *</label>
+                    <textarea name="content" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>发布范围 *</label>
+                    <select name="scope" required>
+                        <option value="all">全体用户</option>
+                        <option value="specific">特定社团</option>
+                    </select>
+                </div>
+                <div class="form-group" id="club-select-group" style="display: none;">
+                    <label>选择社团</label>
+                    <select name="clubId">
+                        <option value="">请选择社团</option>
+                        <option value="1">计算机协会</option>
+                        <option value="2">音乐社</option>
+                        <option value="3">篮球俱乐部</option>
+                        <option value="4">志愿者协会</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>优先级 *</label>
+                    <select name="priority" required>
+                        <option value="NORMAL">中优先级</option>
+                        <option value="IMPORTANT">高优先级</option>
+                        <option value="LOW">低优先级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>截止时间</label>
+                    <input type="datetime-local" name="expireTime">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" name="isPinned"> 置顶公告</label>
+                </div>
+                <div class="form-actions" id="add-form-actions">
+                    <button type="submit" class="btn btn-success">发布</button>
+                    <button type="button" class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
+                    <button type="button" class="btn btn-warning" onclick="closeAddModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let announcements = [];
+        
+        document.addEventListener('DOMContentLoaded', loadAnnouncements);
+        
+        function loadAnnouncements() {
+            fetch('/api/announcements')
+                .then(response => response.json())
+                .then(data => {
+                    announcements = data || [];
+                    renderTable();
+                })
+                .catch(error => {
+                    console.error('加载公告失败:', error);
+                    announcements = [];
+                    renderTable();
+                });
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('announcement-table-body');
+            tbody.innerHTML = announcements.map(announcement => `
+                <tr>
+                    <td>${announcement.is_pinned ? '📌 ' : ''}${announcement.title}</td>
+                    <td>${getScopeText(announcement.club_id || announcement.clubId || 0)}${announcement.club_name || announcement.clubName ? ' - ' + (announcement.club_name || announcement.clubName) : ''}</td>
+                    <td><span class="priority-${getPriorityClass(announcement.priority || 'NORMAL')}">${getPriorityText(announcement.priority || 'NORMAL')}</span></td>
+                    <td>${formatDateTime(announcement.published_at || announcement.created_at || '')}</td>
+                    <td>${formatDateTime(announcement.expire_time || announcement.expireTime || '') || '-'}</td>
+                    <td><span class="status-badge status-${(announcement.status || 'DRAFT').toLowerCase()}">${getStatusText(announcement.status || 'DRAFT')}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="viewAnnouncement(${announcement.id})">查看</button>
+                        <button class="btn btn-sm btn-success" onclick="editAnnouncement(${announcement.id})">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement(${announcement.id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        function getScopeText(clubId) {
+            if (!clubId || clubId === 0) return '全体用户';
+            const clubs = { 1: '计算机协会', 2: '音乐社', 3: '篮球俱乐部', 4: '志愿者协会' };
+            return clubs[clubId] ? '特定社团' : '全体用户';
+        }
+        
+        function getPriorityClass(priority) {
+            const map = { 'URGENT': 'high', 'IMPORTANT': 'high', 'NORMAL': 'medium', 'LOW': 'low' };
+            return map[priority] || 'low';
+        }
+        
+        function getPriorityText(priority) {
+            const map = { 'URGENT': '高', 'IMPORTANT': '高', 'NORMAL': '中', 'LOW': '低' };
+            return map[priority] || priority;
+        }
+        
+        function getStatusText(status) {
+            const map = { 'PUBLISHED': '已发布', 'DRAFT': '草稿', 'EXPIRED': '已过期' };
+            return map[status] || status;
+        }
+        
+        function searchAnnouncements() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            renderTable();
+        }
+        
+        function filterAnnouncements() {
+            renderTable();
+        }
+        
+        function showAddModal() {
+            document.getElementById('add-form').reset();
+            document.getElementById('add-modal-title').textContent = '发布公告';
+            document.getElementById('announcement-id').value = '';
+            document.getElementById('club-select-group').style.display = 'none';
+            document.getElementById('add-form-actions').innerHTML = `
+                <button type="submit" class="btn btn-success">发布</button>
+                <button type="button" class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
+                <button type="button" class="btn btn-warning" onclick="closeAddModal()">取消</button>
+            `;
+            document.getElementById('add-modal').style.display = 'flex';
+        }
+        
+        function closeAddModal() {
+            document.getElementById('add-modal').style.display = 'none';
+        }
+        
+        function editAnnouncement(announcementId) {
+            const announcement = announcements.find(a => a.id === announcementId);
+            if (announcement) {
+                document.getElementById('announcement-id').value = announcement.id;
+                document.querySelector('input[name="title"]').value = announcement.title || '';
+                document.querySelector('textarea[name="content"]').value = announcement.content || '';
+                document.querySelector('select[name="priority"]').value = announcement.priority || 'NORMAL';
+                document.querySelector('input[name="isPinned"]').checked = announcement.is_pinned === 1;
+                
+                // 设置发布范围
+                const scope = announcement.club_id && announcement.club_id > 0 ? 'specific' : 'all';
+                document.querySelector('select[name="scope"]').value = scope;
+                document.getElementById('club-select-group').style.display = scope === 'specific' ? 'block' : 'none';
+                document.querySelector('select[name="clubId"]').value = announcement.club_id || '';
+                
+                document.getElementById('add-modal-title').textContent = '编辑公告';
+                document.getElementById('add-form-actions').innerHTML = `
+                    <button type="submit" class="btn btn-success">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
+                    <button type="button" class="btn btn-warning" onclick="closeAddModal()">取消</button>
+                `;
+                document.getElementById('add-modal').style.display = 'flex';
+            }
+        }
+        
+        function deleteAnnouncement(announcementId) {
+            if (confirm('确定要删除该公告吗？此操作不可撤销。')) {
+                fetch(`/api/announcements/${announcementId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.text())
+                .then(data => {
+                    alert('删除成功！');
+                    loadAnnouncements();
+                })
+                .catch(error => {
+                    alert('删除失败: ' + error);
+                });
+            }
+        }
+        
+        function viewAnnouncement(announcementId) {
+            const announcement = announcements.find(a => a.id === announcementId);
+            if (announcement) {
+                alert(`公告详情:\n\n标题: ${announcement.title}\n发布范围: ${getScopeText(announcement.club_id)}${announcement.club_name ? ' - ' + announcement.club_name : ''}\n优先级: ${getPriorityText(announcement.priority)}\n发布时间: ${formatDateTime(announcement.published_at || announcement.created_at)}\n状态: ${getStatusText(announcement.status)}\n${announcement.is_pinned ? '📌 已置顶' : ''}\n\n内容:\n${announcement.content || '无'}`);
+            }
+        }
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        function getScopeText(clubId) {
+            if (!clubId || clubId === 0) return '全体用户';
+            return '特定社团';
+        }
+        
+        function saveDraft() {
+            const formData = new FormData(document.getElementById('add-form'));
+            const announcementId = document.getElementById('announcement-id').value;
+            
+            const data = {
+                title: formData.get('title'),
+                content: formData.get('content'),
+                priority: formData.get('priority'),
+                isPinned: formData.get('isPinned') ? 1 : 0,
+                status: 'DRAFT',
+                clubId: formData.get('scope') === 'specific' ? parseInt(formData.get('clubId')) : 0,
+                createdBy: 1
+            };
+            
+            const method = announcementId ? 'PUT' : 'POST';
+            const url = announcementId ? `/api/announcements/${announcementId}` : '/api/announcements';
+            
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.text())
+            .then(result => {
+                alert('草稿已保存！');
+                closeAddModal();
+                loadAnnouncements();
+            })
+            .catch(error => {
+                alert('保存失败: ' + error);
+            });
+        }
+        
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const announcementId = document.getElementById('announcement-id').value;
+            
+            const data = {
+                title: formData.get('title'),
+                content: formData.get('content'),
+                priority: formData.get('priority'),
+                isPinned: formData.get('isPinned') ? 1 : 0,
+                status: 'PUBLISHED',
+                clubId: formData.get('scope') === 'specific' ? parseInt(formData.get('clubId')) : 0,
+                createdBy: 1
+            };
+            
+            const method = announcementId ? 'PUT' : 'POST';
+            const url = announcementId ? `/api/announcements/${announcementId}` : '/api/announcements';
+            
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.text())
+            .then(result => {
+                alert('发布成功！');
+                closeAddModal();
+                loadAnnouncements();
+            })
+            .catch(error => {
+                alert('发布失败: ' + error);
+            });
+        });
+        
+        document.querySelector('select[name="scope"]').addEventListener('change', function() {
+            const group = document.getElementById('club-select-group');
+            group.style.display = this.value === 'specific' ? 'block' : 'none';
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import server.sql.DatabaseManager;
 import server.sql.room.RoomDAO;
 import server.sql.user.UserDAO;
+import server.user.User;
 import server.sql.conversation.ConversationDAO;
 import server.sql.conversation.ConversationMember;
 import server.sql.friend.FriendshipDAO;
@@ -134,10 +135,25 @@ public class MessageRouter {
                 
                 if (friendUsername == null) continue;
                 
-                // 检查好友是否在线
+                // 检查好友是否在线（优先从数据库获取状态，确保准确性）
                 Session friendSession = getSessionByUsername(friendUsername);
-                boolean isOnline = friendSession != null && friendSession.isActive();
-                String status = isOnline ? "ONLINE" : "OFFLINE";
+                boolean isOnline = false;
+                String status = "OFFLINE";
+                
+                try {
+                    // 先从数据库查询好友的实际状态
+                    UserDAO friendUserDAO = new UserDAO();
+                    User friendUser = friendUserDAO.getUserByUsername(friendUsername, connection);
+                    if (friendUser != null && friendUser.getStatus() != null) {
+                        status = friendUser.getStatus();
+                        isOnline = "ONLINE".equals(status);
+                    }
+                } catch (SQLException e) {
+                    System.err.println("从数据库获取好友状态失败: " + e.getMessage());
+                    // 如果数据库查询失败，回退到检查内存会话
+                    isOnline = friendSession != null && friendSession.isActive();
+                    status = isOnline ? "ONLINE" : "OFFLINE";
+                }
                 
                 // 创建状态更新消息
                 Map<String, Object> statusData = new HashMap<>();

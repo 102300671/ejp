@@ -860,4 +860,43 @@ public class ConversationDAO {
         
         return false;
     }
+    
+    /**
+     * 根据名称获取会话
+     */
+    public Conversation getConversationByName(String name, Connection connection) throws SQLException {
+        String sql = "SELECT id, type, name, created_at FROM conversation WHERE name = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    String type = rs.getString("type");
+                    String convName = rs.getString("name");
+                    String createdAt = rs.getString("created_at");
+                    return new Conversation(id, type, convName, createdAt);
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 获取所有社团会话
+     */
+    public List<Conversation> getAllClubConversations(Connection connection) throws SQLException {
+        List<Conversation> conversations = new ArrayList<>();
+        String sql = "SELECT id, type, name, created_at FROM conversation WHERE type = 'ROOM'";
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String type = rs.getString("type");
+                String name = rs.getString("name");
+                String createdAt = rs.getString("created_at");
+                conversations.add(new Conversation(id, type, name, createdAt));
+            }
+        }
+        return conversations;
+    }
 }

@@ -1,0 +1,309 @@
+/* 妇女节/女神节主题样式 */
+
+/* 粉色主题 */
+.chat-header {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44569 50%, #ff8a80 100%);
+}
+
+/* 粉色边框装饰 */
+.chat-box {
+    border: 3px solid #ffb6c1;
+    box-shadow: 0 0 30px rgba(255, 182, 193, 0.4), 0 0 60px rgba(196, 69, 105, 0.2);
+}
+
+/* 聊天室标题 */
+.chat-header h2 {
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+}
+
+/* 侧边栏背景 */
+.chats-panel {
+    background: linear-gradient(180deg, #fff5f8 0%, #ffe4e9 100%);
+    border-right: 2px solid #ffb6c1;
+}
+
+/* 房间列表项 */
+.room-item {
+    background: linear-gradient(90deg, #fff 0%, #fff5f8 100%);
+    border-left: 4px solid #ff6b9d;
+    transition: all 0.3s ease;
+}
+
+.room-item:hover {
+    background: linear-gradient(90deg, #fff5f8 0%, #ffe4e9 100%);
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(255, 107, 157, 0.2);
+}
+
+.room-item.active {
+    background: linear-gradient(90deg, #ff6b9d 0%, #c44569 100%);
+    color: #fff;
+    border-left: 4px solid #ffb6c1;
+}
+
+.room-item.active strong {
+    color: #ffb6c1;
+}
+
+/* 消息区域 */
+.messages-area {
+    background: linear-gradient(180deg, #fff9fa 0%, #fff5f8 100%);
+}
+
+/* 发送的消息 */
+.sent-message {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+    border: 2px solid #ffb6c1;
+    box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3);
+}
+
+/* 接收的消息 */
+.received-message {
+    background: linear-gradient(135deg, #fff 0%, #fff5f8 100%);
+    border: 2px solid #ff8a80;
+    box-shadow: 0 2px 8px rgba(255, 138, 128, 0.2);
+}
+
+/* 按钮样式 */
+button {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+    border: 2px solid #ffb6c1;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #c44569 0%, #ff8a80 100%);
+    box-shadow: 0 4px 12px rgba(255, 107, 157, 0.4);
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* 创建房间按钮 */
+#create-chat-btn {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ffccd5 100%);
+    color: #c44569;
+    font-weight: bold;
+}
+
+/* 刷新按钮 */
+#refresh-chats-btn {
+    background: linear-gradient(135deg, #ff8a80 0%, #ff9a9a 100%);
+}
+
+/* 消息输入框 */
+#message-input {
+    border: 2px solid #ff6b9d;
+    background: #fff9fa;
+}
+
+#message-input:focus {
+    border-color: #ffb6c1;
+    box-shadow: 0 0 10px rgba(255, 182, 193, 0.3);
+}
+
+/* 发送按钮 */
+#send-btn {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ffccd5 100%);
+    color: #c44569;
+    font-weight: bold;
+}
+
+/* 系统消息 */
+.system-message {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 182, 193, 0.2) 50%, transparent 100%);
+    color: #c44569;
+    border: 1px dashed #ffb6c1;
+}
+
+/* 花朵装饰 */
+.chat-header::before {
+    content: '🌸';
+    position: absolute;
+    left: 50%;
+    top: -20px;
+    transform: translateX(-50%);
+    font-size: 24px;
+    animation: bloom 3s ease-in-out infinite;
+}
+
+@keyframes bloom {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.2); }
+}
+
+/* 花瓣飘落背景 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 182, 193, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 107, 157, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 70%, rgba(196, 69, 105, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 用户菜单 */
+.user-menu-dropdown {
+    background: linear-gradient(180deg, #fff 0%, #fff5f8 100%);
+    border: 2px solid #ffb6c1;
+    box-shadow: 0 4px 16px rgba(255, 107, 157, 0.3);
+}
+
+.user-menu-dropdown button {
+    background: transparent;
+    border: none;
+    color: #333;
+}
+
+.user-menu-dropdown button:hover {
+    background: linear-gradient(90deg, #ff6b9d 0%, #c44569 100%);
+    color: #fff;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle-btn {
+    color: #ffb6c1;
+    font-size: 28px;
+}
+
+/* 返回按钮 */
+.return-button {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ffccd5 100%);
+    color: #c44569;
+    font-weight: bold;
+}
+
+/* 新窗口按钮 */
+.new-window-btn {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ffccd5 100%);
+    color: #c44569;
+    border: 2px solid #ff6b9d;
+}
+
+.new-window-btn:hover {
+    background: linear-gradient(135deg, #ffccd5 0%, #ffe4e9 100%);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .chat-header {
+        background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+    }
+    
+    .room-item {
+        border-left-width: 3px;
+    }
+    
+    .sent-message, .received-message {
+        border-width: 1px;
+    }
+}
+
+/* 妇女节祝福文字 */
+.chat-header h2::after {
+    content: ' 🌸 女神节快乐 🌸';
+    font-size: 14px;
+    margin-left: 10px;
+    animation: shine 2s ease-in-out infinite;
+}
+
+@keyframes shine {
+    0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(255, 182, 193, 0.8); }
+    50% { opacity: 0.8; text-shadow: 0 0 20px rgba(255, 182, 193, 1); }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #fff5f8;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ff6b9d 0%, #c44569 100%);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #c44569 0%, #ff8a80 100%);
+}
+
+/* 妇女节特效 - 花瓣飘落 */
+@keyframes fall {
+    0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+.flower-petal {
+    position: fixed;
+    border-radius: 50% 0 50% 50%;
+    pointer-events: none;
+    z-index: -1;
+    animation: fall 8s linear infinite;
+}
+
+/* 不同颜色的花瓣 */
+.flower-petal.pink {
+    background: linear-gradient(135deg, rgba(255, 182, 193, 0.7) 0%, rgba(255, 107, 157, 0.7) 100%);
+    box-shadow: 0 0 10px rgba(255, 182, 193, 0.6);
+}
+
+.flower-petal.rose {
+    background: linear-gradient(135deg, rgba(255, 138, 128, 0.7) 0%, rgba(196, 69, 105, 0.7) 100%);
+    box-shadow: 0 0 10px rgba(255, 138, 128, 0.6);
+}
+
+.flower-petal.lavender {
+    background: linear-gradient(135deg, rgba(230, 190, 255, 0.7) 0%, rgba(186, 85, 211, 0.7) 100%);
+    box-shadow: 0 0 10px rgba(230, 190, 255, 0.6);
+}
+
+/* 爱心装饰 */
+.heart-decoration {
+    position: fixed;
+    pointer-events: none;
+    z-index: -1;
+    animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* 好友状态样式 */
+.friend-status.status-online {
+    background-color: #ffb6c1;
+    color: #c44569;
+    border: 1px solid #ff6b9d;
+}
+
+.friend-status.status-offline {
+    background-color: #ffe4e9;
+    color: #c44569;
+    border: 1px solid #ffb6c1;
+}
+
+/* 未读消息角标 */
+.unread-badge {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+    box-shadow: 0 2px 6px rgba(255, 107, 157, 0.4);
+}
+
+.room-item.active .unread-badge {
+    background: linear-gradient(135deg, #ffb6c1 0%, #ffccd5 100%);
+    color: #c44569;
+}

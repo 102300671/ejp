@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活动管理 - 学生社团管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .sidebar nav ul {
+            list-style: none;
+        }
+        
+        .sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar nav ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 12px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+        }
+        
+        .search-bar select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .status-published { background: #d4edda; color: #155724; }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-in-progress { background: #cce5ff; color: #004085; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 600px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-group.half {
+            width: 48%;
+            float: left;
+            margin-right: 4%;
+        }
+        
+        .form-group.half:last-child {
+            margin-right: 0;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            clear: both;
+        }
+        
+        .clearfix::after {
+            content: '';
+            display: table;
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>社团管理</h2>
+            <nav>
+                <ul>
+                    <li><a href="/">仪表板</a></li>
+                    <li><a href="/users">用户管理</a></li>
+                    <li><a href="/clubs">社团管理</a></li>
+                    <li><a href="/activities" class="active">活动管理</a></li>
+                    <li><a href="/messages">消息管理</a></li>
+                    <li><a href="/announcements">公告管理</a></li>
+                </ul>
+            </nav>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1>活动管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">+ 新增活动</button>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="搜索活动名称..." onkeyup="searchActivities()">
+                <select id="status-filter" onchange="filterActivities()">
+                    <option value="">全部状态</option>
+                    <option value="DRAFT">草稿</option>
+                    <option value="PUBLISHED">已发布</option>
+                    <option value="IN_PROGRESS">进行中</option>
+                    <option value="COMPLETED">已完成</option>
+                </select>
+                <select id="club-filter" onchange="filterActivities()">
+                    <option value="">全部社团</option>
+                    <option value="1">计算机协会</option>
+                    <option value="2">音乐社</option>
+                    <option value="3">篮球俱乐部</option>
+                    <option value="4">志愿者协会</option>
+                </select>
+            </div>
+            
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>活动名称</th>
+                            <th>所属社团</th>
+                            <th>活动类型</th>
+                            <th>开始时间</th>
+                            <th>地点</th>
+                            <th>报名人数</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activity-table-body">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #999;">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加活动弹窗 -->
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="add-modal-title">新增活动</h2>
+            <form id="add-form">
+                <input type="hidden" id="activity-id" value="">
+                <div class="form-group">
+                    <label>活动名称 *</label>
+                    <input type="text" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>所属社团 *</label>
+                    <select name="clubId" required>
+                        <option value="">请选择社团</option>
+                        <option value="1">计算机协会</option>
+                        <option value="2">音乐社</option>
+                        <option value="3">篮球俱乐部</option>
+                        <option value="4">志愿者协会</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>活动类型 *</label>
+                    <select name="activityType" required>
+                        <option value="INTERNAL">内部活动</option>
+                        <option value="CLUB_ONLY">社团成员</option>
+                        <option value="PUBLIC">公开活动</option>
+                        <option value="COMPETITION">比赛</option>
+                        <option value="TRAINING">培训</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>活动详情</label>
+                    <textarea name="description"></textarea>
+                </div>
+                <div class="clearfix">
+                    <div class="form-group half">
+                        <label>开始时间 *</label>
+                        <input type="datetime-local" name="startTime" required>
+                    </div>
+                    <div class="form-group half">
+                        <label>结束时间 *</label>
+                        <input type="datetime-local" name="endTime" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>活动地点</label>
+                    <input type="text" name="location">
+                </div>
+                <div class="clearfix">
+                    <div class="form-group half">
+                        <label>最大参与人数</label>
+                        <input type="number" name="maxParticipants" value="0" min="0">
+                    </div>
+                    <div class="form-group half">
+                        <label>报名截止时间</label>
+                        <input type="datetime-local" name="registrationDeadline">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>活动预算</label>
+                    <input type="number" name="budget" value="0" step="0.01">
+                </div>
+                <div class="form-group" id="add-form-status" style="display: none;">
+                    <!-- 编辑时会动态添加状态选择框 -->
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">创建</button>
+                    <button type="button" class="btn btn-warning" onclick="closeAddModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let activities = [];
+        
+        // 初始化加载数据
+        document.addEventListener('DOMContentLoaded', loadActivities);
+        
+        function loadActivities() {
+            fetch('/api/activities')
+                .then(response => response.json())
+                .then(data => {
+                    activities = data || [];
+                    renderTable();
+                })
+                .catch(error => {
+                    console.error('加载活动失败:', error);
+                    activities = [];
+                    renderTable();
+                });
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('activity-table-body');
+            tbody.innerHTML = activities.map(activity => `
+                <tr>
+                    <td>${activity.title}</td>
+                    <td>${activity.club_name || activity.clubName || ''}</td>
+                    <td>${getActivityTypeText(activity.activity_type || activity.activityType || '')}</td>
+                    <td>${formatDateTime(activity.start_time || activity.startTime || '')}</td>
+                    <td>${activity.location || ''}</td>
+                    <td>${activity.current_participants || activity.currentParticipants || 0}/${activity.max_participants || activity.maxParticipants || 0}</td>
+                    <td><span class="status-badge status-${(activity.status || 'DRAFT').toLowerCase().replace('_', '-')}">${getStatusText(activity.status || 'DRAFT')}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="viewActivity(${activity.id})">查看</button>
+                        <button class="btn btn-sm btn-success" onclick="editActivity(${activity.id})">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteActivity(${activity.id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        function getActivityTypeText(type) {
+            const map = { 'INTERNAL': '内部活动', 'CLUB_ONLY': '社团成员', 'PUBLIC': '公开活动', 'COMPETITION': '比赛', 'TRAINING': '培训' };
+            return map[type] || type;
+        }
+        
+        function getStatusText(status) {
+            const map = { 'DRAFT': '草稿', 'PUBLISHED': '已发布', 'IN_PROGRESS': '进行中', 'COMPLETED': '已完成', 'CANCELLED': '已取消' };
+            return map[status] || status;
+        }
+        
+        function searchActivities() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            renderTable();
+        }
+        
+        function filterActivities() {
+            renderTable();
+        }
+        
+        function showAddModal() {
+            document.getElementById('add-form').reset();
+            document.getElementById('add-modal-title').textContent = '新增活动';
+            document.getElementById('activity-id').value = '';
+            document.getElementById('add-form-status').style.display = 'none';
+            document.getElementById('add-modal').style.display = 'flex';
+        }
+        
+        function closeAddModal() {
+            document.getElementById('add-modal').style.display = 'none';
+        }
+        
+        function editActivity(activityId) {
+            const activity = activities.find(a => a.id === activityId);
+            if (activity) {
+                document.getElementById('activity-id').value = activity.id;
+                document.querySelector('input[name="title"]').value = activity.title || '';
+                document.querySelector('select[name="clubId"]').value = activity.club_id || '';
+                document.querySelector('select[name="activityType"]').value = activity.activity_type || '';
+                document.querySelector('textarea[name="description"]').value = activity.description || '';
+                
+                // 转换日期时间格式
+                const startTime = activity.start_time ? formatDateTimeLocal(activity.start_time) : '';
+                const endTime = activity.end_time ? formatDateTimeLocal(activity.end_time) : '';
+                const regDeadline = activity.registration_deadline ? formatDateTimeLocal(activity.registration_deadline) : '';
+                
+                document.querySelector('input[name="startTime"]').value = startTime;
+                document.querySelector('input[name="endTime"]').value = endTime;
+                document.querySelector('input[name="location"]').value = activity.location || '';
+                document.querySelector('input[name="maxParticipants"]').value = activity.max_participants || 0;
+                document.querySelector('input[name="registrationDeadline"]').value = regDeadline;
+                document.querySelector('input[name="budget"]').value = activity.budget || 0;
+                
+                // 设置状态
+                const statusSelect = document.createElement('select');
+                statusSelect.name = 'status';
+                statusSelect.innerHTML = `
+                    <option value="DRAFT" ${activity.status === 'DRAFT' ? 'selected' : ''}>草稿</option>
+                    <option value="PUBLISHED" ${activity.status === 'PUBLISHED' ? 'selected' : ''}>已发布</option>
+                    <option value="IN_PROGRESS" ${activity.status === 'IN_PROGRESS' ? 'selected' : ''}>进行中</option>
+                    <option value="COMPLETED" ${activity.status === 'COMPLETED' ? 'selected' : ''}>已完成</option>
+                    <option value="CANCELLED" ${activity.status === 'CANCELLED' ? 'selected' : ''}>已取消</option>
+                `;
+                
+                const statusGroup = document.getElementById('status-group');
+                statusGroup.innerHTML = '<label>活动状态</label>';
+                statusGroup.appendChild(statusSelect);
+                document.getElementById('add-form-status').style.display = 'block';
+                
+                document.getElementById('add-modal-title').textContent = '编辑活动';
+                document.getElementById('add-modal').style.display = 'flex';
+            }
+        }
+        
+        function formatDateTimeLocal(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        function deleteActivity(activityId) {
+            if (confirm('确定要删除该活动吗？此操作不可撤销。')) {
+                fetch(`/api/activities/${activityId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.text())
+                .then(data => {
+                    alert('删除成功！');
+                    loadActivities();
+                })
+                .catch(error => {
+                    alert('删除失败: ' + error);
+                });
+            }
+        }
+        
+        function viewActivity(activityId) {
+            const activity = activities.find(a => a.id === activityId);
+            if (activity) {
+                alert(`活动详情:\n\n标题: ${activity.title}\n社团: ${activity.club_name}\n类型: ${getActivityTypeText(activity.activity_type)}\n时间: ${formatDateTime(activity.start_time)} - ${formatDateTime(activity.end_time)}\n地点: ${activity.location}\n人数: ${activity.current_participants || 0}/${activity.max_participants || 0}\n状态: ${getStatusText(activity.status)}\n\n描述:\n${activity.description || '无'}`);
+            }
+        }
+        
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const activityId = document.getElementById('activity-id').value;
+            
+            const data = {
+                title: formData.get('title'),
+                clubId: parseInt(formData.get('clubId')) || 1,
+                activityType: formData.get('activityType'),
+                description: formData.get('description'),
+                startTime: formData.get('startTime'),
+                endTime: formData.get('endTime'),
+                location: formData.get('location'),
+                maxParticipants: parseInt(formData.get('maxParticipants')) || 0,
+                registrationDeadline: formData.get('registrationDeadline') || null,
+                budget: parseFloat(formData.get('budget')) || 0,
+                createdBy: 1
+            };
+            
+            if (activityId) {
+                data.status = formData.get('status') || 'DRAFT';
+                fetch(`/api/activities/${activityId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.text())
+                .then(result => {
+                    alert('更新成功！');
+                    closeAddModal();
+                    loadActivities();
+                })
+                .catch(error => {
+                    alert('更新失败: ' + error);
+                });
+            } else {
+                fetch('/api/activities', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.text())
+                .then(result => {
+                    alert('创建成功！');
+                    closeAddModal();
+                    loadActivities();
+                })
+                .catch(error => {
+                    alert('创建失败: ' + error);
+                });
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

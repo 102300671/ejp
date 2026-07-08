@@ -270,6 +270,10 @@ public class UserDAO {
             int rowsAffected = preparedStatement.executeUpdate();
             System.out.println("更新用户状态: 用户ID=" + userId + ", status=" + status + ", 影响行数: " + rowsAffected);
             
+            UserStatusLogDAO statusLogDAO = new UserStatusLogDAO();
+            String username = getUsernameById(userId, connection);
+            statusLogDAO.logStatusChange(userId, username, status, connection);
+            
             return rowsAffected > 0;
             
         } catch (SQLException e) {
@@ -301,6 +305,10 @@ public class UserDAO {
             
             int rowsAffected = preparedStatement.executeUpdate();
             System.out.println("更新用户状态: 用户ID=" + userId + ", status=" + status + ", 影响行数: " + rowsAffected);
+            
+            UserStatusLogDAO statusLogDAO = new UserStatusLogDAO();
+            String username = getUsernameById(userId, connection);
+            statusLogDAO.logStatusChange(userId, username, status, connection);
             
             return rowsAffected > 0;
             

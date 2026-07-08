@@ -1,0 +1,1 @@
+lib/gson-2.13.2.jar:lib/slf4j-simple-1.7.36.jar:lib/bytes-1.5.0.jar:lib/mysql-connector-j-9.5.0.jar:lib/bcrypt-0.10.2.jar:lib/Java-WebSocket-1.5.7.jar:lib/slf4j-api-1.7.36.jar:
