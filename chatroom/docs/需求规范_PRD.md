@@ -1,8 +1,8 @@
-# EJP Chatroom JavaFX GUI 客户端 - 产品需求文档
+# EJP Chatroom 网络聊天室系统 - 产品需求文档
 
 ## 1. 产品概述
 
-EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客户端，提供现代化的图形用户界面，支持房间群聊、好友私聊、文件传输、图片分享、在线文档预览等核心功能。与现有的 CLI 和 Web 客户端相比，JavaFX 客户端具有更丰富的视觉效果、更好的动画支持和更现代化的用户体验，同时支持本地消息缓存，提升离线体验。
+EJP Chatroom 是一套基于 WebSocket 的实时网络聊天室系统，包含 Java 后端服务器和 JavaFX 桌面客户端。系统提供现代化的图形用户界面，支持房间群聊、好友私聊、文件传输、图片分享、在线文档预览等核心功能，同时支持本地消息缓存，提升离线体验。
 
 **目标用户**：需要进行团队协作、社交聊天的用户群体，偏好现代化界面的桌面用户，需要文件传输和文档预览功能的专业用户。
 
@@ -14,16 +14,16 @@ EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客
 
 ### 2.1 功能模块
 
-| 模块名称 | 功能描述 |
-|----------|----------|
-| 连接管理 | 服务器地址配置、端口配置、连接状态显示、WebSocket 连接 |
-| 用户认证 | 登录、注册、密码验证、头像上传 |
-| 房间管理 | 创建房间（public/private）、加入房间、离开房间、房间列表 |
-| 消息系统 | 文本消息、图片消息、文件消息、系统消息、消息气泡样式 |
-| 好友系统 | 添加好友、好友请求、好友列表、在线状态实时更新 |
-| 文件处理 | 文件上传（ZFile）、文件下载、文件预览（OnlyOffice） |
-| 本地存储 | SQLite 本地消息缓存、离线消息查看 |
-| 界面交互 | 消息模式/通讯录模式切换、分类展开收起 |
+| 模块名称 | 功能描述 | 归属 |
+|----------|----------|------|
+| 连接管理 | 服务器地址配置、端口配置、连接状态显示、WebSocket 连接 | 客户端 |
+| 用户认证 | 登录、注册、密码验证、头像上传 | 服务器+客户端 |
+| 房间管理 | 创建房间（public/private）、加入房间、离开房间、房间列表 | 服务器+客户端 |
+| 消息系统 | 文本消息、图片消息、文件消息、系统消息、消息气泡样式 | 服务器+客户端 |
+| 好友系统 | 添加好友、好友请求、好友列表、在线状态实时更新 | 服务器+客户端 |
+| 文件处理 | 文件上传（ZFile）、文件下载、文件预览（OnlyOffice） | 服务器+客户端 |
+| 本地存储 | SQLite 本地消息缓存、离线消息查看 | 客户端 |
+| 界面交互 | 消息模式/通讯录模式切换、分类展开收起 | 客户端 |
 
 ### 2.2 页面/界面详情
 
@@ -37,7 +37,7 @@ EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客
 
 #### 2.3.1 连接管理
 
-- **服务器配置**：输入服务器地址（默认 localhost）和端口（默认 8889）
+- **服务器配置**：输入服务器地址（默认 localhost）和端口（默认 8888）
 - **连接状态**：显示未连接、连接中、已连接、连接失败四种状态
 - **自动跳转**：连接成功后自动切换到登录界面
 
@@ -46,6 +46,7 @@ EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客
 - **登录**：输入用户名和密码，发送 LOGIN 消息到服务器
 - **注册**：输入用户名、密码、确认密码，支持上传头像（PNG/JPG/JPEG/GIF/BMP）
 - **认证反馈**：显示登录/注册成功或失败信息
+- **密码加密**：服务器端使用 BCrypt 加密存储密码
 
 #### 2.3.3 房间管理
 
@@ -53,6 +54,7 @@ EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客
 - **加入房间**：输入房间名称加入
 - **离开房间**：离开当前房间，返回系统房间
 - **房间列表**：显示所有已加入的房间
+- **房间公告**：支持设置房间公告信息
 
 #### 2.3.4 消息系统
 
@@ -67,7 +69,7 @@ EJP Chatroom JavaFX GUI 客户端是基于 JavaFX 框架开发的桌面聊天客
 - **添加好友**：输入用户名发送好友请求
 - **好友请求**：接收好友请求，同意/拒绝操作
 - **好友列表**：显示所有好友及其在线状态
-- **在线状态**：实时更新好友在线状态
+- **在线状态**：实时更新好友在线状态（ONLINE/OFFLINE/AWAY/BUSY）
 
 #### 2.3.6 文件处理
 
@@ -213,7 +215,7 @@ flowchart TD
 │  │  └────────────────────────────────────┘  │   │
 │  │                                          │   │
 │  │  ┌────────────────────────────────────┐  │   │
-│  │  │ 端口:       [8889                 ] │  │   │
+│  │  │ 端口:       [8888                 ] │  │   │
 │  │  └────────────────────────────────────┘  │   │
 │  │                                          │   │
 │  │              [ 连接 ]                    │   │
@@ -290,7 +292,6 @@ flowchart TD
 │  │  ● Room 2                     │  │                      │  │
 │  │  ● user1 (在线)               │  │  用户消息气泡         │  │
 │  │  ○ user2 (离线)               │  │                      │  │
-│  │                               │  │                      │  │
 │  │                               │  │                      │  │
 │  │                               │  │                      │  │
 │  │                               │  │                      │  │
@@ -417,14 +418,45 @@ flowchart TD
 |------|------|------|
 | 框架 | JavaFX | 21 |
 | 语言 | Java | 21 |
-| WebSocket | Java-WebSocket | 1.5.2 |
-| JSON处理 | Gson | 2.9.1 |
-| 构建工具 | Maven | 3.6+ |
+| WebSocket | Java-WebSocket | 1.5.7 |
+| JSON处理 | Gson | 2.13.2 |
+| 构建工具 | Maven | 3.8+ |
 | 本地存储 | SQLite | 3.42.0 |
+| 数据库 | MySQL | 8.0+ |
 | 文件服务 | ZFile API | - |
 | 文档预览 | OnlyOffice | - |
+| 密码加密 | BCrypt | 0.10.2 |
 
 ### 5.3 项目结构
+
+#### 服务器端
+
+```
+server/
+├── ChatServer.java                    # 服务器主入口
+├── compile.sh                         # 编译脚本
+├── run.sh                             # 运行脚本
+├── config/
+│   └── service.properties             # 服务配置（SSL、ZFile）
+├── sql/
+│   ├── DatabaseManager.java           # 数据库管理器
+│   ├── database.properties            # 数据库连接配置
+│   ├── user/                          # 用户数据访问
+│   ├── friend/                        # 好友关系数据访问
+│   ├── room/                          # 房间数据访问
+│   ├── message/                       # 消息数据访问
+│   └── conversation/                  # 会话数据访问
+├── network/                           # 网络层（WebSocket）
+├── user/                              # 用户业务逻辑
+├── room/                              # 房间业务逻辑
+├── message/                           # 消息处理逻辑
+├── zfile/                             # ZFile 文件服务集成
+├── util/                              # 工具类
+├── lib/                               # 第三方依赖
+└── log/                               # 日志文件
+```
+
+#### JavaFX 客户端
 
 ```
 client/javafx/
@@ -437,7 +469,8 @@ client/javafx/
     │       ├── controller/                  # 控制器层
     │       │   ├── ConnectController.java   # 连接界面控制器
     │       │   ├── LoginController.java     # 登录界面控制器
-    │       │   └── ChatController.java      # 主聊天界面控制器
+    │       │   ├── ChatController.java      # 主聊天界面控制器
+    │       │   └── ProfileController.java   # 个人资料控制器
     │       ├── network/                     # 网络层
     │       │   ├── ChatWebSocketClient.java # WebSocket客户端
     │       │   ├── ZFileService.java        # 文件上传下载服务
@@ -448,13 +481,17 @@ client/javafx/
     │       ├── model/                       # 数据模型
     │       │   ├── Room.java                # 房间模型
     │       │   └── Friend.java              # 好友模型
-    │       └── storage/                     # 存储层
-    │           └── LocalMessageStorage.java # SQLite本地消息存储
+    │       ├── storage/                     # 存储层
+    │       │   └── LocalMessageStorage.java # SQLite本地消息存储
+    │       └── util/                        # 工具类
+    │           ├── Logger.java              # 日志工具
+    │           └── PlatformUtils.java       # 跨平台路径工具
     └── resources/
         ├── client/javafx/
         │   ├── connect.fxml                 # 连接界面
         │   ├── login.fxml                   # 登录界面
-        │   └── chat.fxml                    # 聊天界面
+        │   ├── chat.fxml                    # 聊天界面
+        │   └── profile.fxml                 # 个人资料界面
         └── styles/
             └── main.css                     # 全局样式
 ```
@@ -504,9 +541,48 @@ public class ChatMessage {
 }
 ```
 
-### 5.5 本地存储设计
+### 5.5 数据库设计
 
-#### 数据库表结构
+#### 服务器端数据库表
+
+**user 表**：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| id | INT | 主键，自增 |
+| username | VARCHAR(50) | 用户名，唯一 |
+| password | VARCHAR(255) | BCrypt加密密码 |
+| avatar | VARCHAR(255) | 头像路径 |
+| created_at | TIMESTAMP | 创建时间 |
+| accept_temporary_chat | BOOLEAN | 是否接受临时聊天 |
+| status | VARCHAR(20) | 在线状态 |
+| last_logout_time | TIMESTAMP | 最后下线时间 |
+
+**room 表**：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| id | INT | 主键，自增 |
+| room_name | VARCHAR(100) | 房间名称，唯一 |
+| room_type | VARCHAR(20) | 房间类型（PUBLIC/PRIVATE） |
+| created_at | TIMESTAMP | 创建时间 |
+| announcement | TEXT | 房间公告 |
+
+**messages 表**：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| id | INT | 主键，自增 |
+| type | VARCHAR(20) | 消息类型 |
+| user_id | INT | 发送者ID |
+| conversation_id | INT | 会话ID |
+| content | TEXT | 消息内容 |
+| create_time | TIMESTAMP | 创建时间 |
+| message_type | VARCHAR(20) | 消息类别 |
+| is_nsfw | BOOLEAN | 是否敏感内容 |
+| iv | VARCHAR(255) | 加密向量 |
+
+#### 客户端本地存储
 
 **messages 表**：
 
@@ -523,7 +599,7 @@ public class ChatMessage {
 | is_nsfw | INTEGER | 是否敏感内容 |
 | iv | TEXT | 加密向量 |
 
-#### 存储路径
+**存储路径**：
 
 ```
 ~/.chat_client/{username}_messages.db
@@ -536,9 +612,24 @@ public class ChatMessage {
 ### 6.1 环境要求
 
 - Java 21+
-- Maven 3.6+
+- Maven 3.8+（仅 JavaFX 客户端）
+- MySQL 8.0+
 
-### 6.2 编译运行
+### 6.2 服务器端运行
+
+```bash
+cd server
+
+# 编译
+chmod +x compile.sh
+./compile.sh
+
+# 运行（默认端口 8888）
+chmod +x run.sh
+./run.sh
+```
+
+### 6.3 客户端编译运行
 
 ```bash
 cd client/javafx
@@ -546,15 +637,20 @@ mvn clean compile
 mvn javafx:run
 ```
 
-### 6.3 打包发布
+### 6.4 客户端打包发布
 
 ```bash
 cd client/javafx
-mvn clean package
-mvn javafx:jpackage
-```
+mvn clean package -DskipTests
 
-生成的安装包将位于 `target/installer` 目录。
+# 生成平台特定的应用镜像
+# Linux: target/jpackage/linux/chatroom-client/
+# Windows: target/jpackage/windows/chatroom-client/（需在Windows环境构建）
+# macOS: target/jpackage/mac/chatroom-client/（需在macOS环境构建）
+
+# 运行生成的应用
+java -jar target/chatroom-javafx-1.0.0.jar
+```
 
 ---
 
@@ -589,8 +685,9 @@ mvn javafx:jpackage
 
 ### 8.1 安全性
 
-- WebSocket 连接使用标准协议
-- 本地消息存储使用 SQLite 加密
+- WebSocket 连接支持 SSL/TLS 加密
+- 密码使用 BCrypt 加密存储
+- 本地消息存储使用 SQLite
 - 文件上传使用 Token 认证
 
 ### 8.2 可用性
@@ -613,6 +710,7 @@ mvn javafx:jpackage
 |------|------|----------|
 | v1.0 | 2026-07-05 | 初始版本，基于 JavaFX 实现聊天客户端 |
 | v1.1 | 2026-07-08 | 添加连接界面、头像上传、文件传输、OnlyOffice预览、本地消息缓存 |
+| v1.2 | 2026-07-13 | 完善服务器端架构，添加会话系统、跨平台打包支持 |
 
 ---
 
@@ -640,7 +738,7 @@ mvn javafx:jpackage
 | 配置项 | 默认值 |
 |--------|--------|
 | 服务器地址 | localhost |
-| 服务器端口 | 8889 |
+| 服务器端口 | 8888 |
 | 最小窗口宽度 | 800px |
 | 最小窗口高度 | 600px |
 | 消息气泡最大宽度 | 300px |

@@ -1,0 +1,38 @@
+# Compiled output
+**/target/
+**/bin/
+**/*.class
+
+# Third-party libraries
+**/lib/
+
+# Security-sensitive files
+**/keystore.*
+**/*.jks
+**/*.p12
+
+# Log files
+**/log/*.log
+**/log/*.txt
+
+# Database files
+**/*.db
+**/*.db-journal
+
+# User cache data
+**/user_cache.properties
+
+# Local avatar cache
+**/.chatroom/
+**/.chat_client/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
