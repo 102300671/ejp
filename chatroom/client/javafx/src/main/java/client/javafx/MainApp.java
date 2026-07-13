@@ -17,8 +17,6 @@ public class MainApp extends Application {
         primaryStage = stage;
         primaryStage.setTitle("EJP Chatroom");
         primaryStage.setResizable(true);
-        primaryStage.setMinWidth(800);
-        primaryStage.setMinHeight(600);
         
         showConnectScreen();
     }
@@ -29,6 +27,8 @@ public class MainApp extends Application {
         Scene scene = new Scene(root, 450, 400);
         scene.getStylesheets().add(MainApp.class.getResource("/styles/main.css").toExternalForm());
         primaryStage.setScene(scene);
+        primaryStage.setWidth(450);
+        primaryStage.setHeight(400);
         primaryStage.centerOnScreen();
         primaryStage.show();
     }
@@ -39,6 +39,8 @@ public class MainApp extends Application {
         Scene scene = new Scene(root, 450, 400);
         scene.getStylesheets().add(MainApp.class.getResource("/styles/main.css").toExternalForm());
         primaryStage.setScene(scene);
+        primaryStage.setWidth(450);
+        primaryStage.setHeight(400);
         primaryStage.centerOnScreen();
         primaryStage.show();
     }
@@ -49,6 +51,8 @@ public class MainApp extends Application {
         Scene scene = new Scene(root, 900, 650);
         scene.getStylesheets().add(MainApp.class.getResource("/styles/main.css").toExternalForm());
         primaryStage.setScene(scene);
+        primaryStage.setWidth(900);
+        primaryStage.setHeight(650);
         primaryStage.centerOnScreen();
         primaryStage.show();
     }
