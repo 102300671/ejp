@@ -13,19 +13,30 @@ public class UserDAO {
      * @throws SQLException 如果插入过程中发生数据库错误
      */
     public void insertUser(User user, Connection connection) throws SQLException {
-        String sql = "INSERT INTO user (username, password) VALUES (?, ?)";
+        String sql = "INSERT INTO user (username, password, avatar) VALUES (?, ?, ?)";
         
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setString(1, user.getUsername());
             
-            // 使用BCrypt加密密码
             String hashedPassword = BCrypt.withDefaults().hashToString(12, user.getPassword().toCharArray());
             preparedStatement.setString(2, hashedPassword);
+            preparedStatement.setString(3, user.getAvatar());
             
             int rowsAffected = preparedStatement.executeUpdate();
             System.out.println("成功插入用户: " + user.getUsername() + "，影响行数: " + rowsAffected);
             
         } catch (SQLException e) {
+            if (e.getMessage().contains("Unknown column") && e.getMessage().contains("avatar")) {
+                String sqlWithoutAvatar = "INSERT INTO user (username, password) VALUES (?, ?)";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(sqlWithoutAvatar, Statement.RETURN_GENERATED_KEYS)) {
+                    preparedStatement.setString(1, user.getUsername());
+                    String hashedPassword = BCrypt.withDefaults().hashToString(12, user.getPassword().toCharArray());
+                    preparedStatement.setString(2, hashedPassword);
+                    int rowsAffected = preparedStatement.executeUpdate();
+                    System.out.println("成功插入用户 (无avatar字段): " + user.getUsername() + "，影响行数: " + rowsAffected);
+                    return;
+                }
+            }
             System.err.println("插入用户失败 (用户名: " + user.getUsername() + "): " + e.getMessage());
             e.printStackTrace();
             throw e;
@@ -69,7 +80,7 @@ public class UserDAO {
      * @throws SQLException 如果查询过程中发生数据库错误
      */
     public User getUserByUsername(String username, Connection connection) throws SQLException {
-        String sql = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, u.status, uu.uuid " +
+        String sql = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, u.status, u.avatar, uu.uuid " +
                      "FROM user u " +
                      "LEFT JOIN user_uuid uu ON u.id = uu.user_id " +
                      "WHERE u.username = ?";
@@ -85,11 +96,13 @@ public class UserDAO {
                     String createdAt = resultSet.getString("created_at");
                     boolean acceptTemporaryChat = resultSet.getBoolean("accept_temporary_chat");
                     String status = resultSet.getString("status");
+                    String avatar = resultSet.getString("avatar");
                     String uuid = resultSet.getString("uuid");
                     
                     User user = new User(id, dbUsername, hashedPassword, createdAt, uuid);
                     user.setAcceptTemporaryChat(acceptTemporaryChat);
                     user.setStatus(status);
+                    user.setAvatar(avatar);
                     return user;
                 }
             }
@@ -98,6 +111,33 @@ public class UserDAO {
             return null;
             
         } catch (SQLException e) {
+            if (e.getMessage().contains("Unknown column") && e.getMessage().contains("avatar")) {
+                String sqlWithoutAvatar = "SELECT u.id, u.username, u.password, u.created_at, u.accept_temporary_chat, u.status, uu.uuid " +
+                                          "FROM user u " +
+                                          "LEFT JOIN user_uuid uu ON u.id = uu.user_id " +
+                                          "WHERE u.username = ?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(sqlWithoutAvatar)) {
+                    preparedStatement.setString(1, username);
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        if (resultSet.next()) {
+                            int id = resultSet.getInt("id");
+                            String dbUsername = resultSet.getString("username");
+                            String hashedPassword = resultSet.getString("password");
+                            String createdAt = resultSet.getString("created_at");
+                            boolean acceptTemporaryChat = resultSet.getBoolean("accept_temporary_chat");
+                            String status = resultSet.getString("status");
+                            String uuid = resultSet.getString("uuid");
+                            
+                            User user = new User(id, dbUsername, hashedPassword, createdAt, uuid);
+                            user.setAcceptTemporaryChat(acceptTemporaryChat);
+                            user.setStatus(status);
+                            return user;
+                        }
+                    }
+                    System.out.println("未找到用户: " + username);
+                    return null;
+                }
+            }
             System.err.println("查询用户信息失败 (用户名: " + username + "): " + e.getMessage());
             e.printStackTrace();
             throw e;
@@ -319,6 +359,37 @@ public class UserDAO {
                 return updateUserStatus(userId, status, connection);
             }
             System.err.println("更新用户状态失败 (用户ID: " + userId + "): " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    /**
+     * 更新用户头像
+     * @param userId 用户ID
+     * @param avatar 头像路径
+     * @param connection 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException 如果更新过程中发生数据库错误
+     */
+    public boolean updateUserAvatar(int userId, String avatar, Connection connection) throws SQLException {
+        String sql = "UPDATE user SET avatar = ? WHERE id = ?";
+        
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, avatar);
+            preparedStatement.setInt(2, userId);
+            
+            int rowsAffected = preparedStatement.executeUpdate();
+            System.out.println("更新用户头像: 用户ID=" + userId + ", avatar=" + avatar + ", 影响行数: " + rowsAffected);
+            
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
+            if (e.getMessage().contains("Unknown column") && e.getMessage().contains("avatar")) {
+                System.out.println("avatar字段不存在，跳过头像更新");
+                return false;
+            }
+            System.err.println("更新用户头像失败 (用户ID: " + userId + "): " + e.getMessage());
             e.printStackTrace();
             throw e;
         }

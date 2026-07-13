@@ -392,10 +392,6 @@ public class ClientConnection implements Runnable {
                         }
                         
                         boolean alreadyInRoom = roomDAO.isUserInRoom(roomId, userId, connection);
-                        if (alreadyInRoom) {
-                            Message systemMessage = new Message(MessageType.SYSTEM, "server", "您已在房间" + joinRoomName + "中", null);
-                            send(messageCodec.encode(systemMessage));
-                        }
                         
                         // 加入房间（内存层面）
                         messageRouter.joinRoom(userId, roomId);

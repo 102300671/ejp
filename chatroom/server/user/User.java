@@ -8,6 +8,7 @@ public class User {
     private String uuid;
     private boolean acceptTemporaryChat;
     private String status;
+    private String avatar;
     
     /**
      * 构造用户对象
@@ -25,6 +26,7 @@ public class User {
         this.uuid = uuid;
         this.acceptTemporaryChat = true;
         this.status = "OFFLINE";
+        this.avatar = null;
     }
     
     public int getId() {
@@ -65,5 +67,13 @@ public class User {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+    
+    public String getAvatar() {
+        return avatar;
+    }
+    
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

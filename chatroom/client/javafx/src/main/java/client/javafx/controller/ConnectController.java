@@ -26,6 +26,8 @@ public class ConnectController {
     private Label statusLabel;
     
     private static ChatWebSocketClient sharedClient;
+    private static String serverAddress;
+    private static String serverPort;
     
     @FXML
     public void initialize() {
@@ -47,6 +49,8 @@ public class ConnectController {
         }
         
         try {
+            ConnectController.serverAddress = serverAddress;
+            ConnectController.serverPort = port;
             String serverUrl = "ws://" + serverAddress + ":" + port;
             ChatWebSocketClient webSocketClient = new ChatWebSocketClient(serverUrl);
             
@@ -88,5 +92,12 @@ public class ConnectController {
     
     public static ChatWebSocketClient getWebSocketClient() {
         return sharedClient;
+    }
+    
+    public static String getServerUrl() {
+        if (serverAddress != null && serverPort != null) {
+            return "http://" + serverAddress + ":8081";
+        }
+        return null;
     }
 }

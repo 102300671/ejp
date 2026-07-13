@@ -13,24 +13,22 @@
                     <Insets top="15.0" bottom="15.0" left="5.0" right="5.0" />
                 </padding>
                 <children>
-                    <StackPane styleClass="avatar-container">
+                    <StackPane fx:id="avatarContainer" styleClass="avatar-container">
                         <ImageView fx:id="userAvatar" fitHeight="48.0" fitWidth="48.0" preserveRatio="true" styleClass="user-avatar" />
                     </StackPane>
                     <Button fx:id="navMessagesButton" styleClass="nav-button nav-button-active" />
                     <Button fx:id="navContactsButton" styleClass="nav-button" />
                 </children>
             </VBox>
-            <VBox prefWidth="200.0" styleClass="content-panel">
-                <Label fx:id="contentTitleLabel" text="消息" styleClass="content-title" />
-                <ListView fx:id="mainListView" prefHeight="500.0" prefWidth="200.0" styleClass="list-view" />
-                <HBox fx:id="contentButtons" spacing="5.0" styleClass="button-group">
-                    <Button fx:id="createRoomButton" text="创建" styleClass="btn-small" />
-                    <Button fx:id="joinRoomButton" text="加入" styleClass="btn-small" />
-                    <Button fx:id="leaveRoomButton" text="离开" styleClass="btn-small" />
-                    <Button fx:id="addFriendButton" text="添加" styleClass="btn-small" />
-                    <Button fx:id="friendRequestsButton" text="请求" styleClass="btn-small" />
+            <VBox prefWidth="260.0" minWidth="260.0" maxWidth="260.0" styleClass="content-panel">
+                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="search-bar">
+                    <padding>
+                        <Insets top="10.0" bottom="8.0" left="10.0" right="10.0" />
+                    </padding>
+                    <TextField fx:id="searchField" promptText="搜索..." styleClass="search-input" />
+                    <Button fx:id="addButton" styleClass="add-button" />
                 </HBox>
-                <Button fx:id="logoutButton" text="退出登录" styleClass="btn-logout" />
+                <ListView fx:id="mainListView" prefHeight="500.0" prefWidth="260.0" minWidth="260.0" maxWidth="260.0" styleClass="list-view" />
             </VBox>
         </HBox>
     </left>
@@ -42,35 +40,50 @@
                         <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
                     </padding>
                     <children>
-                        <Label fx:id="currentChatLabel" text="当前房间: system" styleClass="header-label" />
+                        <Label fx:id="currentChatLabel" text="" styleClass="header-label" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="membersButton" text="···" styleClass="btn-icon" />
                     </children>
                 </HBox>
             </top>
             <center>
-                <ScrollPane fitToWidth="true" styleClass="message-scroll">
-                    <VBox fx:id="messagesVBox" prefWidth="600.0" styleClass="messages-container" />
-                </ScrollPane>
+                <StackPane>
+                    <StackPane>
+                        <VBox fx:id="chatContent" styleClass="chat-content">
+                            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="message-scroll">
+                                <VBox fx:id="messagesVBox" styleClass="messages-container" />
+                            </ScrollPane>
+                            <VBox spacing="5.0" styleClass="input-area">
+                                <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="toolbar">
+                                    <padding>
+                                        <Insets left="15.0" right="15.0" />
+                                    </padding>
+                                    <Button fx:id="emojiButton" text="😊" styleClass="btn-small" />
+                                    <Button fx:id="uploadImageButton" text="图片" styleClass="btn-small" />
+                                    <Button fx:id="uploadFileButton" text="文件" styleClass="btn-small" />
+                                    <Button fx:id="voiceButton" text="🎤" styleClass="btn-small" />
+                                </HBox>
+                                <HBox alignment="CENTER" spacing="10.0" styleClass="input-bar">
+                                    <padding>
+                                        <Insets bottom="10.0" left="15.0" right="15.0" top="0.0" />
+                                    </padding>
+                                    <children>
+                                        <TextField fx:id="messageInput" promptText="输入消息..." styleClass="message-input" />
+                                        <Button fx:id="sendButton" text="发送" styleClass="btn-primary" />
+                                    </children>
+                                </HBox>
+                            </VBox>
+                        </VBox>
+                        <VBox fx:id="emptyState" styleClass="empty-state" visible="true">
+                            <Label text="请选择一个聊天对象" styleClass="empty-label" />
+                            <Label text="点击左侧列表开始聊天" styleClass="empty-sub-label" />
+                        </VBox>
+                    </StackPane>
+                    <VBox fx:id="profileSidebar" prefWidth="280.0" maxWidth="280.0" minWidth="0" visible="false" styleClass="profile-sidebar">
+                        <StackPane.alignment>TOP_RIGHT</StackPane.alignment>
+                    </VBox>
+                </StackPane>
             </center>
-            <bottom>
-                <VBox spacing="5.0" styleClass="input-area">
-                    <HBox alignment="CENTER_LEFT" spacing="5.0" styleClass="toolbar">
-                        <padding>
-                            <Insets left="15.0" right="15.0" />
-                        </padding>
-                        <Button fx:id="uploadImageButton" text="图片" styleClass="btn-small" />
-                        <Button fx:id="uploadFileButton" text="文件" styleClass="btn-small" />
-                    </HBox>
-                    <HBox alignment="CENTER" spacing="10.0" styleClass="input-bar">
-                        <padding>
-                            <Insets bottom="10.0" left="15.0" right="15.0" top="0.0" />
-                        </padding>
-                        <children>
-                            <TextField fx:id="messageInput" promptText="输入消息..." styleClass="message-input" />
-                            <Button fx:id="sendButton" text="发送" styleClass="btn-primary" />
-                        </children>
-                    </HBox>
-                </VBox>
-            </bottom>
         </BorderPane>
     </center>
 </BorderPane>

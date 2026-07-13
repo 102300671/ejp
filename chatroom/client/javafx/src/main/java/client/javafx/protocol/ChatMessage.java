@@ -51,7 +51,7 @@ public class ChatMessage {
         return createRegister(username, password, null);
     }
     
-    public static ChatMessage createRegister(String username, String password, byte[] avatarData) {
+    public static ChatMessage createRegister(String username, String password, String avatarPath) {
         ChatMessage msg = new ChatMessage();
         msg.type = MessageType.REGISTER.name();
         msg.from = username;
@@ -59,9 +59,8 @@ public class ChatMessage {
         JsonObject jsonContent = new JsonObject();
         jsonContent.addProperty("username", username);
         jsonContent.addProperty("password", password);
-        if (avatarData != null && avatarData.length > 0) {
-            String base64Avatar = java.util.Base64.getEncoder().encodeToString(avatarData);
-            jsonContent.addProperty("avatar", base64Avatar);
+        if (avatarPath != null && !avatarPath.isEmpty()) {
+            jsonContent.addProperty("avatar", avatarPath);
         }
         msg.content = jsonContent.toString();
         
@@ -109,6 +108,7 @@ public class ChatMessage {
         ChatMessage msg = new ChatMessage();
         msg.type = MessageType.JOIN.name();
         msg.from = from;
+        msg.conversationId = conversationId;
         
         JsonObject jsonContent = new JsonObject();
         if (conversationId != null) {
@@ -225,6 +225,34 @@ public class ChatMessage {
         return msg;
     }
     
+    public static ChatMessage createEmoji(String from, String emoji, Integer conversationId) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.EMOJI.name();
+        msg.from = from;
+        msg.content = emoji;
+        msg.time = getCurrentTime();
+        msg.conversationId = conversationId;
+        msg.id = generateMessageId(MessageType.EMOJI.name(), from);
+        return msg;
+    }
+    
+    public static ChatMessage createVoice(String from, String voiceUrl, String fileName, int duration, Integer conversationId) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.VOICE.name();
+        msg.from = from;
+        
+        JsonObject jsonContent = new JsonObject();
+        jsonContent.addProperty("url", voiceUrl);
+        jsonContent.addProperty("fileName", fileName);
+        jsonContent.addProperty("duration", duration);
+        msg.content = jsonContent.toString();
+        
+        msg.time = getCurrentTime();
+        msg.conversationId = conversationId;
+        msg.id = generateMessageId(MessageType.VOICE.name(), from);
+        return msg;
+    }
+    
     public static ChatMessage createRequestToken(String from) {
         ChatMessage msg = new ChatMessage();
         msg.type = MessageType.REQUEST_TOKEN.name();
@@ -243,6 +271,67 @@ public class ChatMessage {
         msg.time = getCurrentTime();
         msg.conversationId = conversationId;
         msg.id = generateMessageId(MessageType.REQUEST_HISTORY.name(), from);
+        return msg;
+    }
+    
+    public static ChatMessage createSearchUsers(String from, String keyword) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.SEARCH_USERS.name();
+        msg.from = from;
+        msg.content = keyword;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.SEARCH_USERS.name(), keyword);
+        return msg;
+    }
+    
+    public static ChatMessage createSearchRooms(String from, String keyword) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.SEARCH_ROOMS.name();
+        msg.from = from;
+        msg.content = keyword;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.SEARCH_ROOMS.name(), keyword);
+        return msg;
+    }
+    
+    public static ChatMessage createRequestRoomJoin(String from, String roomName) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.REQUEST_ROOM_JOIN.name();
+        msg.from = from;
+        msg.content = roomName;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.REQUEST_ROOM_JOIN.name(), roomName);
+        return msg;
+    }
+    
+    public static ChatMessage createRoomJoinResponse(String from, boolean accept, String roomName, String requester) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.ROOM_JOIN_RESPONSE.name();
+        msg.from = from;
+        msg.content = (accept ? "accept" : "reject") + ":" + roomName + ":" + requester;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.ROOM_JOIN_RESPONSE.name(), roomName);
+        return msg;
+    }
+    
+    public static ChatMessage createUpdateProfile(String from, String content) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.UPDATE_PROFILE.name();
+        msg.from = from;
+        msg.content = content;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.UPDATE_PROFILE.name(), from);
+        return msg;
+    }
+    
+    public static ChatMessage createSetRoomAnnouncement(String from, String announcement, Integer conversationId) {
+        ChatMessage msg = new ChatMessage();
+        msg.type = MessageType.SET_ROOM_ANNOUNCEMENT.name();
+        msg.from = from;
+        msg.content = announcement;
+        msg.conversationId = conversationId;
+        msg.time = getCurrentTime();
+        msg.id = generateMessageId(MessageType.SET_ROOM_ANNOUNCEMENT.name(), from);
         return msg;
     }
     

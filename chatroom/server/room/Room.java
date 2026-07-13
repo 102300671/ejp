@@ -14,6 +14,7 @@ public abstract class Room {
     private String ownerId; // 房主ID
     private Set<String> adminIds; // 管理员ID集合
     private Integer conversationId; // 会话ID
+    private String announcement; // 房间公告
     
     /**
      * 构造房间对象
@@ -48,6 +49,22 @@ public abstract class Room {
      */
     public void setConversationId(Integer conversationId) {
         this.conversationId = conversationId;
+    }
+    
+    /**
+     * 获取房间公告
+     * @return 房间公告
+     */
+    public String getAnnouncement() {
+        return announcement;
+    }
+    
+    /**
+     * 设置房间公告
+     * @param announcement 房间公告
+     */
+    public void setAnnouncement(String announcement) {
+        this.announcement = announcement;
     }
     
     /**

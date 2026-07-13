@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.collections.FXCollections?>
+
+<VBox prefHeight="500.0" prefWidth="400.0" styleClass="profile-container" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.javafx.controller.ProfileController">
+    <padding>
+        <Insets top="30.0" bottom="30.0" left="30.0" right="30.0" />
+    </padding>
+    <spacing>20.0</spacing>
+    
+    <VBox alignment="CENTER" spacing="10.0">
+        <StackPane styleClass="profile-avatar-container">
+            <ImageView fx:id="profileAvatar" fitHeight="100.0" fitWidth="100.0" preserveRatio="true" styleClass="profile-avatar" />
+        </StackPane>
+        <Button fx:id="uploadAvatarButton" text="更换头像" styleClass="btn-change-avatar" />
+    </VBox>
+    
+    <VBox spacing="15.0">
+        <HBox spacing="10.0">
+            <Label text="用户名:" styleClass="profile-label" />
+            <Label fx:id="usernameLabel" styleClass="profile-value" />
+        </HBox>
+        
+        <HBox spacing="10.0">
+            <Label text="状态:" styleClass="profile-label" />
+            <ComboBox fx:id="statusComboBox" styleClass="profile-combo-box" />
+        </HBox>
+    </VBox>
+    
+    <HBox alignment="CENTER" spacing="10.0">
+        <Button fx:id="saveButton" text="保存" styleClass="btn-primary" />
+        <Button fx:id="cancelButton" text="取消" styleClass="btn-secondary" />
+    </HBox>
+</VBox>

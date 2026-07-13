@@ -139,11 +139,12 @@ public class MessageRouter {
                 Session friendSession = getSessionByUsername(friendUsername);
                 boolean isOnline = false;
                 String status = "OFFLINE";
+                User friendUser = null;
                 
                 try {
                     // 先从数据库查询好友的实际状态
                     UserDAO friendUserDAO = new UserDAO();
-                    User friendUser = friendUserDAO.getUserByUsername(friendUsername, connection);
+                    friendUser = friendUserDAO.getUserByUsername(friendUsername, connection);
                     if (friendUser != null && friendUser.getStatus() != null) {
                         status = friendUser.getStatus();
                         isOnline = "ONLINE".equals(status);
@@ -160,6 +161,10 @@ public class MessageRouter {
                 statusData.put("username", friendUsername);
                 statusData.put("status", status);
                 statusData.put("isOnline", isOnline);
+                
+                if (friendUser != null && friendUser.getAvatar() != null) {
+                    statusData.put("avatar", friendUser.getAvatar());
+                }
                 
                 // 将状态数据转换为JSON字符串
                 String statusJson = null;

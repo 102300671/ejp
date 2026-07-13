@@ -10,6 +10,28 @@ public class RoomDAO {
     
     public RoomDAO(MessageRouter messageRouter) {
         this.messageRouter = messageRouter;
+        ensureAnnouncementColumnExists();
+    }
+    
+    private void ensureAnnouncementColumnExists() {
+        try (Connection conn = new server.sql.DatabaseManager().getConnection()) {
+            String checkSql = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema = DATABASE() AND table_name = 'room' AND column_name = 'announcement'";
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) == 0) {
+                        String alterSql = "ALTER TABLE room ADD COLUMN announcement TEXT DEFAULT NULL";
+                        try (PreparedStatement alterStmt = conn.prepareStatement(alterSql)) {
+                            alterStmt.executeUpdate();
+                            System.out.println("announcement列添加成功");
+                        }
+                    } else {
+                        System.out.println("announcement列已存在");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("添加announcement列失败: " + e.getMessage());
+        }
     }
     
     public void insertPublicRoom(PublicRoom room, Connection conn) throws SQLException {
@@ -43,7 +65,7 @@ public class RoomDAO {
     }
     
     public Room getRoomById(String roomId, Connection conn) throws SQLException {
-        String sql = "select id, room_name, room_type from room where id = ?";
+        String sql = "select id, room_name, room_type, announcement from room where id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, Integer.parseInt(roomId));
             
@@ -52,6 +74,7 @@ public class RoomDAO {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
+                    String announcement = rs.getString("announcement");
                     
                     Room room;
                     if ("PUBLIC".equals(type)) {
@@ -59,6 +82,8 @@ public class RoomDAO {
                     } else {
                         room = new PrivateRoom(name, id, messageRouter);
                     }
+                    
+                    room.setAnnouncement(announcement);
                     
                     // 加载房主和管理员信息
                     loadRoomOwnersAndAdmins(room, id, conn);
@@ -72,7 +97,7 @@ public class RoomDAO {
     
     public List<Room> getPublicRooms(Connection conn) throws SQLException {
         List<Room> rooms = new ArrayList<>();
-        String sql = "select id, room_name from room where room_type = ?";
+        String sql = "select id, room_name, announcement from room where room_type = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, "PUBLIC");
             
@@ -80,7 +105,10 @@ public class RoomDAO {
                 while (rs.next()) {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
+                    String announcement = rs.getString("announcement");
                     Room room = new PublicRoom(name, id, messageRouter);
+                    
+                    room.setAnnouncement(announcement);
                     
                     // 加载房主和管理员信息
                     loadRoomOwnersAndAdmins(room, id, conn);
@@ -100,7 +128,7 @@ public class RoomDAO {
      */
     public List<Room> getAllRooms(Connection conn) throws SQLException {
         List<Room> rooms = new ArrayList<>();
-        String sql = "select r.id, r.room_name, r.room_type, c.id as conversation_id " +
+        String sql = "select r.id, r.room_name, r.room_type, r.announcement, c.id as conversation_id " +
                      "from room r " +
                      "left join conversation c on c.type = 'ROOM' and c.name COLLATE utf8mb4_unicode_ci = r.room_name COLLATE utf8mb4_unicode_ci";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -109,6 +137,7 @@ public class RoomDAO {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
+                    String announcement = rs.getString("announcement");
                     Integer conversationId = rs.getObject("conversation_id") != null ? rs.getInt("conversation_id") : null;
                     
                     Room room;
@@ -117,6 +146,8 @@ public class RoomDAO {
                     } else {
                         room = new PrivateRoom(name, id, messageRouter);
                     }
+                    
+                    room.setAnnouncement(announcement);
                     
                     // 设置conversation_id
                     if (conversationId != null) {
@@ -286,7 +317,7 @@ public class RoomDAO {
      * @throws SQLException SQL异常
      */
     public Room getRoomByName(String roomName, Connection conn) throws SQLException {
-        String sql = "select id, room_name, room_type from room where room_name = ?";
+        String sql = "select id, room_name, room_type, announcement from room where room_name = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, roomName);
             
@@ -295,12 +326,17 @@ public class RoomDAO {
                     String id = String.valueOf(rs.getInt("id"));
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
+                    String announcement = rs.getString("announcement");
                     
+                    Room room;
                     if ("PUBLIC".equals(type)) {
-                        return new PublicRoom(name, id, messageRouter);
+                        room = new PublicRoom(name, id, messageRouter);
                     } else {
-                        return new PrivateRoom(name, id, messageRouter);
+                        room = new PrivateRoom(name, id, messageRouter);
                     }
+                    room.setAnnouncement(announcement);
+                    
+                    return room;
                 }
             }
         }
@@ -316,7 +352,7 @@ public class RoomDAO {
      */
     public List<Room> searchRooms(String searchTerm, Connection conn) throws SQLException {
         List<Room> rooms = new ArrayList<>();
-        String sql = "select id, room_name, room_type, created_at from room where room_name like ?";
+        String sql = "select id, room_name, room_type, created_at, announcement from room where room_name like ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, "%" + searchTerm + "%");
             
@@ -326,6 +362,7 @@ public class RoomDAO {
                     String name = rs.getString("room_name");
                     String type = rs.getString("room_type");
                     String createdAt = rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toString() : null;
+                    String announcement = rs.getString("announcement");
                     
                     Room room;
                     if ("PUBLIC".equals(type)) {
@@ -333,6 +370,8 @@ public class RoomDAO {
                     } else {
                         room = new PrivateRoom(name, id, messageRouter);
                     }
+                    
+                    room.setAnnouncement(announcement);
                     
                     // 设置成员数量
                     int memberCount = getMemberCount(id, conn);
@@ -555,5 +594,48 @@ public class RoomDAO {
             return displayName;
         }
         return username;
+    }
+    
+    /**
+     * 获取房间公告
+     * @param roomId 房间ID
+     * @param conn 数据库连接
+     * @return 房间公告，如果未设置则返回null
+     * @throws SQLException SQL异常
+     */
+    public String getRoomAnnouncement(String roomId, Connection conn) throws SQLException {
+        String sql = "select announcement from room where id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, Integer.parseInt(roomId));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("announcement");
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 更新房间公告
+     * @param roomId 房间ID
+     * @param announcement 房间公告内容
+     * @param conn 数据库连接
+     * @return 更新成功返回true，否则返回false
+     * @throws SQLException SQL异常
+     */
+    public boolean updateRoomAnnouncement(String roomId, String announcement, Connection conn) throws SQLException {
+        String sql = "update room set announcement = ? where id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (announcement == null || announcement.trim().isEmpty()) {
+                pstmt.setNull(1, Types.VARCHAR);
+            } else {
+                pstmt.setString(1, announcement.trim());
+            }
+            pstmt.setInt(2, Integer.parseInt(roomId));
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("更新房间公告: 房间ID=" + roomId + ", 公告=" + announcement + ", 影响行数: " + rowsAffected);
+            return rowsAffected > 0;
+        }
     }
 }

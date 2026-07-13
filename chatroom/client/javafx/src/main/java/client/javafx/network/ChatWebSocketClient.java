@@ -1,26 +1,43 @@
 package client.javafx.network;
 
 import client.javafx.protocol.ChatMessage;
+import client.javafx.util.Logger;
 import com.google.gson.Gson;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class ChatWebSocketClient extends WebSocketClient {
     
     private final Gson gson = new Gson();
-    private Consumer<ChatMessage> onMessageCallback;
+    private List<Consumer<ChatMessage>> onMessageCallbacks = new ArrayList<>();
     private Consumer<Boolean> onConnectionCallback;
+    private final Logger logger = new Logger(ChatWebSocketClient.class);
     
     public ChatWebSocketClient(String serverUrl) throws URISyntaxException {
         super(new URI(serverUrl));
     }
     
+    public void addOnMessageCallback(Consumer<ChatMessage> callback) {
+        this.onMessageCallbacks.add(callback);
+    }
+    
     public void setOnMessageCallback(Consumer<ChatMessage> callback) {
-        this.onMessageCallback = callback;
+        this.onMessageCallbacks.clear();
+        this.onMessageCallbacks.add(callback);
+    }
+    
+    public void removeOnMessageCallback(Consumer<ChatMessage> callback) {
+        this.onMessageCallbacks.remove(callback);
+    }
+    
+    public void clearOnMessageCallbacks() {
+        this.onMessageCallbacks.clear();
     }
     
     public void setOnConnectionCallback(Consumer<Boolean> callback) {
@@ -29,6 +46,7 @@ public class ChatWebSocketClient extends WebSocketClient {
     
     @Override
     public void onOpen(ServerHandshake handshakedata) {
+        logger.info("WebSocket连接已打开");
         if (onConnectionCallback != null) {
             onConnectionCallback.accept(true);
         }
@@ -37,17 +55,21 @@ public class ChatWebSocketClient extends WebSocketClient {
     @Override
     public void onMessage(String message) {
         try {
+            logger.debug("收到WebSocket消息: " + message);
             ChatMessage chatMessage = gson.fromJson(message, ChatMessage.class);
-            if (onMessageCallback != null) {
-                onMessageCallback.accept(chatMessage);
+            logger.debug("消息类型: " + chatMessage.type + ", from: " + chatMessage.from);
+            logger.debug("回调数量: " + onMessageCallbacks.size());
+            for (Consumer<ChatMessage> callback : onMessageCallbacks) {
+                callback.accept(chatMessage);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("消息解析失败", e);
         }
     }
     
     @Override
     public void onClose(int code, String reason, boolean remote) {
+        logger.info("WebSocket连接已关闭: code=" + code + ", reason=" + reason + ", remote=" + remote);
         if (onConnectionCallback != null) {
             onConnectionCallback.accept(false);
         }
@@ -55,6 +77,7 @@ public class ChatWebSocketClient extends WebSocketClient {
     
     @Override
     public void onError(Exception ex) {
+        logger.error("WebSocket错误", ex);
         if (onConnectionCallback != null) {
             onConnectionCallback.accept(false);
         }
@@ -74,8 +97,8 @@ public class ChatWebSocketClient extends WebSocketClient {
         sendRegister(username, password, null);
     }
     
-    public void sendRegister(String username, String password, byte[] avatarData) {
-        ChatMessage chatMessage = ChatMessage.createRegister(username, password, avatarData);
+    public void sendRegister(String username, String password, String avatarPath) {
+        ChatMessage chatMessage = ChatMessage.createRegister(username, password, avatarPath);
         sendMessage(chatMessage);
     }
     
@@ -129,6 +152,11 @@ public class ChatWebSocketClient extends WebSocketClient {
         sendMessage(chatMessage);
     }
     
+    public void sendUpdateProfile(String from, String content) {
+        ChatMessage chatMessage = ChatMessage.createUpdateProfile(from, content);
+        sendMessage(chatMessage);
+    }
+    
     public void sendImage(String from, String imageUrl, Integer conversationId) {
         ChatMessage chatMessage = ChatMessage.createImage(from, imageUrl, conversationId);
         sendMessage(chatMessage);
@@ -139,6 +167,11 @@ public class ChatWebSocketClient extends WebSocketClient {
         sendMessage(chatMessage);
     }
     
+    public void sendVoice(String from, String voiceUrl, String fileName, int duration, Integer conversationId) {
+        ChatMessage chatMessage = ChatMessage.createVoice(from, voiceUrl, fileName, duration, conversationId);
+        sendMessage(chatMessage);
+    }
+    
     public void sendRequestToken(String from) {
         ChatMessage chatMessage = ChatMessage.createRequestToken(from);
         sendMessage(chatMessage);
@@ -146,6 +179,31 @@ public class ChatWebSocketClient extends WebSocketClient {
     
     public void sendRequestHistory(String from, String lastTimestamp, Integer conversationId) {
         ChatMessage chatMessage = ChatMessage.createRequestHistory(from, lastTimestamp, conversationId);
+        sendMessage(chatMessage);
+    }
+    
+    public void sendSearchUsers(String from, String keyword) {
+        ChatMessage chatMessage = ChatMessage.createSearchUsers(from, keyword);
+        sendMessage(chatMessage);
+    }
+    
+    public void sendSearchRooms(String from, String keyword) {
+        ChatMessage chatMessage = ChatMessage.createSearchRooms(from, keyword);
+        sendMessage(chatMessage);
+    }
+    
+    public void sendRequestRoomJoin(String from, String roomName) {
+        ChatMessage chatMessage = ChatMessage.createRequestRoomJoin(from, roomName);
+        sendMessage(chatMessage);
+    }
+    
+    public void sendRoomJoinResponse(String from, boolean accept, String roomName, String requester) {
+        ChatMessage chatMessage = ChatMessage.createRoomJoinResponse(from, accept, roomName, requester);
+        sendMessage(chatMessage);
+    }
+    
+    public void sendSetRoomAnnouncement(String from, String announcement, Integer conversationId) {
+        ChatMessage chatMessage = ChatMessage.createSetRoomAnnouncement(from, announcement, conversationId);
         sendMessage(chatMessage);
     }
 }
